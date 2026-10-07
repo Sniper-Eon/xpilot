@@ -25,7 +25,7 @@ class PandaStartupIO:
     HARDWARE.recover_internal_panda()
 
   def list_internal(self) -> list[str]:
-    if HARDWARE.get_device_type() == "tici":
+    if HARDWARE.get_device_type() == "tici" and get_hardware_profile() != HardwareProfile.C3XL:
       return Panda.list(usb_only=True)
     return Panda.spi_list()
 
