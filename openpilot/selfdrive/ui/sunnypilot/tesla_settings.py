@@ -5,24 +5,24 @@ from openpilot.sunnypilot.selfdrive.controls.lib.longitudinal_backends.tuning im
 )
 
 LABELS = {
- 'TeslaCoopSteering': '协同转向', 'TeslaTouchLongitudinalSwitch': '四指切换纵向',
- 'TeslaApHybrid': 'AP 混合控制', 'TeslaDynamicApLongitudinal': '动态 AP 控制',
- 'DynamicAutoStock': '动态原车 ACC', 'DynamicAutoStockBlinkerToSP': '转向灯切回 SP 纵向',
- 'DynamicAutoStockCurveToSP': '弯道切回 SP 纵向',
- 'TeslaTrafficSignalControlEnabled': '交通灯控制',
- 'TeslaBlindspotAmbientEnabled': '盲区氛围灯联动', 'AccelPersonalityEnabled': 'TN 加速风格',
- 'TeslaARS408Radar': '雷达来源', 'TeslaMadsScreenButton': 'MADS 触屏手势',
- 'AccelPersonality': 'TN 加速模式', 'DynamicAutoStockSpeedKph': '原车 ACC 切入速度',
- 'DynamicAutoStockSpeedLowKph': '原车 ACC 退出速度', 'TeslaTrafficStopReference': '交通灯停车距离',
- 'TeslaTrafficControlMaxSpeed': '交通灯控制最高速度',
- 'TeslaBlindspotAmbientDayBrightness': '盲区灯白天亮度', 'TeslaBlindspotAmbientBrightness': '盲区灯夜间亮度',
- 't_follow_relaxed': '舒适跟车时间', 't_follow_standard': '标准跟车时间', 't_follow_aggressive': '激进跟车时间',
- 'x_ego_obstacle_cost': '障碍物权重', 'j_ego_cost': '加加速度权重', 'a_change_cost': '加速度变化权重',
- 'danger_zone_cost': '危险区域权重', 'lead_danger_factor': '前车危险系数',
- 'comfort_brake': '舒适制动', 'stop_distance': '停车距离', 'jerk_factor_relaxed': '舒适模式加加速度系数',
+ 'TeslaCoopSteering': 'Cooperative Steering', 'TeslaTouchLongitudinalSwitch': '4-Finger Longitudinal Switch',
+ 'TeslaApHybrid': 'AP Hybrid Control', 'TeslaDynamicApLongitudinal': 'Dynamic AP Control',
+ 'DynamicAutoStock': 'Dynamic Stock ACC', 'DynamicAutoStockBlinkerToSP': 'Turn Signal to SP Longitudinal',
+ 'DynamicAutoStockCurveToSP': 'Curve to SP Longitudinal',
+ 'TeslaTrafficSignalControlEnabled': 'Traffic Light Control',
+ 'TeslaBlindspotAmbientEnabled': 'Blindspot Ambient Lights', 'AccelPersonalityEnabled': 'TN Accel Personality',
+ 'TeslaARS408Radar': 'Radar Source', 'TeslaMadsScreenButton': 'MADS Touch Gesture',
+ 'AccelPersonality': 'TN Accel Profile', 'DynamicAutoStockSpeedKph': 'Stock ACC Entry Speed',
+ 'DynamicAutoStockSpeedLowKph': 'Stock ACC Exit Speed', 'TeslaTrafficStopReference': 'Traffic Light Stop Distance',
+ 'TeslaTrafficControlMaxSpeed': 'Traffic Control Max Speed',
+ 'TeslaBlindspotAmbientDayBrightness': 'Blindspot Day Brightness', 'TeslaBlindspotAmbientBrightness': 'Blindspot Night Brightness',
+ 't_follow_relaxed': 'Relaxed Follow Time', 't_follow_standard': 'Standard Follow Time', 't_follow_aggressive': 'Aggressive Follow Time',
+ 'x_ego_obstacle_cost': 'Obstacle Cost', 'j_ego_cost': 'Jerk Cost', 'a_change_cost': 'Accel Change Cost',
+ 'danger_zone_cost': 'Danger Zone Cost', 'lead_danger_factor': 'Lead Danger Factor',
+ 'comfort_brake': 'Comfort Brake', 'stop_distance': 'Stop Distance', 'jerk_factor_relaxed': 'Relaxed Jerk Factor',
 }
 
-# Existing C3 titles and mici labels stay localized while their keys live together.
+# C3 titles support localization; mici labels stay in English for font support.
 TITLES = {
   'TeslaCoopSteering': tr_noop('Cooperative Steering (Beta)'), 'TeslaMadsScreenButton': tr_noop('MADS Screen Activation'),
   'TeslaTouchLongitudinalSwitch': tr_noop('4-Finger Longitudinal Switch'), 'TeslaApHybrid': tr_noop('AP Hybrid Control (Experimental)'),
@@ -75,7 +75,7 @@ def option_kwargs(key):
           'label_callback': lambda value: setting_label(key, value)}
 
 
-INVALID_CONFIG = '调参配置无法读取，已保留原始数据。请先恢复有效配置；当前禁止保存。'
+INVALID_CONFIG = 'Cannot read tuning configuration. Original data preserved. Restore a valid configuration before saving.'
 
 
 def load_tuning(params, backend):
@@ -92,7 +92,7 @@ def apply_tuning_profile(params, backend, profile):
   try:
     return apply_backend_profile(params, backend, profile), ''
   except ValueError:
-    return None, '参数未保存：调参配置或所选预设无效。'
+    return None, 'Not saved: invalid tuning configuration or selected preset.'
 
 
 def save_tuning(params, backend, values):
@@ -103,11 +103,12 @@ def save_tuning(params, backend, values):
     save_backend_values(params, backend, values, 2)
     return ''
   except ValueError:
-    return '参数未保存：数值无效或跟车时间顺序不正确。'
+    return 'Not saved: invalid values or following times out of order.'
 
 
 # Kept in the UI source so font glyph collection covers the provider's notice.
-OFFICIAL_TUNING_NOTICE = 'Official 保持官方六参数求解器；舒适制动与停车距离通过障碍物平移近似实现，非八参数 MPC 的等价调参。默认值不改变官方行为。'
+OFFICIAL_TUNING_NOTICE = ('Official keeps the upstream six-parameter solver. Comfort Brake and Stop Distance use obstacle-shift approximations, ' +
+                        'not equivalent eight-parameter MPC tuning. Defaults preserve upstream behavior.')
 
 
 def tuning_notice(backend):

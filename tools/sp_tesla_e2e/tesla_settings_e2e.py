@@ -12,6 +12,12 @@ os.environ['BIG'] = '0'
 from openpilot.common.prefix import OpenpilotPrefix
 
 
+def assert_english(page):
+  for button in page._scroller._items:
+    text = button.get_text() + button.value
+    assert not any('\u3400' <= char <= '\u9fff' for char in text), text
+
+
 def main():
   out = Path('artifacts/tesla-implementation-20261005/settings.json')
   out.parent.mkdir(parents=True, exist_ok=True)
@@ -33,6 +39,11 @@ def main():
     try:
       with patch.object(gui_app, 'push_widget') as pushed, patch.object(gui_app, 'pop_widget'):
         mici = TeslaSettingsMici()
+        assert_english(mici)
+        for key, choices in CHOICES.items():
+          mici._choose_param(key, choices)
+          assert_english(pushed.call_args.args[0])
+        results.append({'case': 'english-mici-labels-and-choices-with-chinese-system-language'})
         for key, value, label in [('TeslaARS408Radar', 1, 'ARS408'), ('DynamicAutoStockSpeedLowKph', 115, '115 km/h'),
                                   ('TeslaBlindspotAmbientBrightness', 60, '60%'), ('TeslaTrafficStopReference', 55, '5.5 m')]:
           mici._choose_param(key, CHOICES[key])
@@ -60,9 +71,11 @@ def main():
             mici._tuning_page(backend)
             assert mici.tuning_error
             page = pushed.call_args.args[0]
+            assert_english(page)
             assert not any(button.enabled for button in page._scroller._items[1:])
             mici._value_page(backend, 'comfort_brake')
             value_page = pushed.call_args.args[0]
+            assert_english(value_page)
             assert not any(button.enabled for button in value_page._scroller._items[1:])
             for profile in (0, 1, 2):
               mici._apply_profile(backend, profile)
@@ -86,6 +99,7 @@ def main():
           values = backend_values(ui_state.params, backend).as_dict()
           mici._value_page(backend, 'comfort_brake')
           page = pushed.call_args.args[0]
+          assert_english(page)
           next(button for button in page._scroller._items if button.get_text().startswith('+'))._click_callback()
           assert backend_values(ui_state.params, backend).comfort_brake > values['comfort_brake']
           ui_state.params.put('LongitudinalPlannerMode', int(backend.id), block=True)
@@ -109,9 +123,10 @@ def main():
           assert backend_values(ui_state.params, backend).comfort_brake > before
           mici._tuning_page(backend)
           page = pushed.call_args.args[0]
+          assert_english(page)
           page._scroller._items[3]._click_callback()  # CrazyMax preset through native button
           current = backend_values(ui_state.params, backend).comfort_brake
-          shown = next(button.value for button in page._scroller._items if button.get_text().startswith('舒适制动'))
+          shown = next(button.value for button in page._scroller._items if button.get_text().startswith('Comfort Brake'))
           assert shown == f'{current:.2f} m/s²'
           results.append({'case': 'valid-three-backend-native-write', 'backend': backend.slug})
         saved = ui_state.params.get('LongitudinalPlannerMode')
@@ -123,6 +138,8 @@ def main():
     finally:
       gui_app.close()
   sources = [Path('openpilot/selfdrive/ui/sunnypilot/mici/layouts/tesla.py'),
+             Path('openpilot/selfdrive/ui/sunnypilot/mici/layouts/settings.py'),
+             Path('openpilot/sunnypilot/selfdrive/controls/lib/longitudinal_backends/registry.py'),
              Path('openpilot/selfdrive/ui/sunnypilot/layouts/settings/vehicle/brands/tesla_planner.py'),
              Path('openpilot/selfdrive/ui/sunnypilot/tesla_settings.py'),
              Path('openpilot/selfdrive/ui/sunnypilot/layouts/settings/vehicle/brands/tesla.py'),

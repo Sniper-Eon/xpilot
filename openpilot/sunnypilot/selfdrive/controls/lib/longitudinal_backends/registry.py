@@ -30,7 +30,8 @@ OFFICIAL_BACKEND = BackendSpec(
   provider="openpilot.selfdrive.controls.lib.longitudinal_planner:LongitudinalPlanner",
   capabilities=frozenset({"upstream"}),
   approximate_tuning_fields=frozenset({"comfort_brake", "stop_distance"}),
-  tuning_notice="Official 保持官方六参数求解器；舒适制动与停车距离通过障碍物平移近似实现，非八参数 MPC 的等价调参。默认值不改变官方行为。",
+  tuning_notice=("Official keeps the upstream six-parameter solver. Comfort Brake and Stop Distance use obstacle-shift approximations, " +
+                 "not equivalent eight-parameter MPC tuning. Defaults preserve upstream behavior."),
 )
 
 EXPERIMENTAL_BACKEND = BackendSpec(

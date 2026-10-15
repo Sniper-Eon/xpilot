@@ -68,7 +68,7 @@ class SettingsLayoutSP(OP.SettingsLayout):
     items = self._scroller._items.copy()
 
     vehicle_panel = TeslaSettingsMici()
-    vehicle_btn = SettingsBigButton(tr("Tesla / 纵向规划"), "", gui_app.texture("../../sunnypilot/selfdrive/assets/offroad/icon_models.png", 64, 64))
+    vehicle_btn = SettingsBigButton("Tesla / Longitudinal", "", gui_app.texture("../../sunnypilot/selfdrive/assets/offroad/icon_models.png", 64, 64))
     vehicle_btn.set_click_callback(lambda: gui_app.push_widget(vehicle_panel))
     items.insert(1, vehicle_btn)
     items.insert(1, models_btn)
