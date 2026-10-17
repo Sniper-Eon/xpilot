@@ -161,7 +161,7 @@ def run(catalog_dir: Path, output: Path):
           assert helpers.get_selected_bundle(pending, 'qcom') is None
           assert helpers.get_active_bundle(pending, chestnut=False) is None
           with patch.object(helpers, 'chestnut_present', return_value=False):
-            assert helpers.get_active_model_runner(pending, force_check=True) == 0
+            assert helpers.get_active_model_runner(pending, force_check=True) == helpers.custom.ModelManagerSP.Runner.stock
           saved = helpers.get_selected_bundle(pending, 'qcom', allow_legacy=True)
           assert saved.ref == old_qcom['ref'] and saved.minimumSelectorVersion == 20
           ui = ns(params=pending, chestnut_present=False, chestnut_active=False, chestnut_loading=False,

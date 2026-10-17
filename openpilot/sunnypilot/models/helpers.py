@@ -141,18 +141,19 @@ def _bundle_needs_reset(active_bundle: custom.ModelManagerSP.ModelBundle, availa
   return not _bundle_is_valid_locally(active_bundle)
 
 
-def _parse_active_bundle(raw_bundle) -> "custom.ModelManagerSP.ModelBundle | None":
+def _parse_active_bundle(raw_bundle, *, allow_legacy: bool = False) -> "custom.ModelManagerSP.ModelBundle | None":
   try:
-    if isinstance(raw_bundle, dict) and raw_bundle and is_bundle_version_compatible(raw_bundle):
+    if isinstance(raw_bundle, dict) and raw_bundle and (is_bundle_version_compatible(raw_bundle) or
+                                                       (allow_legacy and raw_bundle.get("minimumSelectorVersion") == 20)):
       return custom.ModelManagerSP.ModelBundle(**raw_bundle)
   except Exception:
     pass
   return None
 
 
-def get_selected_bundle(params: Params | None = None, source: str = "qcom") -> "custom.ModelManagerSP.ModelBundle | None":
+def get_selected_bundle(params: Params | None = None, source: str = "qcom", *, allow_legacy: bool = False) -> "custom.ModelManagerSP.ModelBundle | None":
   params = params or Params()
-  return _parse_active_bundle(params.get(ACTIVE_BUNDLE_KEYS[source]))
+  return _parse_active_bundle(params.get(ACTIVE_BUNDLE_KEYS[source]), allow_legacy=allow_legacy)
 
 
 def selected_chestnut_compiled(params: Params | None = None) -> bool:

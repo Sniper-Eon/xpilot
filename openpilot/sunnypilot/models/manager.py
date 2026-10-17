@@ -336,7 +336,7 @@ class ModelManagerSP:
         validate_active_bundles(self.params, self.source_models)
         self.active_bundle = get_active_bundle(self.params, chestnut=self.chestnut_present)
 
-        if get_selected_bundle(self.params, "chestnut") is not None and get_selected_bundle(self.params, "qcom") is None:
+        if get_selected_bundle(self.params, "chestnut") is not None and self.params.get(ACTIVE_BUNDLE_KEYS["qcom"]) is None:
           if self.params.get("ModelManager_DownloadRef") is None:
             from openpilot.sunnypilot.models.model_name import DEFAULT_MODEL_REF
             self.params.put("ModelManager_DownloadRef", DEFAULT_MODEL_REF)

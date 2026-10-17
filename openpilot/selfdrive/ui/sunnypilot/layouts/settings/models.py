@@ -13,7 +13,7 @@ from openpilot.sunnypilot.models.helpers import ACTIVE_BUNDLE_KEYS, get_selected
 from openpilot.common.constants import CV
 from openpilot.selfdrive.ui.ui_state import device, ui_state
 from openpilot.selfdrive.ui.sunnypilot.model_info import (big_model_state, bundles_for_source, carrying_model, default_model_name,
-                                                           model_cache_size_mb, queued_name, refresh_in_progress, refresh_model_list)
+                                                           model_cache_size_mb, queued_name, refresh_in_progress, refresh_model_list, selected_model_name)
 from openpilot.system.ui.lib.multilang import tr
 from openpilot.system.ui.lib.application import gui_app
 from openpilot.system.ui.widgets import DialogResult, Widget
@@ -180,8 +180,7 @@ class ModelsLayout(Widget):
     for source, label in (("qcom", tr("small")), ("chestnut", tr("big"))):
       if segments:
         segments.append(("|", rl.GRAY, None, None))
-      bundle = get_selected_bundle(ui_state.params, source)
-      name = bundle.internalName if bundle else default_model_name(source)
+      name = selected_model_name(source, short=True)
       color = ON_COLOR if (source == carry_source and name == carry_internal) else rl.LIGHTGRAY
       name = "● " + name
       if source == "chestnut":
@@ -306,7 +305,7 @@ class ModelsLayout(Widget):
 
   @staticmethod
   def _slot_active_ref(source: str) -> str:
-    bundle = get_selected_bundle(ui_state.params, source)
+    bundle = get_selected_bundle(ui_state.params, source, allow_legacy=True)
     return bundle.ref if bundle else "Default"
 
   def _update_state(self):
@@ -330,8 +329,7 @@ class ModelsLayout(Widget):
 
     carry_source, _, carry_display = carrying_model()
     for item, item_source in ((self.small_model_item, "qcom"), (self.big_model_item, "chestnut")):
-      bundle = get_selected_bundle(ui_state.params, item_source)
-      name = bundle.displayName if bundle else default_model_name(item_source)
+      name = selected_model_name(item_source)
       color = ON_COLOR if (item_source == carry_source and name == carry_display) else style.ITEM_TEXT_VALUE_COLOR
       item.action_item.set_value(name, color)
 

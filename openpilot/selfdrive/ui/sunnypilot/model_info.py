@@ -13,6 +13,7 @@ from openpilot.selfdrive.ui.ui_state import ui_state, ChestnutState
 from openpilot.sunnypilot.models.fetcher import get_cached_bundles
 from openpilot.sunnypilot.models.helpers import get_active_source, get_selected_bundle, resolve_bundle_by_ref
 from openpilot.sunnypilot.models.model_name import DEFAULT_BIG_MODEL, DEFAULT_MODEL
+from openpilot.system.ui.lib.multilang import tr
 
 
 def model_cache_size_mb() -> float:
@@ -20,9 +21,10 @@ def model_cache_size_mb() -> float:
   model_root = Paths.model_root()
   total = 0
   if os.path.isdir(model_root):
-    for name in os.listdir(model_root):
-      with contextlib.suppress(OSError):
-        total += os.path.getsize(os.path.join(model_root, name))
+    for directory, _, files in os.walk(model_root):
+      for name in files:
+        with contextlib.suppress(OSError):
+          total += os.path.getsize(os.path.join(directory, name))
   return total / (1024 ** 2)
 
 
@@ -44,6 +46,14 @@ def default_model(source: str) -> str:
 
 def default_model_name(source: str) -> str:
   return f"{default_model(source)} (Default)"
+
+
+def selected_model_name(source: str, *, short: bool = False) -> str:
+  bundle = get_selected_bundle(ui_state.params, source, allow_legacy=True)
+  if bundle is None:
+    return default_model_name(source)
+  name = bundle.internalName if short else bundle.displayName
+  return f"{name} ({tr('getting ready')})" if bundle.minimumSelectorVersion == 20 else name
 
 
 def big_model_state() -> str | None:
@@ -93,12 +103,7 @@ def model_info() -> tuple[str, str, str]:
   would flash the wrong model."""
   source = active_source()
   other = "qcom" if source == "chestnut" else "chestnut"
-  active_bundle = get_selected_bundle(ui_state.params, source)
-  other_bundle = get_selected_bundle(ui_state.params, other)
-
-  active_name = active_bundle.displayName if active_bundle else default_model_name(source)
-  other_name = other_bundle.displayName if other_bundle else default_model_name(other)
-  return source, active_name, other_name
+  return source, selected_model_name(source), selected_model_name(other)
 
 
 # mirrors the manager's ModelCache keys; the manager restamps them on a successful fetch
