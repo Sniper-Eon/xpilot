@@ -43,3 +43,17 @@ No unit tests are to be written after implementation. Existing regression fixtur
 The user authorizes a clean C3 software installation without preserving existing
 runtime content. No OS/boot flash is implied. Install a complete separate source
 runtime, verify its build, then switch /data/openpilot during an offroad window.
+
+## Official sync A: DEC sunset and retained backends (2026-10-17)
+
+Prepared before product integration of official 27c132984df60e9ef42ebd1a805738b8c851356f.
+
+- A textual merge deletes retained DEC imports, schema API, Params or settings while Experimental still needs them. Keep old key/default and LongitudinalPlanSP.dec ordinal/type; no schema migration in A.
+- Official remains affected by saved DEC=true after upstream sunset. Candidate Official must not instantiate DEC and must use raw ExperimentalMode; this is an intentional upstream behavior change from S0.
+- Experimental loses ACC/blended gate, real DEC updates or diagnostic fields. Retain its exact controller and gate; cover DEC false/true, ExperimentalMode false/true and long/short model trajectories with actual solver/publication/LongControl.
+- TN loses common update/publish hooks and silently accepts repeated radar timestamps or drops acceleration-controller status. Verify fresh/repeated/advanced radar timestamps, previous-plan acceleration and native status fields.
+- card initializes cruise using the desired instead of active backend, or global DEC affects Official/TN. Read the existing active session at enabled transition without adding a new latch writer; keep the generic upstream two-argument cruise API.
+- MADS no-entry cleanup clears a genuine fault, or Chestnut icon integration loses traffic/blind-spot HUD. Preserve original control/DM vetoes and render hooks, run existing control/DM/traffic/UI checks.
+- Runtime tests import another checkout or stale native bindings. Use the per-process target source guard and target-native build provenance.
+
+Run upstream_a_backend_e2e.py --stage baseline before product integration and --stage candidate afterward, preserving each JSON. All 24 actual solver/planner/publisher/LongControl combinations must pass their explicit stage contract. Existing core replay remains unchanged for DEC=false; its 18 combinations are compared against S0. Final CAN/compiled safety and device/road evidence remain separate.

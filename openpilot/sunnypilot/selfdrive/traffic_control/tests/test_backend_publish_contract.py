@@ -92,7 +92,7 @@ def planner(request):
   result.e2e_alerts_helper = ns(green_light_alert=False, lead_depart_alert=False)
   if request.param.id == BackendId.TN_NO_DEC:
     result.accel_controller = ns(is_enabled=True, is_active=False, profile=0, state=0)
-  else:
+  elif request.param.id == BackendId.EXPERIMENTAL:
     result.dec = object.__new__(DynamicExperimentalController)
     result.dec._enabled = True
     result.dec._active = False

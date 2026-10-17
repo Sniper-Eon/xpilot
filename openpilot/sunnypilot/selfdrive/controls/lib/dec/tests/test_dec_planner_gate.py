@@ -90,7 +90,7 @@ def build_planner(dec_active: bool, dec_mode: str) -> LongitudinalPlanner:
 
 
 class TestDecPlannerGate(OpenpilotTestCase):
-  """The e2e candidate must be gated on is_e2e(), not raw experimentalMode."""
+  """Official follows raw ExperimentalMode after the DEC sunset."""
 
   def _source(self, experimental_mode: bool, dec_active: bool, dec_mode: str) -> LongitudinalPlanSource:
     planner = build_planner(dec_active, dec_mode)
@@ -107,6 +107,5 @@ class TestDecPlannerGate(OpenpilotTestCase):
   def test_e2e_when_dec_blended(self):
     assert self._source(True, True, 'blended') == LongitudinalPlanSource.e2e
 
-  def test_no_e2e_when_dec_holds_acc(self):
-    # the regression
-    assert self._source(True, True, 'acc') != LongitudinalPlanSource.e2e
+  def test_official_ignores_retired_dec_acc_gate(self):
+    assert self._source(True, True, 'acc') == LongitudinalPlanSource.e2e

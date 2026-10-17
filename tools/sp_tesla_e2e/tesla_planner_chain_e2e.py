@@ -153,7 +153,7 @@ def control_chain(route, cold_start=False):
         records.append({'backend': backend, 'case': fault, 'base_aTarget': float(base.messages['longitudinalPlan'].longitudinalPlan.aTarget),
                         'final_aTarget': float(final.aTarget), 'shouldStop': bool(final.shouldStop),
                         'startApplied': go, 'blockReason': int(arb.diagnostics.start_block_reason),
-                        'controlAccel': float(accel), 'dec_instantiated': planner.dec is not None,
+                        'controlAccel': float(accel), 'dec_instantiated': getattr(planner, 'dec', None) is not None,
                         'tn_stopping_policy': controller.stopping_policy is not None, 'passed': bool(passed)})
   return records
 

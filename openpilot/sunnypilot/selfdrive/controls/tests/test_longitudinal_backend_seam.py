@@ -59,7 +59,7 @@ def test_experimental_provider_is_installed_and_isolated_from_official():
   assert module_path.is_file()
   source = module_path.read_text()
   assert f"class {class_name}(LegacyLongitudinalPlanner)" in source
-  assert "def is_e2e" not in source  # Preserve the shared legacy DEC/Experimental Mode behavior.
+  assert "def is_e2e" in source  # Retained DEC belongs to the Experimental backend.
 
 
 def test_backend_is_latched_across_process_restarts():
@@ -97,35 +97,13 @@ def test_factory_returns_the_selected_backend_without_a_wrapper(monkeypatch):
   assert configured == [(params, spec)]
 
 
-def test_default_backend_hooks_preserve_upstream_dec_behavior():
-  class FakeDec:
-    def __init__(self):
-      self.updated = False
-
-    def update(self, sm):
-      self.updated = sm
-
-    def mode(self):
-      return "blended"
-
-    def enabled(self):
-      return True
-
-    def active(self):
-      return True
-
-  class State:
-    pass
-
+def test_common_backend_hooks_do_not_require_dec():
   planner = object.__new__(LongitudinalPlannerSP)
-  planner.dec = FakeDec()
   planner._update_backend("sm")
-  assert planner.dec.updated == "sm"
-
-  plan = State()
-  plan.dec = State()
+  plan = SimpleNamespace()
   planner._publish_backend_state(plan)
-  assert plan.dec.enabled and plan.dec.active
+  assert not hasattr(planner, "dec")
+  assert not hasattr(plan, "dec")
 
 
 def test_tn_backend_does_not_depend_on_dynamic_experimental_control():
@@ -134,7 +112,7 @@ def test_tn_backend_does_not_depend_on_dynamic_experimental_control():
   assert "DynamicExperimental" not in source
   assert "self.dec" not in source
   assert "dynamic_experimental_control" not in source.lower()
-  assert "enable_dec=False" in source
+  assert "enable_dec" not in source
   assert "return sm['selfdriveState'].experimentalMode" in source
 
 
