@@ -54,7 +54,7 @@ def chestnut_action(command):
 
 def compile_model(onnx_path, pkl_path, chestnut=False):
   onnx_path, target_pkl_path = File(onnx_path).abspath, File(pkl_path).abspath
-  cmd_flags = chestnut_tg_flags if chestnut else tg_flags
+  cmd_flags = f'{chestnut_tg_flags} OPENPILOT_HACKS=1' if chestnut else tg_flags
   cmd = (f'{cmd_flags} {mac_brew_string} {taskset}python3 "{compiler}/compile_onnx.py" '
          f'"{onnx_path}" "{target_pkl_path}" --out-of-band --benchmark-runs 1')
   node = lenv.Command(
