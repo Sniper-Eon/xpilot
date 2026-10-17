@@ -34,3 +34,9 @@ Evidence split: host catalog/paths/download transaction and reconstruction check
 - Default big compile and warp targets must share the existing Chestnut flock/SCons side effect. A dry plan is insufficient: native compilation must run with exclusive GPU ownership and round-trip/inference evidence.
 - Preserve stock ModelState/runner/default Params semantics. Do not replace native default with a legacy plain model solely because its checkpoint matches. The new native pickle must have persistent Buffer references rather than NEXT_BUFFER, correct original metadata/shapes, new runtime identity and real finite model output.
 - Do not overwrite D0 or require the source ONNX to remain in a prebuilt runtime deployment. Keep source/object provenance recoverable for later builds and rollback, and admit temporary compile/runtime/model storage before transfer.
+
+## Pending selector migration follow-up, before product correction
+
+- A ready v21 Chestnut slot plus a retained v20 QCOM pick and an unavailable QCOM catalog must not enqueue the default small model. After the catalog recovers, download the retained ref, not an automatic default that overwrites the old selection. Exercise one actual manager tick with isolated real Params, then the real download/activation path.
+- Desired legacy names and refs remain visible as preparing in both model settings UIs. Runtime selection, readiness, carrying-model indication and loaders remain strict v21; a saved v20 pick must not be advertised or executed as ready. After activation, preserve ref, display name, generation and 20 Hz flag.
+- Content-addressed subdirectories contain the actual model bytes. Cache-size UI must count their files, preserving existing half-second caller throttles rather than walking on every render frame. The catalog migration E2E compares actual temporary file sizes.

@@ -2,18 +2,23 @@
 """Pinned catalogs -> real HTTP download -> Params activation without D0 writes."""
 import argparse
 import hashlib
+import copy
 import json
 import subprocess
 import tempfile
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from types import SimpleNamespace as ns
 from unittest.mock import patch
 
 from openpilot.common.params import Params
 from openpilot.sunnypilot.models import helpers
 from openpilot.sunnypilot.models.fetcher import ModelParser
 from openpilot.sunnypilot.models.manager import ModelManagerSP
+from openpilot.sunnypilot.models import manager as manager_module
+from openpilot.selfdrive.ui.sunnypilot import model_info as model_ui
 
 
 def run(catalog_dir: Path, output: Path):
@@ -113,6 +118,75 @@ def run(catalog_dir: Path, output: Path):
           manager.clear_model_cache()
           assert destination.read_bytes() == payload and legacy.read_bytes() == b'D0 old compiled payload'
           records.append({'scenario': 'cache_clear_preserves_active_hash_directory_and_D0'})
+
+          pending = Params(str(root / 'pending-params'))
+          old_qcom = copy.deepcopy(old)
+          old_qcom.update(ref='retained-small-ref', internalName='KEEP', displayName='Retained small')
+          pending.put('ModelManager_ActiveBundle', old_qcom, block=True)
+          pending.put('ModelManager_ActiveBundleChestnut', parsed.to_dict(), block=True)
+          manager.params = pending
+          manager.sm = type('DeviceInputs', (dict,), {'update': lambda self, timeout: None})(
+            deviceState=ns(chestnutPresent=True))
+          manager.model_fetcher = ns(get_bundles_for_source=lambda source: [parsed] if source == 'chestnut' else [])
+          queued = []
+          manager._process_download_requests = lambda: queued.append(pending.get('ModelManager_DownloadRef'))
+
+          class EndTick(BaseException):
+            pass
+
+          def end_tick():
+            raise EndTick()
+
+          with patch.object(manager_module, 'Ratekeeper', return_value=ns(keep_time=end_tick)), \
+               patch.object(pending, 'put', wraps=pending.put) as writes:
+            try:
+              manager.main_thread()
+            except EndTick:
+              pass
+          requested = [call.args[1] for call in writes.call_args_list if call.args[0] == 'ModelManager_DownloadRef']
+          assert requested == [], f'legacy qcom selection replaced by automatic default request: {requested}'
+          assert pending.get('ModelManager_ActiveBundle') == old_qcom
+          records.append({'scenario': 'offline_qcom_catalog_keeps_pending_selection_without_default_request'})
+
+          qcom_data = copy.deepcopy(bundle)
+          qcom_data.update(ref='retained-small-ref', short_name='KEEP', display_name='Retained small')
+          qcom_data['models'][0]['artifact']['file_name'] = 'retained_small.pkl'
+          qcom = ModelParser._parse_bundle(qcom_data)
+          helpers.validate_active_bundles(pending, {'qcom': [qcom], 'chestnut': [parsed]})
+          deadline = time.monotonic() + 2.
+          while pending.get('ModelManager_DownloadRef') != 'retained-small-ref' and time.monotonic() < deadline:
+            time.sleep(0.01)
+          assert pending.get('ModelManager_DownloadRef') == 'retained-small-ref'
+          assert pending.get('ModelManager_ActiveBundle') == old_qcom
+          assert helpers.get_selected_bundle(pending, 'qcom') is None
+          assert helpers.get_active_bundle(pending, chestnut=False) is None
+          with patch.object(helpers, 'chestnut_present', return_value=False):
+            assert helpers.get_active_model_runner(pending, force_check=True) == 0
+          saved = helpers.get_selected_bundle(pending, 'qcom', allow_legacy=True)
+          assert saved.ref == old_qcom['ref'] and saved.minimumSelectorVersion == 20
+          ui = ns(params=pending, chestnut_present=False, chestnut_active=False, chestnut_loading=False,
+                  is_offroad=lambda: True)
+          with patch.object(model_ui, 'ui_state', ui):
+            assert model_ui.selected_model_name('qcom').startswith('Retained small (')
+            assert model_ui.selected_model_name('qcom', short=True).startswith('KEEP (')
+            assert model_ui.model_info()[1].startswith('Retained small (')
+            assert model_ui.carrying_model()[2] == model_ui.default_model_name('qcom')
+          records.append({'scenario': 'legacy_ui_name_is_pending_but_runtime_stays_stock_default'})
+
+          manager._download_ref = qcom.ref
+          content['payload'] = payload
+          manager.download(qcom, str(model_root), 'qcom')
+          ready = helpers.get_selected_bundle(pending, 'qcom')
+          assert ready.ref == old_qcom['ref']
+          assert ready.generation == old_qcom['generation'] and ready.is20hz == old_qcom['is20hz']
+          assert ready.displayName == old_qcom['displayName']
+          with patch.object(model_ui, 'ui_state', ui):
+            assert model_ui.selected_model_name('qcom') == 'Retained small'
+          records.append({'scenario': 'recovered_catalog_download_keeps_identity_generation_and_20hz'})
+
+          expected_bytes = sum(file.stat().st_size for file in model_root.rglob('*') if file.is_file())
+          assert model_ui.model_cache_size_mb() == expected_bytes / (1024 ** 2)
+          records.append({'scenario': 'cache_size_includes_hash_directory_files', 'bytes': expected_bytes})
     finally:
       server.shutdown()
       server.server_close()
