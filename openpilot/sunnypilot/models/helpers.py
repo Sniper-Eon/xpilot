@@ -17,7 +17,7 @@ from openpilot.common.hardware.hw import Paths
 from openpilot.selfdrive.modeld.helpers import chestnut_compiled, chestnut_present, chestnut_warps_compiled, compiled_model_file
 
 # SET ME TO THE EXACT JSON VERSION WE SET IN SUNNYPILOT_MODELS REPO
-REQUIRED_JSON_VERSION = 20
+REQUIRED_JSON_VERSION = 21
 
 CUSTOM_MODEL_PATH = Paths.model_root()
 ModelManager = custom.ModelManagerSP
@@ -203,6 +203,17 @@ def _validate_active_bundle(params: Params, source: str, available_bundles: list
   key = ACTIVE_BUNDLE_KEYS[source]
   raw_bundle = params.get(key)
   if not raw_bundle:
+    return
+
+  if raw_bundle.get("minimumSelectorVersion") == 20:
+    # Preserve the previous logical selection until its new compiled artifact is ready.
+    matching = next((bundle for bundle in available_bundles or [] if bundle.ref == raw_bundle.get("ref")), None)
+    if matching is not None:
+      if _bundle_is_valid_locally(matching):
+        params.put(key, matching.to_dict(), block=True)
+        _LAST_VALIDATED_RAW[key] = matching.to_dict()
+      elif params.get("ModelManager_DownloadRef") is None:
+        params.put("ModelManager_DownloadRef", matching.ref)
     return
 
   if _LAST_VALIDATED_RAW.get(key) == raw_bundle:

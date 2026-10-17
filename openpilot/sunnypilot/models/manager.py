@@ -7,6 +7,8 @@ See the LICENSE.md file in the root directory for more details.
 
 import asyncio
 import os
+from pathlib import Path
+import shutil
 import time
 
 import requests
@@ -163,6 +165,10 @@ class ModelManagerSP:
     expected_hash = artifact.downloadUri.sha256
     filename = artifact.fileName
     full_path = os.path.join(destination_path, filename)
+    if not Path(full_path).resolve().is_relative_to(Path(destination_path).resolve()):  # noqa: ASYNC240
+      raise ValueError("Model artifact path escapes destination")
+    Path(full_path).parent.mkdir(parents=True, exist_ok=True)
+    temporary = f"{full_path}.{os.getpid()}.download"
 
     try:
       # progress counts only valid chunks so a resumed download continues the
@@ -202,9 +208,10 @@ class ModelManagerSP:
           if not await verify_file(chunk_path, chunk.sha256):
             raise ValueError(f"Hash validation failed for chunk {i+1} of {filename}")
       else:
-        await self._download_file(url, full_path, artifact)
-        if not await verify_file(full_path, expected_hash):
+        await self._download_file(url, temporary, artifact)
+        if not await verify_file(temporary, expected_hash):
           raise ValueError(f"Hash validation failed for {filename}")
+        os.replace(temporary, full_path)
 
       artifact.downloadProgress.status = custom.ModelManagerSP.DownloadStatus.downloaded
       artifact.downloadProgress.progress = 100
@@ -213,6 +220,8 @@ class ModelManagerSP:
       self._report_status()
 
     except DownloadCancelled:
+      if os.path.isfile(temporary):  # noqa: ASYNC240
+        os.remove(temporary)
       # a cancel keeps whatever is on disk: complete chunks resume the next attempt
       self._download_start_times.pop(artifact.fileName, None)
       artifact.downloadProgress.status = custom.ModelManagerSP.DownloadStatus.failed
@@ -225,9 +234,8 @@ class ModelManagerSP:
 
     except Exception as e:
       cloudlog.error(f"Error downloading {filename}: {str(e)}")
-      for f in [full_path] + [p for p in (os.path.join(destination_path, f) for f in os.listdir(destination_path)) if filename in p]:
-        if os.path.isfile(f):  # noqa: ASYNC240
-          os.remove(f)
+      if os.path.isfile(temporary):  # noqa: ASYNC240
+        os.remove(temporary)
       artifact.downloadProgress.status = custom.ModelManagerSP.DownloadStatus.failed
       artifact.downloadProgress.eta = 0
       self._sync_artifact_progress(artifact)
@@ -360,15 +368,15 @@ class ModelManagerSP:
           if model.artifact.fileName:
             active_files.append(model.artifact.fileName)
 
-    # Remove all files except active ones (including their chunk files)
+    # Legacy root files belong to the previous runtime and remain available for rollback.
     model_dir = Paths.model_root()
+    active_directories = {Path(name).parts[0] for name in active_files}
     try:
       for filename in os.listdir(model_dir):
-        base = filename.split('.chunk')[0] if '.chunk' in filename else filename
-        if base not in active_files and filename not in active_files:
-          file_path = os.path.join(model_dir, filename)
-          if os.path.isfile(file_path):
-            os.remove(file_path)
+        path = Path(model_dir) / filename
+        if (len(filename) == 64 and all(c in "0123456789abcdef" for c in filename) and
+            filename not in active_directories and path.is_dir() and not path.is_symlink()):
+          shutil.rmtree(path)
       cloudlog.info("Model cache cleared, keeping active model files")
     except Exception as e:
       cloudlog.exception(f"Error clearing model cache: {str(e)}")
