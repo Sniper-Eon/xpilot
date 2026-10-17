@@ -79,7 +79,8 @@
       ],
       "review_edges": [
         "openpilot/system/manager/process_config.py",
-        "openpilot/selfdrive/selfdrived/selfdrived.py"
+        "openpilot/selfdrive/selfdrived/selfdrived.py",
+        "openpilot/system/camerad/cameras/hw.h"
       ],
       "acceptance": "real offroad on/off/on lifecycle and unrelated-fault retention"
     },
@@ -118,7 +119,10 @@
         "openpilot/system/camerad/cameras/ife_scale.h"
       ],
       "review_edges": [
+        "openpilot/system/camerad/cameras/ife.h",
+        "openpilot/system/camerad/cameras/spectra.h",
         "openpilot/system/camerad/cameras/spectra.cc",
+        "openpilot/system/camerad/cameras/camera_common.h",
         "openpilot/system/camerad/cameras/camera_common.cc",
         "openpilot/common/transformations/camera.py"
       ],
@@ -147,6 +151,7 @@
       "review_edges": [
         "openpilot/selfdrive/pandad",
         "openpilot/common/hardware/comma",
+        "openpilot/system/camerad/cameras/hw.h",
         "launch_env.sh"
       ],
       "acceptance": "physical profile identity, board-specific firmware build and offroad startup; C3 does not certify C3XL/C4"
