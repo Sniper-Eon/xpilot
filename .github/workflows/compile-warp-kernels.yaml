@@ -29,7 +29,7 @@ jobs:
       - name: Compile Warp Kernels
         run: |
           source ${UV_PROJECT_ENVIRONMENT}/bin/activate
-          export PYTHONPATH="${PYTHONPATH}:${{ github.workspace }}/tinygrad_repo:${{ github.workspace }}"
+          export PYTHONPATH="${{ github.workspace }}/tinygrad_repo:${{ github.workspace }}:${PYTHONPATH}"
           mkdir -p openpilot/sunnypilot/modeld_v2/models/
           MODEL_SIZE=$(python3 -c "from openpilot.common.transformations.model import MEDMODEL_INPUT_SIZE as s; print(f'{s[0]}x{s[1]}')")
           CAMERA_RES=$(python3 -c "from openpilot.common.transformations.camera import _ar_ox_fisheye as a, _os_fisheye as o; print(f'{a.width}x{a.height} {o.width}x{o.height}')")

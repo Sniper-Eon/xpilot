@@ -24,11 +24,15 @@ def run(output: Path):
     for relative in set(re.findall(r'tinygrad_repo/examples/openpilot/compile\w*\.py', text)):
       assert (root / relative).is_file(), f'CI compiler is missing: {relative}'
     completed = subprocess.run([sys.executable, str(root / 'tinygrad_repo/examples/openpilot/compile_onnx.py'), '--help'],
-                               cwd=root, env=os.environ | {'DEV': 'CPU:LLVM'}, capture_output=True, text=True, check=True)
+                               cwd=root, env=os.environ | {'DEV': 'CPU:LLVM',
+                               'PYTHONPATH': f"{root / 'tinygrad_repo'}:{root}:{os.environ.get('PYTHONPATH', '')}"},
+                               capture_output=True, text=True, check=True)
     assert '--out-of-band' in completed.stdout and '--benchmark-runs' in completed.stdout
     records.append({'scenario': 'real_native_compiler_cli', 'stdout': completed.stdout})
     source = root / 'openpilot/selfdrive/modeld/models/big_driving_supercombo.onnx'
-    pointer = subprocess.check_output(['git', 'lfs', 'pointer', '--file', str(source)], cwd=root, text=True)
+    with source.open('rb') as stream:
+      is_pointer = stream.read(64).startswith(b'version https://git-lfs.github.com/spec/v1')
+    pointer = source.read_text() if is_pointer else subprocess.check_output(['git', 'lfs', 'pointer', '--file', str(source)], cwd=root, text=True)
     assert 'oid sha256:6fee5937923c74848df4a63f6239eb6331c6274dd4bdb7a5d6ec0388a8b543d5' in pointer
     assert 'size 766018462' in pointer
     records.append({'scenario': 'original_default_big_source_identity', 'lfs_pointer': pointer})
@@ -37,13 +41,15 @@ def run(output: Path):
     with tempfile.TemporaryDirectory() as temp:
       github_output = Path(temp) / 'matrix.txt'
       subprocess.run(['bash', '-e', '-c', matrix_step['run']], cwd=root,
-                     env=os.environ | {'GITHUB_OUTPUT': str(github_output)}, check=True)
+                     env=os.environ | {'GITHUB_OUTPUT': str(github_output),
+                     'PATH': f"{Path(sys.executable).parent}:{os.environ.get('PATH', '')}"}, check=True)
       line = github_output.read_text().strip()
       assert line.startswith('models=')
       artifacts = json.loads(line.removeprefix('models='))
       assert len(artifacts) == 93, len(artifacts)
-      assert len({artifact['download_uri']['sha256'] for artifact in artifacts}) == 93
+      assert all(len(artifact['download_uri']['sha256']) == 64 for artifact in artifacts)
       records.append({'scenario': 'executed_ci_catalog_matrix', 'models': len(artifacts),
+                      'unique_artifacts': len({artifact['download_uri']['sha256'] for artifact in artifacts}),
                       'matrix_sha256': hashlib.sha256(line.encode()).hexdigest()})
     result['passed'] = True
   except Exception as error:

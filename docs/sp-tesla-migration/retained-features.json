@@ -99,7 +99,8 @@
         "model_chain": "557c55b54d6da1ec78975735c9c602dca0e85c87",
         "catalog": "da2d8dac5f77e3a6f72fefbfb14edea3555f05f6",
         "runtime_tinygrad": "69fd4d34d4430036378aba2b43f9d339cdd6ea73",
-        "catalog_compiler_tinygrad": "5d186bdb43c2bcc6c56b6ececf427c34bada0de9"
+        "catalog_compiler_tinygrad": "5d186bdb43c2bcc6c56b6ececf427c34bada0de9",
+        "default_big_onnx_sha256": "6fee5937923c74848df4a63f6239eb6331c6274dd4bdb7a5d6ec0388a8b543d5"
       },
       "contract": "Selector 21 uses QCOM v25 and Chestnut v28 plain artifacts; preserve model ref and source slot, migrate v20 only when the same ref's new files validate. SHA256 cache directories preserve v27 root/chunks for D0 rollback. Default small/DM native OOB must be rebuilt for this runtime; selected catalog models require SPTGPLN1 and fused plain warp. Keep finite checks for both big and small and retained default-small fallback. No schema, backend ID, opendbc, Panda, SCC or stopping-policy changes in B.",
       "regression_models": ["original bundled big", "LM", "BMV6", "CTM", "CTMV2", "CTV3M", "MDM", "MDMV3", "stock small", "selected QCOM", "DM"],
@@ -108,7 +109,7 @@
         "tools/sp_tesla_e2e/model_readiness_e2e.py",
         "docs/sp-tesla-migration/MODEL_FAILURES-B.md"
       ],
-      "known_pending": "Original bundled big SHA256 76cc0a9bc3af7a318889483dcbe126337f8d338f5abcbe664a8988c9b18b6639 is legacy NEXT_BUFFER OOB. It cannot be treated as new-runtime persistent OOB; exact-identity recompilation/conversion and device acceptance are required before claiming stock big supported. Device inference, fallback and rollback evidence are separate from host gates."
+      "known_pending": "Original bundled big SHA256 76cc0a9bc3af7a318889483dcbe126337f8d338f5abcbe664a8988c9b18b6639 is legacy NEXT_BUFFER OOB. Rebuild native OOB from the registered original 6fee ONNX with the actual runtime; update compiled artifact identity only after successful build and real inference. CTMV2 v28 matches the training checkpoint but uses a distinct queue export and remains a catalog model. Device inference, fallback and rollback evidence are separate from host gates."
     },
     {
       "id": "road-resize",

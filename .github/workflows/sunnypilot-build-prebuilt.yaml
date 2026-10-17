@@ -235,11 +235,11 @@ jobs:
         run: |
           REF="${{ github.head_ref || github.ref_name }}"
 
-          BLOB_SHA=$(gh api "repos/${GH_REPO}/contents/openpilot/selfdrive/modeld/models/big_driving_tinygrad.pkl?ref=${REF}" --jq '.sha')
-          [ -n "$BLOB_SHA" ] || { echo "::error::Failed to resolve big_driving_tinygrad.pkl blob SHA"; exit 1; }
+          BLOB_SHA=$(gh api "repos/${GH_REPO}/contents/openpilot/selfdrive/modeld/models/big_driving_supercombo.onnx?ref=${REF}" --jq '.sha')
+          [ -n "$BLOB_SHA" ] || { echo "::error::Failed to resolve big_driving_supercombo.onnx blob SHA"; exit 1; }
           ONNX_HASH=$(gh api "repos/${GH_REPO}/git/blobs/${BLOB_SHA}" --jq '.content' | base64 -d | grep '^oid sha256:' | cut -d: -f2)
-          echo "big PKL hash: $ONNX_HASH"
-          [ -n "$ONNX_HASH" ] || { echo "::error::Failed to extract big PKL hash"; exit 1; }
+          echo "big ONNX hash: $ONNX_HASH"
+          [ -n "$ONNX_HASH" ] || { echo "::error::Failed to extract big ONNX hash"; exit 1; }
           echo "onnx_sha256=$ONNX_HASH" >> "$GITHUB_OUTPUT"
 
           TINYGRAD_REF=$(gh api "repos/${GH_REPO}/contents/tinygrad_repo?ref=${REF}" --jq '.sha')

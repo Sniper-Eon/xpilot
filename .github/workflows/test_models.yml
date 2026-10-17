@@ -19,7 +19,11 @@ jobs:
           import json, urllib.request, os, re
 
           with open("openpilot/sunnypilot/models/fetcher.py", "r") as f:
-            urls = re.findall(r"MODEL_URL(?:_CHESTNUT)?\s*=\s*[\"'"'"']([^\"'"'"']+)[\"'"'"']", f.read())
+            source = f.read()
+          catalog_ref = re.search(r"CATALOG_REF\s*=\s*[\"'"'"']([^\"'"'"']+)[\"'"'"']", source).group(1)
+          urls = [url.replace("{CATALOG_REF}", catalog_ref) for url in
+                  re.findall(r"MODEL_URL(?:_CHESTNUT)?\s*=\s*f?[\"'"'"']([^\"'"'"']+)[\"'"'"']", source)]
+          assert len(urls) == 2, "Both pinned QCOM and Chestnut catalogs are required"
 
           artifacts = []
           for url in urls:
@@ -52,12 +56,14 @@ jobs:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           MODEL_URL: ${{ matrix.artifact.download_uri.url }}
           MODEL_FILE: ${{ matrix.artifact.file_name }}
+          MODEL_SHA256: ${{ matrix.artifact.download_uri.sha256 }}
         shell: bash
         run: |
           mkdir -p /tmp/models
           AUTH=()
           if [ -n "$HF_TOKEN" ]; then AUTH=(-H "Authorization: Bearer $HF_TOKEN"); fi
           curl --retry 3 --retry-all-errors -s -S -f -L "${AUTH[@]}" -o "/tmp/models/$MODEL_FILE" "$MODEL_URL"
+          printf '%s  %s\n' "$MODEL_SHA256" "/tmp/models/$MODEL_FILE" | sha256sum -c -
 
       - name: Run Model Compatibility Test
         env:

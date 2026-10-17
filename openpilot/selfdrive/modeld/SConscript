@@ -47,23 +47,28 @@ def chestnut_action(command):
         break
       time.sleep(1)
     else:
-      print("Chestnut not ready, skipping warp build")
+      print("Chestnut not ready, skipping model/warp build")
       return
     return env.Execute(command)
   return Action(do_compile, "  [CHESTNUT] $TARGET")
 
-def compile_model(onnx_path, pkl_path):
+def compile_model(onnx_path, pkl_path, chestnut=False):
   onnx_path, target_pkl_path = File(onnx_path).abspath, File(pkl_path).abspath
-  cmd = (f'{tg_flags} {mac_brew_string} {taskset}python3 "{compiler}/compile_onnx.py" '
+  cmd_flags = chestnut_tg_flags if chestnut else tg_flags
+  cmd = (f'{cmd_flags} {mac_brew_string} {taskset}python3 "{compiler}/compile_onnx.py" '
          f'"{onnx_path}" "{target_pkl_path}" --out-of-band --benchmark-runs 1')
-  lenv.Command(
+  node = lenv.Command(
     target_pkl_path,
     tinygrad_files + [onnx_path, Value(cmd)],
-    Action(cmd, "  [ONNX] $TARGET"),
+    chestnut_action(cmd) if chestnut else Action(cmd, "  [ONNX] $TARGET"),
   )
+  if chestnut:
+    lenv.SideEffect(chestnut_lock, node)
 
 compile_model('models/dmonitoring_model.onnx', 'models/dmonitoring_model_tinygrad.pkl')
 compile_model('models/driving_supercombo.onnx', 'models/driving_tinygrad.pkl')
+if CHESTNUT:
+  compile_model('models/big_driving_supercombo.onnx', 'models/big_driving_tinygrad.pkl', chestnut=True)
 
 model_w, model_h = MEDMODEL_INPUT_SIZE
 for chestnut in [False, True] if CHESTNUT else [False]:
