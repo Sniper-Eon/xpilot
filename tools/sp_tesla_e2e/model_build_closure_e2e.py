@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
 """Execute model compiler CLI and CI catalog extraction from the checked-out source."""
 import argparse
+import ast
 import hashlib
 import json
 import os
 from pathlib import Path
 import re
+import shlex
 import subprocess
 import sys
 import tempfile
+from types import SimpleNamespace
 
 import yaml
 
@@ -19,6 +22,27 @@ def run(output: Path):
   result = {'passed': False, 'source': subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=root, text=True).strip(),
             'scope': 'real compiler CLI, workflow script paths and executed CI catalog matrix; no native GPU build', 'cases': records}
   try:
+    build_tree = ast.parse((root / 'openpilot/selfdrive/modeld/SConscript').read_text())
+    flag_assignment = next(node for node in ast.walk(build_tree) if isinstance(node, ast.Assign) and
+                           any(isinstance(target, ast.Name) and target.id == 'chestnut_tg_flags' for target in node.targets))
+    generated = []
+    namespace = {'File': lambda path: SimpleNamespace(abspath=path), 'Value': lambda value: value,
+                 'chestnut_tg_flags': ast.literal_eval(flag_assignment.value), 'tg_flags': 'DEV=QCOM',
+                 'mac_brew_string': '', 'taskset': 'taskset -c 7 ', 'compiler': 'tinygrad_repo/examples/openpilot',
+                 'tinygrad_files': [], 'chestnut_lock': 'model-lock', 'chestnut_action': lambda command: command,
+                 'lenv': SimpleNamespace(Command=lambda target, source, action: generated.append(action) or ['model'],
+                                         SideEffect=lambda *args: None)}
+    function = next(node for node in build_tree.body if isinstance(node, ast.FunctionDef) and node.name == 'compile_model')
+    exec(compile(ast.Module(body=[function], type_ignores=[]), '<actual SCons compile_model>', 'exec'), namespace)
+    namespace['compile_model']('big-original.onnx', 'big-native.pkl', chestnut=True)
+    workflow_doc = yaml.safe_load((root / '.github/workflows/build-default-models.yaml').read_text())
+    ci_step = next(step for step in workflow_doc['jobs']['build_big_model']['steps']
+                   if step.get('name') == 'Compile native big model from original ONNX')
+    ci_prefix = ci_step['run'].split(' env ', 1)[1].split('python3', 1)[0]
+    ci_flags = dict(word.split('=', 1) for word in shlex.split(ci_prefix) if '=' in word)
+    local_flags = dict(word.split('=', 1) for word in shlex.split(generated[0].split('python3', 1)[0]) if '=' in word and not word.startswith('DEBUG='))
+    assert ci_flags.get('OPENPILOT_HACKS') == '1' and local_flags == ci_flags, (local_flags, ci_flags)
+    records.append({'scenario': 'actual_native_big_build_command_parity', 'scons_command': generated[0], 'env': local_flags})
     workflow = root / '.github/workflows/build-default-models.yaml'
     text = workflow.read_text()
     for relative in set(re.findall(r'tinygrad_repo/examples/openpilot/compile\w*\.py', text)):
