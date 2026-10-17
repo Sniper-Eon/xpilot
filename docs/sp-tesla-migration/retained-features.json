@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "official_baseline": "16322aef167fe14de8af28a9e437101ed3c4dac5",
+  "official_baseline": "27c132984df60e9ef42ebd1a805738b8c851356f",
   "source_branch": "dev-sp",
   "features": [
     {
@@ -26,10 +26,38 @@
         "openpilot/selfdrive/controls/plannerd.py",
         "openpilot/selfdrive/controls/lib/longitudinal_mpc_lib/long_mpc.py",
         "openpilot/selfdrive/controls/lib/longcontrol.py",
-        "openpilot/system/manager/manager.py"
+        "openpilot/system/manager/manager.py",
+        "openpilot/sunnypilot/selfdrive/controls/lib/longitudinal_planner.py",
+        "openpilot/selfdrive/car/card.py",
+        "openpilot/selfdrive/car/cruise.py"
       ],
-      "contract": "Tesla-only custom selection; atomic latch and manager stop-before-clear; Official uses upstream planner, Experimental/TN share legacy planner with frozen solver ABI; Official brake/stop tuning is explicitly approximate",
-      "acceptance": "Official/Experimental/TN-NoDEC selected session and default tuning replay"
+      "contract": "Tesla-only custom selection; atomic latch and manager stop-before-clear; Official uses upstream planner, Experimental/TN share legacy planner with frozen solver ABI; Official brake/stop tuning is explicitly approximate; Official has no DEC after upstream sunset; retained Experimental alone owns legacy DEC; TN freshness and diagnostic hooks execute through the common SP publisher; card reads the active session without writing a latch",
+      "acceptance": "Official/Experimental/TN-NoDEC selected session and default tuning replay",
+      "source": {
+        "official": "27c132984df60e9ef42ebd1a805738b8c851356f",
+        "retained_legacy": "f400fc5e56839c3ece7f999d18bd54842900df21"
+      },
+      "compatibility": {
+        "backend_ids": {
+          "official": 0,
+          "experimental": 1,
+          "tn_no_dec": 2
+        },
+        "params": {
+          "DynamicExperimentalControl": {
+            "default": false,
+            "persistent": true,
+            "scope": "Tesla Experimental only"
+          }
+        },
+        "schema": "Preserve LongitudinalPlanSP.dec@0 and all previously published Tesla/AccelController ordinals; no protocol migration in A",
+        "cruise": "Upstream two-argument initialize_v_cruise; legacy DEC initial-speed suppression only for active Experimental"
+      },
+      "verification": [
+        "tools/sp_tesla_e2e/upstream_a_backend_e2e.py --stage candidate",
+        "tools/sp_tesla_e2e/tesla_planner_chain_e2e.py --mode replay",
+        "tools/sp_tesla_e2e/tesla_planner_chain_e2e.py --mode session-transition"
+      ]
     },
     {
       "id": "traffic-control",

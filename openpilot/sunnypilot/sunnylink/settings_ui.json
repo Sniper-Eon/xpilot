@@ -602,13 +602,13 @@
             {
               "key": "DynamicExperimentalControl",
               "widget": "toggle",
-              "title": "Dynamic Experimental Control",
-              "description": "Let the model decide when to use sunnypilot ACC or sunnypilot End to End Longitudinal.",
+              "title": "Experimental Backend Dynamic Experimental Control",
+              "description": "Only the Tesla Experimental longitudinal backend uses this setting to select ACC or End to End Longitudinal.",
               "visibility": [
                 {
                   "type": "capability",
-                  "field": "has_longitudinal_control",
-                  "equals": true
+                  "field": "brand",
+                  "equals": "tesla"
                 }
               ],
               "enablement": [
@@ -616,6 +616,40 @@
                   "type": "capability",
                   "field": "has_longitudinal_control",
                   "equals": true
+                },
+                {
+                  "type": "any",
+                  "conditions": [
+                    {
+                      "type": "all",
+                      "conditions": [
+                        {
+                          "type": "offroad_only"
+                        },
+                        {
+                          "type": "param",
+                          "key": "LongitudinalPlannerMode",
+                          "equals": 1
+                        }
+                      ]
+                    },
+                    {
+                      "type": "all",
+                      "conditions": [
+                        {
+                          "type": "not",
+                          "condition": {
+                            "type": "offroad_only"
+                          }
+                        },
+                        {
+                          "type": "param",
+                          "key": "ActiveLongitudinalBackend",
+                          "equals": 1
+                        }
+                      ]
+                    }
+                  ]
                 }
               ]
             },

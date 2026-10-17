@@ -12,7 +12,7 @@ from types import SimpleNamespace as ns
 from unittest.mock import patch
 import traceback
 
-from openpilot.cereal import custom, log
+from openpilot.cereal import custom
 from openpilot.common.params import Params
 from openpilot.common.prefix import OpenpilotPrefix
 from openpilot.sunnypilot.selfdrive.controls.lib.longitudinal_backends.factory import create_longitudinal_planner
@@ -180,7 +180,8 @@ def main():
             'command': sys.argv, 'cases': [], 'cruise_cases': [], 'passed': False}
   paths = [Path(__file__), Path('openpilot/selfdrive/controls/lib/longitudinal_planner.py'),
            Path('openpilot/sunnypilot/selfdrive/controls/lib/longitudinal_planner.py'),
-           Path('openpilot/cereal/custom.capnp'), Path('openpilot/sunnypilot/selfdrive/controls/lib/dec/dec.py')]
+           Path('openpilot/cereal/custom.capnp'), Path('openpilot/sunnypilot/selfdrive/controls/lib/dec/dec.py'),
+           Path('openpilot/selfdrive/car/card.py'), Path('openpilot/selfdrive/car/cruise.py')]
   paths.extend(sorted(Path('openpilot/sunnypilot/selfdrive/controls/lib/longitudinal_backends').rglob('*.py')))
   result['source_sha256'] = {str(p.resolve().relative_to(root)) if p.resolve().is_relative_to(root) else str(p.resolve()):
                            hashlib.sha256(p.read_bytes()).hexdigest() for p in paths}
