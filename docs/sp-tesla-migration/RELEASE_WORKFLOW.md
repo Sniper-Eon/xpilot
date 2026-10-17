@@ -7,35 +7,36 @@ The implementation uses only Python's standard library and the installed Git CLI
 
 ## Start from an identified candidate
 
-Record the exact current worktree, branch and HEAD before changing source. Keep
-dirty files intact and do sync work as scoped commits on `dev-sp`. The
-reviewed official baseline for this migration is
-`16322aef167fe14de8af28a9e437101ed3c4dac5`. The existing `master` was 124 commits
-behind this baseline when this workflow was introduced; its branch name is not
-evidence of freshness. Do not switch to or publish `master` blindly.
+Record the worktree, `dev-sp` HEAD, dirty state and agreed remote/ref's expected
+SHA (`R0`) before changes. Preserve unrelated work and published history; use
+scoped commits on `dev-sp` under `AGENTS.md`. Never infer freshness from a branch
+name or an old report.
 
-1. Fetch official changes without replacing the current feature branch. Identify
-   the candidate official SHA, commit date, its relationship to the previous
-   baseline, and the retained Tesla feature manifest.
-2. Review the official delta and implement the sync on `dev-sp`. Merge or port
-   only after checking the full dependency closure: parent source, recursive
-   gitlinks, DBC/CAN/safety, Params, schemas, UI, model catalog and loader, warp
-   settings, launch configuration and hardware profile.
-3. Track carried patches against their upstream replacement. Once an official
-   implementation covers a patch, remove the superseded patch in the candidate
-   and verify its behavior once at the responsible layer. Do not stack duplicate
-   guards or keep obsolete compatibility code solely because it was carried before.
-4. Resolve Cap'n Proto schema field/type/ordinal conflicts explicitly, inspect
-   generated-schema consumers, and run the existing schema build. Never auto-renumber
-   ordinals to make a merge compile. This small release CLI does not implement a
-   partial schema parser that could claim false conflict detection.
-5. Validate the candidate, review the complete diff, then commit its final source
-   and gitlinks. Manifest generation intentionally rejects dirty checkouts, including
-   untracked nonignored files and every dirty nested submodule.
+1. Choose one continuous official source line. Resolve a release/build to its
+   full source SHA, verify official provenance, ancestry and the actual merge-base
+   against the previous source lock, and review equivalent/partially carried
+   patches. Stop on unexplained divergence; do not merge orphan prebuilt trees.
+2. Use `git merge` for routine mainline sync. Keep an optional model/runtime port
+   as a separate checkpoint with fixed source and full dependency closure; it must
+   not silently import unrelated control policies. For the mainline checkpoint,
+   preserve custom gitlinks when that source has not advanced them; optional
+   ports advance only their declared required dependencies.
+3. Review parent and recursive dependency changes against
+   `retained-features.json`: CAN/safety, control/session hooks, Params, schemas, UI,
+   model/catalog/loader/warp, launch and physical profile. Remove a carried patch
+   only after proving the replacement behavior equivalent.
+4. Preserve published schema identities, field types/ordinals/tombstones, saved
+   Params/defaults, backend IDs/enums and current model-selection semantics.
+   Resolve conflicts at each owner and rebuild affected consumers; protocol
+   redesign requires a separately accepted migration and rollback contract.
+5. Prepare failure cases and E2E acceptance before product changes. Review and
+   commit the complete candidate and gitlinks; manifests reject dirty parents,
+   untracked nonignored files and dirty nested submodules.
 
-An explicit `--baseline FULL_SHA` supports the next official update; review that
-SHA's official provenance before using it. The CLI verifies that the full SHA is
-available and is an ancestor of the candidate, and records the candidate commit
+Always supply `--baseline FULL_SHA` using this run's reviewed official source
+SHA, including when producing an optional model checkpoint on top. Do not rely
+on the CLI's historical default. Review provenance before using that SHA. The CLI
+verifies that the full SHA is available and is an ancestor of the candidate, and records the candidate commit
 count. It does not independently establish that an arbitrary SHA is an official
 release. Divergent selective ports require a reviewed descendant sync candidate;
 this strict gate does not silently waive ancestry.
@@ -44,13 +45,15 @@ this strict gate does not silently waive ancestry.
 
 Run from the final clean candidate checkout. Use a directory **outside** its source
 tree for generated outputs. These examples use shell variables and retain the
-current physical profile explicitly:
+current physical profile explicitly. The official SHA below is the fixed source
+for the first sync; select and verify it anew for every later run:
 
 ```sh
 SOURCE="$(git rev-parse --show-toplevel)"
+OFFICIAL_SHA="27c132984df60e9ef42ebd1a805738b8c851356f"
 RELEASE_DIR="$(mktemp -d /tmp/dev-sp-release.XXXXXX)"
 python3 "$SOURCE/tools/dev_sp_release/release.py" --repo "$SOURCE" manifest \
-  --profile standard \
+  --baseline "$OFFICIAL_SHA" --profile standard \
   --output "$RELEASE_DIR/manifest.json"
 python3 "$SOURCE/tools/dev_sp_release/release.py" --repo "$SOURCE" preflight \
   --manifest "$RELEASE_DIR/manifest.json"
@@ -83,7 +86,7 @@ artifacts must first be placed into the approved candidate artifact location.
 
 ```sh
 python3 "$SOURCE/tools/dev_sp_release/release.py" --repo "$SOURCE" manifest \
-  --profile c3xl --chestnut-road-size 1344x760 \
+  --baseline "$OFFICIAL_SHA" --profile c3xl --chestnut-road-size 1344x760 \
   --artifact openpilot/selfdrive/modeld/models/driving_supercombo.onnx \
   --output "$RELEASE_DIR/runtime-manifest.json"
 python3 "$SOURCE/tools/dev_sp_release/release.py" --repo "$SOURCE" preflight \
@@ -134,16 +137,50 @@ LFS hydration, device paths and chosen model dependencies must be declared and
 validated before a separate approved deployment procedure. The JSON explicitly
 keeps `device` and `onroad` as `pending`.
 
-Choose E2E gates from the changed dependency closure, not a fixed exhaustive test
-matrix. A CAN/safety change needs its existing safety/vehicle integration gates;
-a schema change needs generated consumers; a launch/profile change needs an
-offroad startup session on each affected physical profile; a model loader/warp
-change needs the chosen artifact hash, selected Params, actual modeld runner and
-input/output/warp evidence. Preserve Official/Experimental/TN-NoDEC behavior and
-the retained Tesla UI and ambient behavior. Store exact commands, identities,
-machine-readable results and logs outside source. Source/build success, a model
-selection UI, device startup, hardware inference and road acceptance are distinct
-acceptance stages. Absent hardware keeps its acceptance pending.
+Run the fixed core every sync: FAULT withdrawal, OEM AP/ACC handoff, human
+override, traffic stopping, backend/session consistency, Params compatibility and
+model fallback. Compare against a valid pre-integration baseline with fixed
+inputs, relevant fields and declared tolerances; record intentional upstream
+changes, never replace a golden to hide a failure. Add gates for the changed
+closure: compiled safety/final CAN, generated schema consumers, planner modes,
+UI/DM and each affected physical profile, or actual selected model/warp inference.
+Use the target checkout's source and native dependencies, not another worktree's
+editable installs. Store commands, identities, raw results and logs outside source.
+The release CLI does not run these gates, compile binaries or discover all model
+chunks. Host, offroad device, inference and road acceptance remain separate;
+missing hardware or road evidence stays pending.
+
+## Recoverable checkpoints and publication
+
+Before integration, preserve source checkpoint `S0` with its recursive objects
+using persistent refs or bundles, and prove they can be restored. Before device
+changes, preserve `D0` from the actual active path/HEAD, dirty state and running
+artifacts, not a rebuild. Lock root/recursive SHAs, catalog commit, model/chunk/warp
+hashes, runtime and model-compiler versions separately, binary hashes/modes,
+physical profile and selected Params/launch configuration. A source tag or the CLI
+manifest alone does not preserve this complete device state.
+
+Key model/warp cache entries by content hashes; derived artifacts also include
+runtime/compile configuration in their identity. Verify temporary files before
+atomic activation; preserve old usable artifacts and do not clear
+the first migration's rollback cache. Do not overwrite an old model's cache entry
+with different bytes under the same identity.
+
+An accepted mainline checkpoint may be published separately if an optional model
+port is deferred. Declare source/offroad experimental versus road-accepted status
+explicitly. Before road testing, actually restore `D0` (or the explicitly accepted
+later device checkpoint), restart and check health, then reactivate the same
+candidate and verify it. Restore the complete source/dependency/model/warp and
+relevant per-device Params/configuration; preserve calibration and identity.
+A backup's existence or `git revert` alone is not a device rollback test.
+
+Before a normal non-force publication, ensure every referenced dependency commit
+has a persistent, remotely fetchable ref. Re-read the agreed parent remote/ref;
+require its SHA to equal the current `R0`, stopping to re-evaluate unexpected
+changes. Publish dependencies before the parent, then record the published parent
+as the new `R0`; an independently published mainline checkpoint replaces the
+original `R0` for later optional work. Keep original `S0`/`D0` recoverable. Do not
+batch-push local experiment tags or treat a source push as device activation.
 
 ## Repeatable E2E demonstration
 
