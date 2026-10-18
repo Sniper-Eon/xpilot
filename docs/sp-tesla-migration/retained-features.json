@@ -155,18 +155,6 @@
         "launch_env.sh"
       ],
       "acceptance": "physical profile identity, board-specific firmware build and offroad startup; C3 does not certify C3XL/C4"
-    },
-    {
-      "id": "tcan-observation-and-offline-shadow",
-      "owners": [
-        "openpilot/sunnypilot/tcan"
-      ],
-      "review_edges": [
-        "openpilot/cereal/messaging",
-        "tools/tcan",
-        "docs/tcan"
-      ],
-      "acceptance": "bounded read-only capture and HTTP E2E, pinned upstream C++ shadow parity; no sendcan, Panda changes or manager integration; physical routing and full T2CAN actuation remain unverified"
     }
   ]
 }
