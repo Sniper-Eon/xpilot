@@ -49,6 +49,3 @@ Unimplemented: full R79/Summon runtime and timing, Continuous AP, Auto Blinker C
 NAG/hands-on, DMS, S3XY BLE, TLSSC, pedal/drive profiles, experimental lane-change
 and window controls. Physical CAN mapping, Panda changes and vehicle behavior
 are separate acceptance steps and are not established by host E2E.
-
-Native lean-mici LANLink integration (pinned source patch, actual Sanic routes,
-Vue hash panel, install/build and host proof): [LEAN_INTEGRATION.md](LEAN_INTEGRATION.md).
