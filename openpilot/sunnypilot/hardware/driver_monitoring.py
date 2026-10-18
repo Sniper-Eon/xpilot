@@ -4,10 +4,14 @@ from openpilot.common.hardware import HARDWARE
 from openpilot.sunnypilot.hardware.profile import has_driver_camera
 
 
+def driver_monitoring_default() -> bool:
+  return has_driver_camera() and HARDWARE.get_device_type() == "mici"
+
+
 def driver_monitoring_configured(params: Params) -> bool:
   configured = params.get("DriverMonitoringEnabled")
   if configured is None:
-    configured = HARDWARE.get_device_type() == "mici"
+    configured = driver_monitoring_default()
   return has_driver_camera() and bool(configured)
 
 

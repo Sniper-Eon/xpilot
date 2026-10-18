@@ -143,6 +143,7 @@ inline static std::unordered_map<std::string, ParamKeyAttributes> keys = {
 
     {"DriverMonitoringEnabled", {PERSISTENT | BACKUP, BOOL}},
     {"ActiveDriverMonitoringEnabled", {CLEAR_ON_MANAGER_START | CLEAR_ON_OFFROAD_TRANSITION, BOOL}},
+    {"SPDriverMonitoringDefaultsMigrated", {PERSISTENT | BACKUP, BOOL}},
     {"TeslaBlindspotAmbientEnabled", {PERSISTENT | BACKUP, BOOL, "0"}},
     {"TeslaBlindspotAmbientBrightness", {PERSISTENT | BACKUP, INT, "30"}},
     {"TeslaBlindspotAmbientDayBrightness", {PERSISTENT | BACKUP, INT, "100"}},

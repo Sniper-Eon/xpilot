@@ -7,6 +7,7 @@ See the LICENSE.md file in the root directory for more details.
 import json
 
 from openpilot.common.swaglog import cloudlog
+from openpilot.sunnypilot.hardware.driver_monitoring import driver_monitoring_default
 from openpilot.sunnypilot.selfdrive.car.sync_sunnylink_params import CAR_LIST_JSON_OUT
 
 ONROAD_BRIGHTNESS_MIGRATION_VERSION: str = "1.0"
@@ -104,6 +105,10 @@ def _migrate_model_bundle_slots(_params):
 
 
 def run_migration(_params):
+  if not _params.get_bool("SPDriverMonitoringDefaultsMigrated"):
+    _params.put_bool("DriverMonitoringEnabled", driver_monitoring_default(), block=True)
+    _params.put_bool("SPDriverMonitoringDefaultsMigrated", True, block=True)
+
   # migrate OnroadScreenOffBrightness
   if _params.get("OnroadScreenOffBrightnessMigrated") != ONROAD_BRIGHTNESS_MIGRATION_VERSION:
     try:
