@@ -40,7 +40,12 @@ Validation commands and pre-implementation failure lists:
 - [HTTP and capture E2E](WEB_ACCEPTANCE.md)
 - [Pinned upstream C++ oracle and shadow replay](SHADOW_ACCEPTANCE.md)
 
-Unimplemented: full R79/Summon runtime and timing, Continuous AP, Auto Blinker,
+An offline Auto Blinker request scheduler is also available in `runtime.py`.
+It produces semantic candidates only and is not yet connected to the web form
+or a CAN transmitter. Its timing and revocation replay is documented in
+[RUNTIME_ACCEPTANCE.md](RUNTIME_ACCEPTANCE.md).
+
+Unimplemented: full R79/Summon runtime and timing, Continuous AP, Auto Blinker CAN transport,
 NAG/hands-on, DMS, S3XY BLE, TLSSC, pedal/drive profiles, experimental lane-change
 and window controls. Physical CAN mapping, Panda changes and vehicle behavior
 are separate acceptance steps and are not established by host E2E.
