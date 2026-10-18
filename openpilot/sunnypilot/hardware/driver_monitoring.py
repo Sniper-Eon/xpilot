@@ -1,13 +1,20 @@
 """Driver-monitoring choice latched once by manager for each driving session."""
 from openpilot.common.params import Params
+from openpilot.common.hardware import HARDWARE
 from openpilot.sunnypilot.hardware.profile import has_driver_camera
+
+
+def driver_monitoring_configured(params: Params) -> bool:
+  configured = params.get("DriverMonitoringEnabled")
+  if configured is None:
+    configured = HARDWARE.get_device_type() == "mici"
+  return has_driver_camera() and bool(configured)
 
 
 def driver_monitoring_enabled(params: Params | None = None) -> bool:
   params = Params() if params is None else params
   active = params.get("ActiveDriverMonitoringEnabled")
-  configured = params.get("DriverMonitoringEnabled", return_default=True) if active is None else active
-  return has_driver_camera() and bool(configured)
+  return driver_monitoring_configured(params) if active is None else has_driver_camera() and bool(active)
 
 
 def latch_driver_monitoring(params: Params) -> bool:

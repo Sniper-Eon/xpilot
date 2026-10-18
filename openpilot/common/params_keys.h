@@ -141,7 +141,7 @@ inline static std::unordered_map<std::string, ParamKeyAttributes> keys = {
     {"ChestnutLoading", {CLEAR_ON_MANAGER_START | CLEAR_ON_OFFROAD_TRANSITION | CLEAR_ON_IGNITION_ON, BOOL}},
     {"Version", {PERSISTENT, STRING}},
 
-    {"DriverMonitoringEnabled", {PERSISTENT | BACKUP, BOOL, "1"}},
+    {"DriverMonitoringEnabled", {PERSISTENT | BACKUP, BOOL}},
     {"ActiveDriverMonitoringEnabled", {CLEAR_ON_MANAGER_START | CLEAR_ON_OFFROAD_TRANSITION, BOOL}},
     {"TeslaBlindspotAmbientEnabled", {PERSISTENT | BACKUP, BOOL, "0"}},
     {"TeslaBlindspotAmbientBrightness", {PERSISTENT | BACKUP, INT, "30"}},

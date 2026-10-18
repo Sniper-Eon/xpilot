@@ -9,10 +9,12 @@ import os
 from pathlib import Path
 import subprocess
 import tempfile
+from unittest.mock import patch
 
 
 def run(output):
   from openpilot.common.params import Params
+  from openpilot.common.hardware import HARDWARE
   from openpilot.sunnypilot.hardware.driver_monitoring import latch_driver_monitoring, driver_monitoring_enabled
   from openpilot.sunnypilot.hardware.profile import HardwareProfile, infer_hardware_profile
   from openpilot.system.manager.process_config import managed_processes
@@ -24,28 +26,40 @@ def run(output):
     model = Path(directory) / 'model'
     model.write_bytes(b'comma tici\x00')
     assert infer_hardware_profile(model) == HardwareProfile.STANDARD
-    for profile, capable in [('standard', True), ('c3xl', False)]:
+    for profile, device_type, capable, default in [
+      ('standard', 'tici', True, False),
+      ('standard', 'tizi', True, False),
+      ('standard', 'mici', True, True),
+      ('c3xl', 'tici', False, False),
+      ('standard', 'pc', True, False),
+    ]:
       os.environ['SUNNYPILOT_HARDWARE_PROFILE'] = profile
-      for enabled in [True, False, True]:
-        params = Params(str(Path(directory) / f'{profile}-{enabled}'))
-        params.remove('DriverMonitoringEnabled')
-        params.remove('ActiveDriverMonitoringEnabled')
-        assert driver_monitoring_enabled(params) == capable
-        params.put_bool('DriverMonitoringEnabled', enabled, block=True)
-        active = latch_driver_monitoring(params)
-        assert active == (capable and enabled)
-        cp = structs.CarParams.new_message()
-        cp.notCar = False
-        for name in ['dmonitoringmodeld', 'dmonitoringd']:
-          proc = managed_processes[name]
-          actual = proc.should_run(True, params, cp)
-          assert actual == active, (profile, enabled, name, actual)
-        params.put_bool('DriverMonitoringEnabled', not enabled, block=True)
-        assert driver_monitoring_enabled(params) == active
-        assert latch_driver_monitoring(params) == active
-        params.remove('ActiveDriverMonitoringEnabled')
-        assert latch_driver_monitoring(params) == (capable and not enabled)
-        evidence.append({'case':'dm-session','profile':profile,'configured':enabled,'active':active,'onroad_edit_held':True})
+      with patch.object(HARDWARE, 'get_device_type', return_value=device_type):
+        for enabled in [None, True, False, True]:
+          params = Params(str(Path(directory) / f'{profile}-{device_type}-{enabled}'))
+          params.remove('DriverMonitoringEnabled')
+          params.remove('ActiveDriverMonitoringEnabled')
+          assert driver_monitoring_enabled(params) == default, (profile, device_type, 'default')
+          assert params.get_default_value('DriverMonitoringEnabled') is None, 'manager must not seed a universal DM default'
+          if enabled is not None:
+            params.put_bool('DriverMonitoringEnabled', enabled, block=True)
+          active = latch_driver_monitoring(params)
+          assert active == (default if enabled is None else capable and enabled)
+          cp = structs.CarParams.new_message()
+          cp.notCar = False
+          for name in ['dmonitoringmodeld', 'dmonitoringd']:
+            proc = managed_processes[name]
+            actual = proc.should_run(True, params, cp)
+            assert actual == active, (profile, device_type, enabled, name, actual)
+          params.put_bool('DriverMonitoringEnabled', not active, block=True)
+          assert driver_monitoring_enabled(params) == active
+          assert latch_driver_monitoring(params) == active
+          params.remove('ActiveDriverMonitoringEnabled')
+          assert latch_driver_monitoring(params) == (capable and not active)
+          params.remove('ActiveDriverMonitoringEnabled')
+          params.remove('DriverMonitoringEnabled')
+          assert latch_driver_monitoring(params) == default
+          evidence.append({'case':'dm-session','profile':profile,'device_type':device_type,'configured':enabled,'default':default,'active':active,'onroad_edit_held':True,'reset_restores_default':True})
     os.environ['SUNNYPILOT_HARDWARE_PROFILE'] = 'standard'
     params = Params(str(Path(directory) / 'ambient'))
     params.put_bool('TeslaBlindspotAmbientEnabled', True, block=True)

@@ -25,6 +25,17 @@ gui_app.init_window('C3 tici migration E2E',fps=20)
 assert (gui_app.width,gui_app.height)==(2160,1080)
 home=HomeLayoutSP();tesla=TeslaSettings();settings=Scroller(tesla.items,line_separator=True,spacing=0)
 control=TeslaControlSettingsLayout(lambda:None);planner=TeslaPlannerSettingsLayout(lambda:None);toggles=TogglesLayout()
+assert not toggles._toggles['DriverMonitoringEnabled'].action_item.get_state()
+dm_cases=[]
+for profile, configured, expected in [('standard',True,True),('standard',False,False),('c3xl',True,False)]:
+ os.environ['SUNNYPILOT_HARDWARE_PROFILE']=profile
+ ui_state.params.put_bool('DriverMonitoringEnabled',configured,block=True)
+ toggles._update_toggles()
+ action=toggles._toggles['DriverMonitoringEnabled'].action_item
+ assert action.get_state()==expected
+ assert action.enabled==(profile=='standard')
+ dm_cases.append({'profile':profile,'configured':configured,'displayed':action.get_state(),'editable':action.enabled})
+os.environ['SUNNYPILOT_HARDWARE_PROFILE']='standard'
 traffic=TrafficControlRenderer();pm=messaging.PubMaster(['longitudinalPlanSP','deviceState'])
 ui_state.CP=structs.CarParams.new_message();ui_state.CP.brand='tesla';ui_state.CP.openpilotLongitudinalControl=True
 ui_state.params.remove('DriverMonitoringEnabled')
@@ -40,5 +51,5 @@ for index,_ in enumerate(gui_app.render()):
  if index%12==10:
   rl.rl_draw_render_batch_active();rl.take_screenshot(str(out/(name+'.png')))
  if index==72:gui_app.request_close()
-(out/'summary.json').write_text(json.dumps({'logical_viewport':[2160,1080],'render_scale':float(os.environ['SCALE']),'scope':'physical C3 offroad UI' if os.path.exists('/AGNOS') else 'Mac tici simulation','views':[x[0] for x in views]},indent=2)+'\n')
+(out/'summary.json').write_text(json.dumps({'logical_viewport':[2160,1080],'render_scale':float(os.environ['SCALE']),'scope':'physical C3 offroad UI' if os.path.exists('/AGNOS') else 'Mac tici simulation','views':[x[0] for x in views],'dm_defaults':dm_cases},indent=2)+'\n')
 gui_app.close();prefix.__exit__(None,None,None)

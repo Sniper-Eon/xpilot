@@ -2,6 +2,7 @@
 """Render actual mici widgets and serialized traffic inputs; save PNG evidence."""
 import json, os, time, uuid
 from pathlib import Path
+from unittest.mock import patch
 os.environ['OPENPILOT_PREFIX']='sp-ui-'+uuid.uuid4().hex[:10]
 from openpilot.common.prefix import OpenpilotPrefix
 prefix = OpenpilotPrefix(prefix=os.environ['OPENPILOT_PREFIX'])
@@ -10,11 +11,13 @@ os.environ['BIG']='0'
 os.environ['SCALE']='1'
 import pyray as rl
 from openpilot.cereal import messaging
+from openpilot.common.hardware import HARDWARE
 from openpilot.selfdrive.ui.ui_state import ui_state
 from openpilot.system.ui.lib.application import gui_app
 from openpilot.system.ui.lib.multilang import multilang
 from openpilot.selfdrive.ui.sunnypilot.onroad.traffic_control import TrafficControlRenderer, traffic_card_rect
 from openpilot.selfdrive.ui.sunnypilot.mici.layouts.tesla import TeslaSettingsMici
+from openpilot.selfdrive.ui.mici.layouts.settings.toggles import TogglesLayoutMici
 from openpilot.system.ui.widgets.scroller import NavScroller
 
 out=Path('artifacts/sp-tesla-migration/ui');out.mkdir(parents=True,exist_ok=True)
@@ -76,6 +79,18 @@ for index,_ in enumerate(gui_app.render()):
     settings._scroller._items[0]._click_callback()
     assert gui_app._nav_stack[-1] is root
     results.append({'case':'settings-back','returned':True})
+    with patch.object(HARDWARE,'get_device_type',return_value='mici'):
+      ui_state.params.remove('DriverMonitoringEnabled')
+      toggles=TogglesLayoutMici()
+      assert toggles._dm_toggle._checked
+      toggles._on_driver_monitoring(False)
+      assert ui_state.params.get('DriverMonitoringEnabled') is False and not toggles._dm_toggle._checked
+      toggles._on_driver_monitoring(True)
+      assert ui_state.params.get('DriverMonitoringEnabled') is True and toggles._dm_toggle._checked
+      ui_state.params.remove('DriverMonitoringEnabled')
+      toggles._update_toggles()
+      assert toggles._dm_toggle._checked
+      results.append({'case':'c4-dm-default','default':True,'saved_false_respected':True,'saved_true_respected':True,'reset_restores_default':True})
     gui_app.request_close()
 (out/'summary.json').write_text(json.dumps({'viewport':[536,240],'cases':results,'scope':'native rendering/navigation callbacks and serialized traffic messages; no physical C4'},indent=2)+'\n')
 gui_app.close()

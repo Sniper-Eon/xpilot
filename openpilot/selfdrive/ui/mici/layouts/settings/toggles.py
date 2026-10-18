@@ -9,6 +9,7 @@ from openpilot.system.ui.lib.application import gui_app
 from openpilot.selfdrive.ui.layouts.settings.common import restart_needed_callback
 from openpilot.selfdrive.ui.ui_state import ui_state
 from openpilot.sunnypilot.hardware.profile import has_driver_camera
+from openpilot.sunnypilot.hardware.driver_monitoring import driver_monitoring_configured
 
 PERSONALITY_TO_INT = log.LongitudinalPersonality.schema.enumerants
 
@@ -55,7 +56,7 @@ class TogglesLayoutMici(NavScroller):
                                                    "These are alpha features. Expect mistakes.\n" +
                                                    "The path colors show acceleration and braking.")
     self._dm_toggle = BigToggle("DM 驾驶员监控",
-      initial_state=bool(ui_state.params.get("DriverMonitoringEnabled", return_default=True)),
+      initial_state=driver_monitoring_configured(ui_state.params),
       toggle_callback=self._on_driver_monitoring,
       description="关闭后不启动 DM 进程。只能停车时修改，下次驾驶生效。")
     self._dm_toggle.set_enabled(lambda: ui_state.is_offroad() and has_driver_camera())
@@ -137,7 +138,7 @@ class TogglesLayoutMici(NavScroller):
         self._personality_toggle.set_visible(False)
         ui_state.params.remove("ExperimentalMode")
 
-    self._dm_toggle.set_checked(bool(ui_state.params.get("DriverMonitoringEnabled", return_default=True)))
+    self._dm_toggle.set_checked(driver_monitoring_configured(ui_state.params))
 
     # Refresh toggles from params to mirror external changes
     for key, item in self._refresh_toggles:

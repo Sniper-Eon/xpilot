@@ -9,6 +9,7 @@ from openpilot.system.ui.lib.multilang import tr, tr_noop
 from openpilot.system.ui.widgets import DialogResult
 from openpilot.selfdrive.ui.ui_state import ui_state
 from openpilot.sunnypilot.hardware.profile import has_driver_camera
+from openpilot.sunnypilot.hardware.driver_monitoring import driver_monitoring_configured
 
 if gui_app.sunnypilot_ui():
   from openpilot.system.ui.sunnypilot.widgets.list_view import toggle_item_sp as toggle_item
@@ -119,7 +120,7 @@ class TogglesLayout(Widget):
       toggle = toggle_item(
         title,
         desc,
-        bool(self._params.get(param, return_default=True)) if param == "DriverMonitoringEnabled" else self._params.get_bool(param),
+        driver_monitoring_configured(self._params) if param == "DriverMonitoringEnabled" else self._params.get_bool(param),
         callback=lambda state, p=param: self._toggle_callback(state, p),
         icon=icon,
       )
@@ -209,7 +210,7 @@ class TogglesLayout(Widget):
     # TODO: make a param control list item so we don't need to manage internal state as much here
     # refresh toggles from params to mirror external changes
     for param in self._toggle_defs:
-      value = self._params.get(param, return_default=True) if param == "DriverMonitoringEnabled" else self._params.get_bool(param)
+      value = driver_monitoring_configured(self._params) if param == "DriverMonitoringEnabled" else self._params.get_bool(param)
       self._toggles[param].action_item.set_state(bool(value))
     self._toggles["DriverMonitoringEnabled"].action_item.set_enabled(ui_state.is_offroad() and has_driver_camera())
 

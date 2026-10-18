@@ -78,11 +78,22 @@
         "openpilot/sunnypilot/hardware/driver_monitoring.py"
       ],
       "review_edges": [
+        "openpilot/common/params_keys.h",
+        "openpilot/sunnypilot/hardware/profile.py",
+        "openpilot/system/manager/manager.py",
         "openpilot/system/manager/process_config.py",
         "openpilot/selfdrive/selfdrived/selfdrived.py",
-        "openpilot/system/camerad/cameras/hw.h"
+        "openpilot/system/camerad/cameras/hw.h",
+        "openpilot/selfdrive/ui/layouts/settings/toggles.py",
+        "openpilot/selfdrive/ui/mici/layouts/settings/toggles.py"
       ],
-      "acceptance": "real offroad on/off/on lifecycle and unrelated-fault retention"
+      "contract": "Unset DM defaults on only for C4/mici and off for all other devices; preserve explicit saved choices and session latching. C3XL has no driver camera and always disables DM, including its UI state. Keep the hardware-dependent default in driver_monitoring.py, not the universal Params table.",
+      "acceptance": "real offroad on/off/on lifecycle and unrelated-fault retention; C3/C3X/C4/C3XL defaults, saved choices, reset and actual UI state",
+      "verification": [
+        "tools/sp_tesla_e2e/session_acceptance.py --output <artifact.json>",
+        "tools/sp_tesla_e2e/ui_c3_smoke.py",
+        "tools/sp_tesla_e2e/ui_smoke.py"
+      ]
     },
     {
       "id": "chestnut-models",
