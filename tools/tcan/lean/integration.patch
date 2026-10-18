@@ -1,0 +1,47 @@
+--- a/openpilot/system/lanlinkd/lanlinkd.py
++++ b/openpilot/system/lanlinkd/lanlinkd.py
+@@ -18,6 +18,7 @@
+ import threading
+ 
+ from sanic import Sanic
++from openpilot.system.lanlinkd.tcan_api import register_tcan
+ from sanic.request import Request
+ from sanic.response import HTTPResponse, empty, file, json as json_response
+ 
+@@ -367,6 +368,7 @@
+   for method, path, handler_name in ROUTES:
+     app.add_route(getattr(state, handler_name), path, methods=[method], name=handler_name)
+ 
++  register_tcan(app)
+   return app
+ 
+ 
+--- a/openpilot/system/lanlinkd/web/src/App.vue
++++ b/openpilot/system/lanlinkd/web/src/App.vue
+@@ -10,6 +10,7 @@
+ import TopBar from "./components/TopBar.vue";
+ import PanelView from "./components/PanelView.vue";
+ import HomeView from "./components/HomeView.vue";
++import TcanPanel from "./components/TcanPanel.vue";
+ import Toasts from "./components/Toasts.vue";
+ import { loadAll, panelById, pollStatus, refreshParams, store, toast } from "./lib/store";
+ 
+@@ -124,6 +125,7 @@
+           </button>
+         </div>
+ 
++        <TcanPanel v-else-if="current === 'tcan'" />
+         <PanelView v-else-if="panel" :panel="panel" />
+         <HomeView v-else @navigate="navigate" />
+       </div>
+--- a/openpilot/system/lanlinkd/web/src/components/Sidebar.vue
++++ b/openpilot/system/lanlinkd/web/src/components/Sidebar.vue
+@@ -91,6 +91,8 @@
+         设备设置
+       </div>
+ 
++      <button type="button" class="flex h-10 w-full items-center rounded-lg px-3 text-sm text-sl-text-2 hover:bg-sl-surface-2" :aria-current="props.current === 'tcan' ? 'page' : undefined" @click="emit('navigate', 'tcan')">T-CAN</button>
++
+       <div class="flex flex-col gap-0.5">
+         <button
+           v-for="p in items"

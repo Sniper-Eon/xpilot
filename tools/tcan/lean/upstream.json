@@ -1,0 +1,8 @@
+{
+  "sha": "be16822e572ce8c6e7def7cfd48d21eae7ffeef1",
+  "sha256": {
+    "openpilot/system/lanlinkd/lanlinkd.py": "9b74321a1d23f69ba1920c8caaa8a35f9cab73f217ac295beedfc5e5c52f3b1a",
+    "openpilot/system/lanlinkd/web/src/App.vue": "35c99b54bb6337e8c389e4bdfdcd116f3571aef9845fb8ae0bc218887075347f",
+    "openpilot/system/lanlinkd/web/src/components/Sidebar.vue": "e5b3a7178c2bc23863ea375fc93e3f4cb7a620b95622b7fb220931fee34d2a16"
+  }
+}
