@@ -13,7 +13,12 @@ sections:
   items:
   - key: ExperimentalMode
     widget: toggle
-    title: Experimental Mode
+    title: Experimental Mode (Tesla Experimental and TN-NoDEC)
+    description: Official always plans End to End. The retained Tesla Experimental and TN-NoDEC backends use this to select End to End or ACC.
+    visibility:
+    - type: capability
+      field: brand
+      equals: tesla
     enablement:
     - $ref: '#/macros/longitudinal'
   - key: DynamicExperimentalControl

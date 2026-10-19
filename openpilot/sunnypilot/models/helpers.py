@@ -10,7 +10,6 @@ from pathlib import Path
 import numpy as np
 
 from openpilot.cereal import custom
-from openpilot.common.file_chunker import get_chunk_name, get_manifest_path
 from openpilot.common.params import Params
 from openpilot.common.swaglog import cloudlog
 from openpilot.common.hardware.hw import Paths
@@ -30,9 +29,8 @@ _LAST_VALIDATED_RAW: dict[str, dict | None] = {}
 
 
 def _compute_hash(file_path: str) -> str | None:
-  from openpilot.common.file_chunker import open_file_chunked
   try:
-    with open_file_chunked(file_path) as file:
+    with open(file_path, 'rb') as file:
       return hashlib.file_digest(file, "sha256").hexdigest().lower()
   except OSError:
     return None
@@ -60,47 +58,24 @@ def is_bundle_version_compatible(bundle: dict) -> bool:
 def _bundle_artifacts(bundle: custom.ModelManagerSP.ModelBundle) -> list[tuple[str, str]]:
   artifacts = []
   for model in getattr(bundle, 'models', []) or []:
-    for artifact in (getattr(model, 'artifact', None),):
-      if artifact and getattr(artifact, 'fileName', None):
-        sha256 = getattr(artifact.downloadUri, 'sha256', None)
-        if sha256:
-          artifacts.append((artifact.fileName, sha256))
-        if len(artifact.chunks) > 0:
-          for i, chunk in enumerate(artifact.chunks):
-            chunk_name = get_chunk_name(artifact.fileName, i, len(artifact.chunks))
-            if getattr(chunk, 'sha256', None):
-              artifacts.append((chunk_name, chunk.sha256))
+    artifact = getattr(model, 'artifact', None)
+    if artifact and getattr(artifact, 'fileName', None) and getattr(artifact, 'downloadUri', None):
+      if sha256 := getattr(artifact.downloadUri, 'sha256', None):
+        artifacts.append((artifact.fileName, sha256))
   return artifacts
 
 
 def _artifact_loader_files(artifact, model_root: Path) -> list[tuple[Path, str]]:
-  """Choose exactly the files the loader reads, rejecting paths outside model_root."""
-  if not artifact.fileName:
+  """The file the loader reads, rejecting paths outside model_root and unhydrated LFS pointers."""
+  if not artifact.fileName or not artifact.downloadUri.sha256:
     return []
   path = model_root / artifact.fileName
-  if path.is_file():
-    files = [(path, artifact.downloadUri.sha256)]
-    paths = [path]
-  else:
-    count = len(artifact.chunks)
-    if not 0 < count <= 1024:
-      return []
-    manifest = Path(get_manifest_path(path))
-    try:
-      if not manifest.resolve().is_relative_to(model_root):
-        return []
-      if int(manifest.read_text().strip()) != count:
-        return []
-    except (OSError, RuntimeError, ValueError):
-      return []
-    files = [(Path(get_chunk_name(path, i, count)), chunk.sha256) for i, chunk in enumerate(artifact.chunks)]
-    paths = [manifest] + [file for file, _ in files]
   try:
-    if not all(file.resolve().is_relative_to(model_root) for file in paths):
+    if not path.resolve().is_relative_to(model_root):
       return []
   except (OSError, RuntimeError, ValueError):
     return []
-  return files if all(sha and file.is_file() and compiled_model_file(file) for file, sha in files) else []
+  return [(path, artifact.downloadUri.sha256)] if compiled_model_file(path) else []
 
 
 def _bundle_is_valid_locally(bundle: custom.ModelManagerSP.ModelBundle) -> bool:

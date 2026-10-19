@@ -111,50 +111,6 @@ class ModelManagerSP:
     # Clean up start time after download completes
     del self._download_start_times[model.fileName]
 
-  async def _download_chunked(self, base_url: str, base_path: str, artifact, skip: frozenset[int] | set[int] = frozenset()) -> None:
-    from openpilot.common.file_chunker import get_chunk_name, get_manifest_path
-
-    num_chunks = len(artifact.chunks)
-    if num_chunks == 0:
-      raise ValueError("No chunks defined in artifact")
-
-    manifest_path = get_manifest_path(base_path)
-    self._download_start_times[artifact.fileName] = time.monotonic()
-
-    # Shared connection saves a TCP+TLS handshake per chunk.
-    # Keep sequential: the link saturates on one stream and Session is not thread-safe.
-    completed = len(skip)
-    with requests.Session() as session:
-      for i, _ in enumerate(artifact.chunks):
-        if i in skip:
-          continue
-        chunk_url = get_chunk_name(base_url, i, num_chunks)
-        chunk_path = get_chunk_name(base_path, i, num_chunks)
-        chunk_downloaded = 0
-        with session.get(chunk_url, stream=True, timeout=DOWNLOAD_TIMEOUT) as response:
-          response.raise_for_status()
-          chunk_size = int(response.headers.get("content-length", 0))
-          with open(chunk_path, 'wb') as f:  # noqa: ASYNC230
-            for data in response.iter_content(chunk_size=self._chunk_size):
-              f.write(data)
-              chunk_downloaded += len(data)
-              if self._download_interrupted():
-                raise DownloadCancelled("Download cancelled")
-              intra = chunk_downloaded / max(chunk_size, 1)
-              progress = min(99.0, ((completed + intra) / num_chunks) * 100)
-              artifact.downloadProgress.status = custom.ModelManagerSP.DownloadStatus.downloading
-              artifact.downloadProgress.progress = progress
-              artifact.downloadProgress.eta = self._calculate_eta(artifact.fileName, progress)
-              self._sync_artifact_progress(artifact)
-              self._report_status()
-        completed += 1
-
-    with open(manifest_path, 'w') as f:  # noqa: ASYNC230
-      f.write(str(num_chunks))
-    if os.path.isfile(base_path):  # noqa: ASYNC240
-      os.remove(base_path)
-    del self._download_start_times[artifact.fileName]
-
   async def _process_artifact(self, artifact, destination_path: str) -> None:
     if not artifact.downloadUri.uri:
       return None
@@ -171,28 +127,7 @@ class ModelManagerSP:
     temporary = f"{full_path}.{os.getpid()}.download"
 
     try:
-      # progress counts only valid chunks so a resumed download continues the
-      # bar from where verification left it, instead of falling back to zero
-      is_cached = False
-      valid_chunks: set[int] = set()
-      if len(artifact.chunks) > 0:
-        from openpilot.common.file_chunker import get_chunk_name
-        num_chunks = len(artifact.chunks)
-        for i, chunk in enumerate(artifact.chunks):
-          if self._download_interrupted():
-            raise DownloadCancelled("Download cancelled")
-          if await verify_file(get_chunk_name(full_path, i, num_chunks), chunk.sha256):
-            valid_chunks.add(i)
-          artifact.downloadProgress.status = custom.ModelManagerSP.DownloadStatus.verifying
-          artifact.downloadProgress.progress = (len(valid_chunks) / num_chunks) * 100
-          self._sync_artifact_progress(artifact)
-          self._report_status()
-        is_cached = len(valid_chunks) == num_chunks
-      else:
-        if await verify_file(full_path, expected_hash):
-          is_cached = True
-
-      if is_cached:
+      if await verify_file(full_path, expected_hash):
         artifact.downloadProgress.status = custom.ModelManagerSP.DownloadStatus.cached
         artifact.downloadProgress.progress = 100
         artifact.downloadProgress.eta = 0
@@ -200,18 +135,10 @@ class ModelManagerSP:
         self._report_status()
         return
 
-      if len(artifact.chunks) > 0:
-        await self._download_chunked(url, full_path, artifact, skip=valid_chunks)
-        from openpilot.common.file_chunker import get_chunk_name
-        for i, chunk in enumerate(artifact.chunks):
-          chunk_path = get_chunk_name(full_path, i, len(artifact.chunks))
-          if not await verify_file(chunk_path, chunk.sha256):
-            raise ValueError(f"Hash validation failed for chunk {i+1} of {filename}")
-      else:
-        await self._download_file(url, temporary, artifact)
-        if not await verify_file(temporary, expected_hash):
-          raise ValueError(f"Hash validation failed for {filename}")
-        os.replace(temporary, full_path)
+      await self._download_file(url, temporary, artifact)
+      if not await verify_file(temporary, expected_hash):
+        raise ValueError(f"Hash validation failed for {filename}")
+      os.replace(temporary, full_path)
 
       artifact.downloadProgress.status = custom.ModelManagerSP.DownloadStatus.downloaded
       artifact.downloadProgress.progress = 100
@@ -222,7 +149,6 @@ class ModelManagerSP:
     except DownloadCancelled:
       if os.path.isfile(temporary):  # noqa: ASYNC240
         os.remove(temporary)
-      # a cancel keeps whatever is on disk: complete chunks resume the next attempt
       self._download_start_times.pop(artifact.fileName, None)
       artifact.downloadProgress.status = custom.ModelManagerSP.DownloadStatus.failed
       artifact.downloadProgress.eta = 0

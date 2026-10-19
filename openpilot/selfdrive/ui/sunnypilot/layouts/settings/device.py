@@ -8,10 +8,12 @@ from openpilot.selfdrive.ui.layouts.settings.device import DeviceLayout
 from openpilot.selfdrive.ui.onroad.cabin_camera_dialog import CabinCameraDialog
 from openpilot.selfdrive.ui.ui_state import ui_state
 from openpilot.common.hardware import HARDWARE
+from openpilot.sunnypilot.hardware.driver_monitoring import driver_monitoring_configured
+from openpilot.sunnypilot.hardware.profile import has_driver_camera
 from openpilot.system.ui.lib.application import gui_app
 from openpilot.system.ui.lib.multilang import tr
 from openpilot.system.ui.sunnypilot.widgets.list_view import option_item_sp, multiple_button_item_sp, button_item_sp, \
-  dual_button_item_sp, Spacer
+  dual_button_item_sp, toggle_item_sp, Spacer
 from openpilot.system.ui.widgets import DialogResult
 from openpilot.system.ui.widgets.button import ButtonStyle
 from openpilot.system.ui.widgets.confirm_dialog import alert_dialog, ConfirmDialog
@@ -78,6 +80,14 @@ class DeviceLayoutSP(DeviceLayout):
       inline=True,
     )
 
+    self._driver_monitoring = toggle_item_sp(
+      title=lambda: tr("DM 驾驶员监控"),
+      description=lambda: tr("开启驾驶员监控。关闭后不启动 DM 进程。只能停车时修改，下次驾驶生效。"),
+      initial_state=driver_monitoring_configured(ui_state.params),
+      callback=lambda state: ui_state.params.put_bool("DriverMonitoringEnabled", state, block=True),
+      enabled=lambda: ui_state.is_offroad() and has_driver_camera(),
+    )
+
     self._quiet_mode_and_dcam = dual_button_item_sp(
       left_text=lambda: tr("Quiet Mode"),
       right_text=lambda: tr("Driver Camera Preview"),
@@ -122,6 +132,8 @@ class DeviceLayoutSP(DeviceLayout):
       self._device_wake_mode,
       LineSeparator(),
       self._max_time_offroad,
+      LineSeparator(),
+      self._driver_monitoring,
       LineSeparator(height=10),
       self._quiet_mode_and_dcam,
       self._reg_and_training,
@@ -205,6 +217,8 @@ class DeviceLayoutSP(DeviceLayout):
       self._scroller._items.insert(len(self._scroller._items) - 1, self._always_offroad_btn)
     else:
       self._scroller._items.insert(0, self._always_offroad_btn)
+
+    self._driver_monitoring.action_item.set_state(driver_monitoring_configured(ui_state.params))
 
     # Quiet Mode button
     self._quiet_mode_and_dcam.action_item.left_button.set_button_style(ButtonStyle.PRIMARY if ui_state.params.get_bool("QuietMode") else ButtonStyle.NORMAL)

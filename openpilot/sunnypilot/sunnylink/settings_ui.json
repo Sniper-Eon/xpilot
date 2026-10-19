@@ -559,7 +559,7 @@
               "enablement": [
                 {
                   "type": "capability",
-                  "field": "enable_bsm",
+                  "field": "has_bsm",
                   "equals": true
                 },
                 {
@@ -590,7 +590,15 @@
             {
               "key": "ExperimentalMode",
               "widget": "toggle",
-              "title": "Experimental Mode",
+              "title": "Experimental Mode (Tesla Experimental and TN-NoDEC)",
+              "description": "Official always plans End to End. The retained Tesla Experimental and TN-NoDEC backends use this to select End to End or ACC.",
+              "visibility": [
+                {
+                  "type": "capability",
+                  "field": "brand",
+                  "equals": "tesla"
+                }
+              ],
               "enablement": [
                 {
                   "type": "capability",
@@ -1883,6 +1891,27 @@
               "enablement": [
                 {
                   "type": "not_engaged"
+                }
+              ]
+            },
+            {
+              "key": "NavigationEnabled",
+              "widget": "toggle",
+              "title": "Navigation (Alpha)",
+              "description": "Turn-by-turn navigation with a route map. Set a destination from comma connect.",
+              "visibility": [
+                {
+                  "type": "capability",
+                  "field": "device_type",
+                  "equals": "mici"
+                },
+                {
+                  "type": "not",
+                  "condition": {
+                    "type": "capability",
+                    "field": "is_sp_release",
+                    "equals": true
+                  }
                 }
               ]
             },

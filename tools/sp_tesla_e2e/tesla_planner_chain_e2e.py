@@ -72,6 +72,7 @@ def control_chain(route, cold_start=False):
       with OpenpilotPrefix():
         p = Params()
         p.put('LongitudinalPlannerMode', backend, block=True)
+        p.put_bool('ExperimentalMode', True, block=True)
         planner = create_longitudinal_planner(cp, cp_sp, params=p)
         controller = create_long_control(cp, cp_sp, params=p)
         sm = Inputs(route)
@@ -88,7 +89,6 @@ def control_chain(route, cold_start=False):
         # the onroad processes normally do. Also captures legacy init/reset.
         sm['controlsState'].longControlState = 'off'
         sm['selfdriveState'].enabled = True
-        sm['selfdriveState'].experimentalMode = True
         sm['modelV2'].action.shouldStop = True
         sm['modelV2'].action.desiredAcceleration = -0.5
         sm['radarState'].leadOne.present = False
@@ -378,14 +378,9 @@ def replay_rows():
           else:
             apply_backend_profile(p, get_backend(backend), profile)
           config = p.get('LongitudinalTuningConfig')
-        messages = []
-        for reader in LogReader(str(FIXTURE)):
-          m = reader.as_builder()
-          if m.which() == 'selfdriveState':
-            m.selfdriveState.experimentalMode = e2e
-          messages.append(m.as_reader())
+        messages = list(LogReader(str(FIXTURE)))
         outputs = replay_process_with_name('plannerd', messages, fingerprint='TESLA_MODEL_Y',
-          custom_params={'LongitudinalPlannerMode': backend, 'LongitudinalTuningConfig': config,
+          custom_params={'LongitudinalPlannerMode': backend, 'LongitudinalTuningConfig': config, 'ExperimentalMode': e2e,
             'AccelPersonalityEnabled': True, 'AccelPersonality': 1, 'DynamicExperimentalControl': False,
             'SmartCruiseControlVision': False, 'SmartCruiseControlMap': False, 'SpeedLimitMode': 0}, disable_progress=True)
         key = f'{backend}:{profile}:{int(e2e)}'

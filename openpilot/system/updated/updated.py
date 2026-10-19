@@ -211,6 +211,8 @@ def handle_agnos_update() -> None:
   from openpilot.sunnypilot.hardware.profile import HardwareProfile, get_hardware_profile
   manifest_name = "agnos-c3xl.json" if get_hardware_profile() == HardwareProfile.C3XL else "agnos.json"
   manifest_path = os.path.join(OVERLAY_MERGED, "openpilot/common/hardware/comma", manifest_name)
+  if not os.path.isfile(manifest_path):  # releases before the openpilot/ move
+    manifest_path = os.path.join(OVERLAY_MERGED, "system/hardware/tici/agnos.json")
   target_slot_number = get_target_slot_number()
   flash_agnos_update(manifest_path, target_slot_number, cloudlog)
 

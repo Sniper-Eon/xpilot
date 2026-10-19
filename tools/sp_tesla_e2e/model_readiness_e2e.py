@@ -11,7 +11,6 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from openpilot.common.params import Params
-from openpilot.common.file_chunker import get_chunk_name, get_manifest_path, open_file_chunked
 from openpilot.common.hardware.usb import CHESTNUT_USB_PRODUCT, CHESTNUT_USB_IDS
 from openpilot.selfdrive.modeld import helpers as stock
 from openpilot.sunnypilot.models import helpers as models
@@ -65,14 +64,15 @@ def run(output):
       alerts = {}
       ChestnutStatus().update(True, 'dev-sp', usb, False, False, None, None,
                              lambda key, enabled, *args: alerts.update({key: enabled}))
-      assert alerts['Offroad_ChestnutUncompiled'] == (not ready), (name, alerts)
+      # Official removed Offroad_ChestnutUncompiled; a ready selection must not offer the branch switch.
+      assert not (ready and alerts['Offroad_ChestnutBranch']), (name, alerts)
       records.append({'scenario': name, 'default_compiled': actual_default, 'selected_compiled': actual,
-                      'ui_state': ui.chestnut_state.value, 'uncompiled_alert': alerts['Offroad_ChestnutUncompiled']})
+                      'ui_state': ui.chestnut_state.value})
 
     with patch.object(stock, 'MODELS_DIR', defaults), patch.object(models.Paths, 'model_root', return_value=str(selected)), \
          patch.object(models, 'Params', return_value=params), patch('openpilot.system.hardware.chestnut.status.MODELS_DIR', defaults), \
          patch('openpilot.system.hardware.chestnut.status.get_build_metadata', return_value=SimpleNamespace(channel='dev-sp')), \
-         patch('openpilot.selfdrive.ui.ui_state.read_int', return_value=0), \
+         patch('openpilot.selfdrive.ui.ui_state.cable_connected', return_value=False), \
          patch.object(models, '_compute_hash', side_effect=AssertionError('periodic readiness must not hash')):
       check('absent_default', False, False)
       drive.write_bytes(POINTER)
@@ -92,40 +92,6 @@ def run(output):
       check('selected_complete', True, True)
       path.unlink()
       check('deletion_after_ready', True, False)
-      chunks = [Path(get_chunk_name(path, i, 2)) for i in range(2)]
-      bundle['models'][0]['artifact']['chunks'] = [{'sha256': 'abc'}, {'sha256': 'def'}]
-      params.put('ModelManager_ActiveBundleChestnut', bundle, block=True)
-      for chunk in chunks:
-        chunk.write_bytes(b'chunk data')
-      manifest = Path(get_manifest_path(path))
-      check('chunks_without_manifest', True, False)
-      for count in ('bad', '0', '-1', '1', '3'):
-        manifest.write_text(count)
-        check(f'bad_selected_manifest_{count}', True, False)
-      manifest.write_text('2')
-      check('complete_selected_chunks', True, True)
-      outside_chunk = root / 'outside-chunk'
-      outside_chunk.write_bytes(b'chunk data')
-      chunks[1].unlink()
-      chunks[1].symlink_to(outside_chunk)
-      check('chunk_symlink_escape', True, False)
-      chunks[1].unlink()
-      chunks[1].write_bytes(b'chunk data')
-      path.write_bytes(b'compiled base')
-      manifest.unlink()
-      with open_file_chunked(path) as loaded:
-        assert loaded.read() == b'compiled base'
-      check('assembled_bundle_without_manifest', True, True)
-      manifest.write_text('1')
-      check('complete_file_precedes_mismatched_manifest', True, True)
-      path.unlink()
-      manifest.write_text('2')
-      chunks[1].unlink()
-      check('missing_selected_chunk', True, False)
-      chunks[1].write_bytes(b'chunk data')
-      path.write_bytes(POINTER)
-      check('base_pointer_shadows_valid_chunks', True, False)
-      path.unlink()
       warps[1].write_bytes(POINTER)
       check('warp_pointer', False, False)
       warps[1].write_bytes(b'compiled warp')
@@ -134,10 +100,6 @@ def run(output):
       incomplete = {**bundle, 'models': [{'type': 'supercombo', 'artifact': {'fileName': 'fixture.pkl'}}]}
       params.put('ModelManager_ActiveBundleChestnut', incomplete, block=True)
       check('artifact_without_hash', True, False)
-      missing_hash = json.loads(json.dumps(bundle))
-      missing_hash['models'][0]['artifact']['chunks'][1]['sha256'] = ''
-      params.put('ModelManager_ActiveBundleChestnut', missing_hash, block=True)
-      check('chunk_without_hash', True, False)
       outside = root / 'outside.pkl'
       outside.write_bytes(b'compiled outside')
       for name in ('../outside.pkl', str(outside)):
@@ -153,30 +115,13 @@ def run(output):
       params.remove('ModelManager_ActiveBundleChestnut')
       params.put('ModelManager_ActiveBundle', bundle, block=True)
       check('qcom_slot_is_independent', True, True)
-      drive.unlink()
-      default_manifest = Path(get_manifest_path(drive))
-      default_manifest.write_text('2')
-      default_chunks = [Path(get_chunk_name(drive, i, 2)) for i in range(2)]
-      default_chunks[0].write_bytes(b'compiled chunk')
-      check('default_manifest_incomplete', False, False)
-      default_chunks[1].write_bytes(b'compiled chunk')
-      check('default_manifest_complete', True, True)
-      default_manifest.write_text('1000000000')
-      with patch.object(stock, '_compiled_file', wraps=stock._compiled_file) as probe:
-        check('default_manifest_oversized', False, False)
-        assert probe.call_count == 0, 'oversized manifests must be rejected before chunk probes'
-      default_manifest.write_text('nonsense')
-      check('default_manifest_malformed', False, False)
     with patch.object(models.Paths, 'model_root', return_value=str(selected)), patch.object(models, 'chestnut_present', return_value=True):
       activation = json.loads(json.dumps(bundle))
       artifact = activation['models'][0]['artifact']
       artifact['fileName'] = 'activation.pkl'
-      payloads = [b'activation one', b'activation two']
-      artifact['downloadUri']['sha256'] = hashlib.sha256(b''.join(payloads)).hexdigest()
-      artifact['chunks'] = [{'sha256': hashlib.sha256(payload).hexdigest()} for payload in payloads]
+      payload = b'activation payload'
+      artifact['downloadUri']['sha256'] = hashlib.sha256(payload).hexdigest()
       base = selected / artifact['fileName']
-      manifest = Path(get_manifest_path(base))
-      chunks = [Path(get_chunk_name(base, i, 2)) for i in range(2)]
 
       def activate(name, kept, catalog_hash=None):
         activation['ref'] = name  # Force the existing once-per-selection validation cache to inspect each fixture.
@@ -191,37 +136,19 @@ def run(output):
         assert retained == kept, (name, retained)
         records.append({'scenario': name, 'activation_retained': retained, 'actual_activation_flow': True})
 
-      base.write_bytes(b''.join(payloads))
-      activate('activation_assembled_only', True)
-      activate('activation_catalog_aggregate_sha_changed', False, catalog_hash='0' * 64)
-      for chunk, payload in zip(chunks, payloads, strict=True):
-        chunk.write_bytes(payload)
-      manifest.write_text('2')
-      base.write_bytes(b'corrupt shadow base')
-      activate('activation_corrupt_base_shadows_correct_chunks', False)
+      base.write_bytes(payload)
+      activate('activation_complete_file', True)
+      activate('activation_catalog_sha_changed', False, catalog_hash='0' * 64)
+      base.write_bytes(b'corrupt payload')
+      activate('activation_corrupt_file', False)
       base.write_bytes(POINTER)
-      activate('activation_pointer_shadows_correct_chunks', False)
+      activate('activation_lfs_pointer', False)
       base.unlink()
-      activate('activation_complete_chunks', True)
-      manifest.unlink()
-      activate('activation_missing_manifest', False)
-      manifest.write_text('1')
-      activate('activation_wrong_manifest_count', False)
-      manifest.write_text('2')
-      chunks[1].write_bytes(b'corrupt chunk')
-      activate('activation_corrupt_chunk', False)
-      chunks[1].unlink()
+      activate('activation_missing_file', False)
       outside = root / 'activation-outside'
-      outside.write_bytes(payloads[1])
-      chunks[1].symlink_to(outside)
-      activate('activation_chunk_symlink_escape', False)
-      chunks[1].unlink()
-      chunks[1].write_bytes(payloads[1])
-      manifest.unlink()
-      outside_manifest = root / 'activation-manifest-outside'
-      outside_manifest.write_text('2')
-      manifest.symlink_to(outside_manifest)
-      activate('activation_manifest_symlink_escape', False)
+      outside.write_bytes(payload)
+      base.symlink_to(outside)
+      activate('activation_symlink_escape', False)
   result = {'passed': True, 'scope': 'local artifact/Params/UI state/hardware alert integration; no physical inference',
             'stock_import_independent': True, 'periodic_hashing': False, 'cases': records}
   output.parent.mkdir(parents=True, exist_ok=True)

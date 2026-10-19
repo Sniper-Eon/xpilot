@@ -9,6 +9,8 @@ from openpilot.selfdrive.ui.sunnypilot.tesla_settings import (
   BOOL_KEYS, CHOICES, LABELS, TUNING_UNITS, apply_tuning_profile, load_tuning, save_tuning, setting_label, tuning_notice,
 )
 from openpilot.sunnypilot.selfdrive.traffic_control import planner_session_is_active
+from openpilot.sunnypilot.hardware.driver_monitoring import driver_monitoring_configured
+from openpilot.sunnypilot.hardware.profile import has_driver_camera
 
 
 def _page() -> NavScroller:
@@ -28,6 +30,16 @@ class TeslaSettingsMici(NavScroller):
     back = BigButton('Back')
     back.set_click_callback(gui_app.pop_widget)
     self._scroller.add_widget(back)
+    # Device-level fork toggles live here so official settings stay unmodified.
+    self.dm_toggle = BigToggle('DM 驾驶员监控', initial_state=driver_monitoring_configured(ui_state.params),
+                               toggle_callback=self._set_driver_monitoring,
+                               description='关闭后不启动 DM 进程。只能停车时修改，下次驾驶生效。')
+    self.dm_toggle.set_enabled(lambda: ui_state.is_offroad() and has_driver_camera())
+    self._scroller.add_widget(self.dm_toggle)
+    self.experimental_toggle = BigToggle('Experimental Mode', initial_state=ui_state.params.get_bool('ExperimentalMode'),
+                                         toggle_callback=lambda value: ui_state.params.put_bool('ExperimentalMode', value, block=True),
+                                         description='Tesla Experimental and TN-NoDEC only: End to End when on, ACC when off.')
+    self._scroller.add_widget(self.experimental_toggle)
     for key in BOOL_KEYS:
       toggle = BigToggle(LABELS[key], initial_state=bool(ui_state.params.get(key, return_default=True)),
                          toggle_callback=lambda value, k=key: self._set_param(k, value))
@@ -49,6 +61,11 @@ class TeslaSettingsMici(NavScroller):
       button.set_click_callback(lambda b=backend: self._tuning_page(b))
       self._scroller.add_widget(button)
     self.show_event()
+
+  def _set_driver_monitoring(self, value):
+    if ui_state.is_offroad() and has_driver_camera():
+      ui_state.params.put_bool('DriverMonitoringEnabled', value, block=True)
+    self.dm_toggle.set_checked(driver_monitoring_configured(ui_state.params))
 
   def _set_param(self, key, value):
     if ui_state.is_offroad() and (key != 'LongitudinalPlannerMode' or not planner_session_is_active(ui_state.sm)):
@@ -139,6 +156,8 @@ class TeslaSettingsMici(NavScroller):
 
   def show_event(self):
     super().show_event()
+    self.dm_toggle.set_checked(driver_monitoring_configured(ui_state.params))
+    self.experimental_toggle.set_checked(ui_state.params.get_bool('ExperimentalMode'))
     for key, toggle in self.toggles:
       toggle.set_checked(bool(ui_state.params.get(key, return_default=True)))
     for key, button in self.choice_buttons.items():

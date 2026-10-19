@@ -27,6 +27,7 @@ def run_case(route, backend, enabled, experimental, endpoint, stage):
     params = Params()
     params.put('LongitudinalPlannerMode', backend, block=True)
     params.put_bool('DynamicExperimentalControl', enabled, block=True)
+    params.put_bool('ExperimentalMode', experimental, block=True)
     params.put_bool('SmartCruiseControlVision', False, block=True)
     params.put_bool('SmartCruiseControlMap', False, block=True)
     params.put('SpeedLimitMode', 0, block=True)
@@ -45,7 +46,6 @@ def run_case(route, backend, enabled, experimental, endpoint, stage):
     sm['controlsState'].forceDecel = False
     sm['controlsState'].longControlState = 'off'
     sm['selfdriveState'].enabled = True
-    sm['selfdriveState'].experimentalMode = experimental
     sm['radarState'].leadOne.present = False
     sm['radarState'].leadTwo.present = False
     sm['modelV2'].position.x = [endpoint * i / 32 for i in range(33)]
@@ -152,7 +152,10 @@ def cruise_case(route, backend, enabled, experimental, stage):
     card.CS_prev = structs.CarState(vEgo=20.)
     card.CC_prev = structs.CarControl(enabled=False)
     card.v_cruise_helper = VCruiseHelper(ci.CP, ci.CP_SP)
-    card.experimental_mode, card.dynamic_experimental_control = experimental, enabled
+    if stage == 'baseline':
+      card.experimental_mode, card.dynamic_experimental_control = experimental, enabled
+    else:  # official 922513f replaced the experimental 105 km/h start with InitialCruiseSpeedKph
+      card.initial_cruise_speed = params.get('InitialCruiseSpeedKph', return_default=True)
     card.is_metric = True
     raw_can = can_list_to_can_capnp(frames, msgtype='can')
     # Only IPC delivery and the unrelated radar endpoint are replaced. The
@@ -160,7 +163,7 @@ def cruise_case(route, backend, enabled, experimental, stage):
     with patch('openpilot.selfdrive.car.card.messaging.drain_sock_raw', return_value=[raw_can]):
       state, _, _ = card.state_update()
     dec_applies = enabled and (stage == 'baseline' or backend == 1)
-    expected = 105. if experimental and not dec_applies else 72.
+    expected = 105. if stage == 'baseline' and experimental and not dec_applies else 72.
     assert state.vCruise == expected, (backend, enabled, experimental, stage, state.vCruise, expected)
     assert params.get('ActiveLongitudinalBackend') == backend
     assert params.get('LongitudinalPlannerMode') == (backend + 1) % 3

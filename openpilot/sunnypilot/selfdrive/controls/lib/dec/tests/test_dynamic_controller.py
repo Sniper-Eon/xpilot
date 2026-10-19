@@ -66,14 +66,14 @@ class TestDynamicExperimentalController(OpenpilotTestCase):
     controller = DynamicExperimentalController(mock_cp, mock_mpc, params=MockParams())
     default_sm['carState'].standstill = True
     for _ in range(10):
-      controller.update(default_sm)
+      controller.update(default_sm, True)
     assert controller.mode() == "blended"
 
   def test_emergency_blended_on_fcw(self, mock_cp, mock_mpc, default_sm):
     controller = DynamicExperimentalController(mock_cp, mock_mpc, params=MockParams())
     mock_mpc.crash_cnt = 1  # simulate FCW
     for _ in range(2):
-      controller.update(default_sm)
+      controller.update(default_sm, True)
     assert controller.mode() == "blended"
 
   def test_radarless_slowdown_triggers_blended(self, mock_cp, mock_mpc, default_sm):
@@ -86,6 +86,6 @@ class TestDynamicExperimentalController(OpenpilotTestCase):
     default_sm['modelV2'] = MockModelData(valid=False)  # Incomplete trajectory
 
     for _ in range(3):
-      controller.update(default_sm)
+      controller.update(default_sm, True)
 
     assert controller.mode() == "blended"

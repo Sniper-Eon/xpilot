@@ -42,6 +42,10 @@ class TeslaPlannerSettingsLayout(Widget):
       callback=self._on_profile_changed,
       inline=False,
     )
+    self.experimental_mode = toggle_item_sp(
+      title=tr("Experimental Mode"), param="ExperimentalMode",
+      description=tr("Official always plans End to End. Experimental and TN-NoDEC use End to End when on and ACC when off."),
+    )
     self.tn_accel_enabled = toggle_item_sp(
       title=tr(TITLES["AccelPersonalityEnabled"]), param="AccelPersonalityEnabled",
       description=tr("Enable TN's acceleration profile controller."),
@@ -65,7 +69,7 @@ class TeslaPlannerSettingsLayout(Widget):
       ))
 
     self.status = ListItemSP(description_visible=True)
-    self.items = [self.status, self.planner, self.profile, self.tn_accel_enabled, self.tn_accel_profile, *self.options]
+    self.items = [self.status, self.planner, self.profile, self.experimental_mode, self.tn_accel_enabled, self.tn_accel_profile, *self.options]
     self._scroller = Scroller(self.items, line_separator=True, spacing=0)
     self._load_selected_backend()
 
@@ -132,6 +136,7 @@ class TeslaPlannerSettingsLayout(Widget):
     self.status.set_description(self.status_description)
     self.status.show_description(True)
     self.status.set_visible(bool(self.status_description))
+    self.experimental_mode.set_visible(self._backend().id in (BackendId.EXPERIMENTAL, BackendId.TN_NO_DEC))
     self.tn_accel_enabled.set_visible(tn)
     self.tn_accel_profile.set_visible(tn and ui_state.params.get_bool("AccelPersonalityEnabled"))
     for (field, _, title, _), option in zip(TUNING_ITEMS, self.options, strict=True):

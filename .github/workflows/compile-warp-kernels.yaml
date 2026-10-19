@@ -29,7 +29,7 @@ jobs:
       - name: Compile Warp Kernels
         run: |
           source ${UV_PROJECT_ENVIRONMENT}/bin/activate
-          export PYTHONPATH="${{ github.workspace }}/tinygrad_repo:${{ github.workspace }}:${PYTHONPATH}"
+          export PYTHONPATH="${PYTHONPATH}:${{ github.workspace }}/tinygrad_repo:${{ github.workspace }}"
           mkdir -p openpilot/sunnypilot/modeld_v2/models/
           MODEL_SIZE=$(python3 -c "from openpilot.common.transformations.model import MEDMODEL_INPUT_SIZE as s; print(f'{s[0]}x{s[1]}')")
           CAMERA_RES=$(python3 -c "from openpilot.common.transformations.camera import _ar_ox_fisheye as a, _os_fisheye as o; print(f'{a.width}x{a.height} {o.width}x{o.height}')")
@@ -58,6 +58,11 @@ jobs:
 
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@9153d834b60caba6d51c9b9510b087acf9f33f83
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          GIT_CONFIG_COUNT: 1
+          GIT_CONFIG_KEY_0: credential.https://huggingface.co.helper
+          GIT_CONFIG_VALUE_0: '!f() { test "$1" = get && echo username=user && echo "password=$HF_TOKEN"; }; f'
         with:
           author: github-actions[bot] <github-actions[bot]@users.noreply.github.com>
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -69,3 +74,7 @@ jobs:
           labels: bot
           add-paths: |
             openpilot/sunnypilot/modeld_v2/models/*.pkl
+
+      - name: Reset lfs access
+        if: always()
+        run: git config --local --unset-all "lfs.$(git config -f .lfsconfig lfs.url).access" || true
