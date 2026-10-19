@@ -183,7 +183,6 @@ int build_initial_config(uint8_t *dst, const CameraConfig cam, const SensorInfo 
   dst += write_dmi(dst, &addr, s->gamma_lut_rgb.size()*sizeof(uint32_t), 0xc24, 30);  // R
   patches.push_back(addr - (uint64_t)start);
 
-  // Keep legacy register values byte-identical when the experiment is off.
   if (custom_scale) {
     const auto y = ife_scale_registers(s->frame_width, s->frame_height, out_width, out_height);
     const auto uv = ife_scale_registers(s->frame_width, s->frame_height, out_width/2, out_height/2);

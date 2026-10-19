@@ -1,5 +1,4 @@
 import itertools
-import os
 import numpy as np
 from dataclasses import dataclass
 
@@ -88,10 +87,9 @@ def _ife_road_camera(camera):
                             camera.focal_length * 760 / camera.height)
 
 
-if os.getenv('CHESTNUT_ROAD_SIZE') == '1344x760':
-  for device in ('tici', 'tizi', 'mici'):
-    original = DEVICE_CAMERAS[(device, 'ox03c10')]
-    DEVICE_CAMERAS[(device, 'ox03c10')] = DeviceCameraConfig(
+for (device, sensor), original in DEVICE_CAMERAS.items():
+  if device in ('tici', 'tizi') and original.narrow_road.size == (1928, 1208):
+    DEVICE_CAMERAS[(device, sensor)] = DeviceCameraConfig(
       _ife_road_camera(original.narrow_road), original.cabin, _ife_road_camera(original.wide_road))
 
 

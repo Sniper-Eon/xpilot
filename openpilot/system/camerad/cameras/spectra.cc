@@ -12,6 +12,7 @@
 #include "media/cam_isp_ife.h"
 #include "media/cam_sync.h"
 
+#include "common/hardware/hw.h"
 #include "common/util.h"
 #include "common/swaglog.h"
 #include "system/camerad/cameras/ife.h"
@@ -283,11 +284,8 @@ void SpectraCamera::camera_open(VisionIpcServer *v) {
   buf.out_img_width = sensor->frame_width / sensor->out_scale;
   buf.out_img_height = (sensor->hdr_offset > 0 ? (sensor->frame_height - sensor->hdr_offset) / 2 : sensor->frame_height) / sensor->out_scale;
 
-  // Explicit experimental opt-in; do not touch the sensor mode or cabin stream.
-  const char *road_size = getenv("CHESTNUT_ROAD_SIZE");
-  ife_road_resize = road_size && std::string(road_size) == "1344x760" &&
+  ife_road_resize = Hardware::get_device_type() != cereal::InitData::DeviceType::MICI &&
                     cc.output_type == ISP_IFE_PROCESSED && cc.camera_num < 2 &&
-                    sensor->image_sensor == cereal::FrameData::ImageSensor::OX03C10 &&
                     sensor->frame_width == 1928 && sensor->frame_height == 1208;
   if (ife_road_resize) {
     buf.out_img_width = 1344;
