@@ -151,7 +151,7 @@
         "openpilot/system/camerad/cameras/camera_common.cc",
         "openpilot/common/transformations/camera.py"
       ],
-      "contract": "CHESTNUT_ROAD_SIZE=1344x760 is explicit; OX03C10 road streams only, cabin unchanged, intrinsics scaled once",
+      "contract": "camerad scales every non-C4 (non-mici) 1928x1208 road and wide stream to 1344x760 (C3 and C3XL); cabin unchanged; camera.py scales intrinsics once",
       "acceptance": "actual camera dimensions, QCOM fallback, real model messages and sustained frame rate"
     },
     {

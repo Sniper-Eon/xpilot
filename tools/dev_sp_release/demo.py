@@ -69,7 +69,7 @@ def main():
     venv_bin, host_bin = home / "venv bin", home / "host-bin"
     venv_bin.mkdir()
     host_bin.mkdir()
-    (venv_bin / "python3").write_text('#!/bin/sh\nprintf "%s\\n" "venv|$SUNNYPILOT_HARDWARE_PROFILE|$CHESTNUT_ROAD_SIZE|$EXISTING_PCIE_SETTING"\n')
+    (venv_bin / "python3").write_text('#!/bin/sh\nprintf "%s\\n" "venv|$SUNNYPILOT_HARDWARE_PROFILE|$EXISTING_PCIE_SETTING"\n')
     (host_bin / "python3").write_text('#!/bin/sh\nprintf "wrong-host-python\\n"\n')
     (venv_bin / "python3").chmod(0o755)
     (host_bin / "python3").chmod(0o755)
@@ -85,7 +85,7 @@ def main():
       return payload
 
     create = ["manifest", "--baseline", baseline, "--output", str(manifest_path), "--profile", "c3xl",
-              "--chestnut-road-size", "1344x760", "--artifact", "runtime.bin", "--catalog", "catalog.json",
+              "--artifact", "runtime.bin", "--catalog", "catalog.json",
               "--venv-bin", str(venv_bin)]
     cli("create", create)
     data = json.loads(manifest_path.read_text())
@@ -110,7 +110,7 @@ def main():
                    "BOOT_FIXTURE_ROOT": str(staging), "EXISTING_PCIE_SETTING": "retained"}
     launched = subprocess.run(["/bin/bash", str(staging / "dev-sp-boot-template.sh")],
                               env=environment, capture_output=True, text=True, check=True)
-    assert launched.stdout.strip() == "venv|c3xl|1344x760|retained", (launched.stdout, launched.stderr)
+    assert launched.stdout.strip() == "venv|c3xl|retained", (launched.stdout, launched.stderr)
     checks.append({"check": "boot_shell_chain_selects_venv_and_preserves_pcie", "passed": True,
                    "stdout": launched.stdout.strip()})
     default_manifest = home / "default-venv-manifest.json"

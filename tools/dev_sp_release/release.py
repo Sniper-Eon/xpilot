@@ -114,19 +114,17 @@ def baseline_relation(root, baseline):
           "candidate_commits": int(git(root, "rev-list", "--count", f"{baseline}..HEAD"))}
 
 
-def boot_template(profile, chestnut_size, venv_bin):
+def boot_template(profile, venv_bin):
   if not Path(venv_bin).is_absolute() or ":" in venv_bin:
     raise ValueError("venv bin must be an absolute single PATH directory")
   lines = ["#!/usr/bin/env bash", "set -e", "cd /data/openpilot",
            f'export PATH={shlex.quote(venv_bin)}:"$PATH"',
            f"export SUNNYPILOT_HARDWARE_PROFILE={profile}"]
-  if chestnut_size:
-    lines.append("export CHESTNUT_ROAD_SIZE=1344x760")
   lines.append("exec ./launch_openpilot.sh")
   return "\n".join(lines) + "\n"
 
 
-def manifest(root, baseline, profile, chestnut_size, artifacts, catalog, venv_bin):
+def manifest(root, baseline, profile, artifacts, catalog, venv_bin):
   relation = baseline_relation(root, baseline)
   locks, files = checkout(root)
   changed = set(git(root, "diff", "--name-only", "--diff-filter=ACMRT", "-z", baseline, "HEAD").split("\0"))
@@ -137,7 +135,7 @@ def manifest(root, baseline, profile, chestnut_size, artifacts, catalog, venv_bi
   return {"version": 1, "source": str(root), "baseline": relation, "repositories": locks,
           "tracked_file_count": len(files), "changed_files": records, "runtime_artifacts": runtime,
           "model_catalog": catalog, "boot_profile": profile, "boot_venv_bin": venv_bin,
-          "boot_template": boot_template(profile, chestnut_size, venv_bin),
+          "boot_template": boot_template(profile, venv_bin),
           "validation": {"source_identity": "passed", "device": "pending", "onroad": "pending"}}
 
 
@@ -232,7 +230,6 @@ def main():
   create.add_argument("--output", type=Path, required=True)
   create.add_argument("--profile", choices=["standard", "c3xl"], required=True)
   create.add_argument("--venv-bin", default="/usr/local/venv/bin", help="device runtime executable directory")
-  create.add_argument("--chestnut-road-size", choices=["1344x760"])
   create.add_argument("--artifact", action="append", default=[], help="relative runtime file, including ignored build outputs")
   create.add_argument("--catalog", help="relative model catalog; hashed and staged as runtime input")
   for name in ("preflight", "stage"):
@@ -247,7 +244,7 @@ def main():
   try:
     if args.command == "manifest":
       output = outside(root, args.output)
-      data = manifest(root, args.baseline, args.profile, args.chestnut_road_size, args.artifact, args.catalog, args.venv_bin)
+      data = manifest(root, args.baseline, args.profile, args.artifact, args.catalog, args.venv_bin)
       atomic_json(output, data)
       result = {"status": "manifest_created", "manifest": str(output), "parent": data["repositories"][0]["head"]}
     else:

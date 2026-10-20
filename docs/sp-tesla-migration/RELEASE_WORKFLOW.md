@@ -78,9 +78,9 @@ python3 "$SOURCE/tools/dev_sp_release/release.py" --repo "$SOURCE" stage \
   --destination "$RELEASE_DIR/staged"
 ```
 
-For a C3XL candidate, use `--profile c3xl`. Add
-`--chestnut-road-size 1344x760` only when that model/camera combination requires
-the calibrated road dimensions. The generated `dev-sp-boot-template.sh` always
+For a C3XL candidate, use `--profile c3xl`. camerad scales every non-C4
+1928x1208 road stream to 1344x760 itself; no road-size option is needed.
+The generated `dev-sp-boot-template.sh` always
 uses `exec ./launch_openpilot.sh` from `/data/openpilot` and sets
 `SUNNYPILOT_HARDWARE_PROFILE` explicitly. It prepends `/usr/local/venv/bin` to
 the inherited `PATH`, matching the current C3 runtime so the official forwarding
@@ -102,7 +102,7 @@ artifacts must first be placed into the approved candidate artifact location.
 
 ```sh
 python3 "$SOURCE/tools/dev_sp_release/release.py" --repo "$SOURCE" manifest \
-  --baseline "$OFFICIAL_SHA" --profile c3xl --chestnut-road-size 1344x760 \
+  --baseline "$OFFICIAL_SHA" --profile c3xl \
   --artifact openpilot/selfdrive/modeld/models/driving_supercombo.onnx \
   --output "$RELEASE_DIR/runtime-manifest.json"
 python3 "$SOURCE/tools/dev_sp_release/release.py" --repo "$SOURCE" preflight \
