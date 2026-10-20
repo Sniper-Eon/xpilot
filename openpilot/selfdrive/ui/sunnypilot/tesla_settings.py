@@ -15,6 +15,7 @@ LABELS = {
  'DynamicAutoStock': 'Dynamic Stock ACC', 'DynamicAutoStockBlinkerToSP': 'Turn Signal to SP Longitudinal',
  'DynamicAutoStockCurveToSP': 'Curve to SP Longitudinal',
  'TeslaTrafficSignalControlEnabled': 'Traffic Light Control',
+ 'TeslaAutoSpeedLimit': 'Auto Speed Limit', 'TeslaAutoSpeedLimitOffset': 'Auto Speed Offset',
  'TeslaBlindspotAmbientEnabled': 'Blindspot Ambient Lights', 'AccelPersonalityEnabled': 'TN Accel Personality',
  'TeslaARS408Radar': 'Radar Source', 'TeslaMadsScreenButton': 'MADS Touch Gesture',
  'AccelPersonality': 'TN Accel Profile', 'DynamicAutoStockSpeedKph': 'Stock ACC Entry Speed',
@@ -39,13 +40,14 @@ TITLES = {
   'TeslaBlindspotAmbientEnabled': tr_noop('盲区联动氛围灯'), 'TeslaBlindspotAmbientDayBrightness': tr_noop('盲区氛围灯：白天亮度'),
   'TeslaBlindspotAmbientBrightness': tr_noop('盲区氛围灯：夜间亮度'), 'AccelPersonality': tr_noop('TN Accel Profile'),
   'AccelPersonalityEnabled': tr_noop('TN Accel Personality'),
+  'TeslaAutoSpeedLimit': tr_noop('Auto Speed Limit'), 'TeslaAutoSpeedLimitOffset': tr_noop('Auto Speed Limit Offset'),
 }
 
 BOOL_KEYS = (
   'TeslaCoopSteering', 'TeslaTouchLongitudinalSwitch', 'TeslaApHybrid',
   'TeslaDynamicApLongitudinal', 'DynamicAutoStock', 'DynamicAutoStockBlinkerToSP',
   'DynamicAutoStockCurveToSP', 'TeslaTrafficSignalControlEnabled',
-  'TeslaBlindspotAmbientEnabled', 'AccelPersonalityEnabled',
+  'TeslaBlindspotAmbientEnabled', 'AccelPersonalityEnabled', 'TeslaAutoSpeedLimit',
 )
 RANGES = {
   'DynamicAutoStockSpeedKph': (40, 120, 5, 'km/h', 1),
@@ -54,6 +56,7 @@ RANGES = {
   'TeslaTrafficControlMaxSpeed': (20, 120, 5, 'km/h', 1),
   'TeslaBlindspotAmbientDayBrightness': (0, 100, 1, '%', 1),
   'TeslaBlindspotAmbientBrightness': (0, 100, 1, '%', 1),
+  'TeslaAutoSpeedLimitOffset': (-10, 20, 1, 'km/h|mph', 1),
 }
 CHOICES = {
   'TeslaARS408Radar': [('OEM', 0), ('ARS408', 1), ('Off', 2)],

@@ -50,6 +50,7 @@ class TeslaSettings(BrandSettings):
                   self.mads_screen_button, self.control_profile.traffic_control_mode,
                   self.control_profile.traffic_stop_reference,
                   self.control_profile.traffic_control_max_speed,
+                  self.control_profile.auto_speed_limit, self.control_profile.auto_speed_limit_offset,
                   self.control_profile.settings_button, self.blindspot_ambient_toggle,
                   self.blindspot_ambient_day_brightness, self.blindspot_ambient_brightness, self.bms_button]
 

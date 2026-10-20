@@ -10,7 +10,6 @@ from typing import Any
 
 from openpilot.sunnypilot.selfdrive.car.tesla.ambient_lighting import AmbientLightingController
 from openpilot.sunnypilot.selfdrive.car.tesla.control_profile import snapshot_as_dict
-from openpilot.sunnypilot.selfdrive.controls.lib.speed_limit.common import Mode
 
 from openpilot.sunnypilot.selfdrive.traffic_control.tesla_observer import (
   TeslaTrafficControlObserver, publish_tesla_traffic_control,
@@ -47,19 +46,6 @@ def longitudinal_context(sm, now: float) -> tuple[int, bool, bool, float, bool, 
           bool(car_control.longActive), float(car_control.actuators.accel), car_control_valid)
 
 
-def speed_limit_context(sm, now: float, assist_configured: bool | None = None) -> tuple[float, bool]:
-  plan = sm["longitudinalPlanSP"]
-  plan_recv_time = float(sm.recv_time["longitudinalPlanSP"])
-  plan_valid = (sm.seen["longitudinalPlanSP"] and sm.valid["longitudinalPlanSP"] and
-                now - plan_recv_time <= CONTEXT_STALE_S)
-  resolver = plan.speedLimit.resolver
-  limit_valid = bool(resolver.speedLimitValid or resolver.speedLimitLastValid)
-  target = float(resolver.speedLimitFinalLast)
-  configured = bool(plan.speedLimit.assist.enabled) if assist_configured is None else assist_configured
-  valid = plan_valid and configured and limit_valid and target > 0.0
-  return (target if valid else 0.0, valid)
-
-
 class TeslaCardAdapter:
   SPEED_BUTTON_ADDRESS = 0x3C2
   VEHICLE_BUS = 1
@@ -70,7 +56,6 @@ class TeslaCardAdapter:
     self.sm = submaster
     self.traffic_control_observer = TeslaTrafficControlObserver() if self.enabled else None
     self.lighting_parser = self._create_lighting_parser() if self.enabled else None
-    self.speed_limit_assist_configured: bool | None = None
     self.ambient = AmbientLightingController() if self.enabled else None
 
     self._startup_configured = False
@@ -140,7 +125,10 @@ class TeslaCardAdapter:
       if update_config is not None:
         update_config(snapshot_as_dict(params))
       self._startup_configured = True
-    self.speed_limit_assist_configured = params.get("SpeedLimitMode", return_default=True) == Mode.assist
+    if self.enabled and (state := getattr(self.car_interface, "CS", None)):
+      # Tesla auto speed owns its switch and offset; official Speed Limit settings never reach it.
+      state.tesla_speed_limit_assist_enabled = params.get_bool("TeslaAutoSpeedLimit")
+      state.tesla_speed_limit_offset = params.get("TeslaAutoSpeedLimitOffset", return_default=True)
     if self.ambient is not None:
       self.ambient.service_params(params)
 
@@ -160,8 +148,3 @@ class TeslaCardAdapter:
 
     timestamp = time.monotonic() if now is None else now
     update_longitudinal(*longitudinal_context(self.sm, timestamp))
-
-    update_speed_limit = getattr(state, "update_speed_limit_target", None)
-    if update_speed_limit is not None:
-      state.tesla_speed_limit_assist_enabled = self.speed_limit_assist_configured
-      update_speed_limit(*speed_limit_context(self.sm, timestamp, self.speed_limit_assist_configured))

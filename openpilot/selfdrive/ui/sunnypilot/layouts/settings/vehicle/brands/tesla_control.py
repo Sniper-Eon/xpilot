@@ -168,6 +168,17 @@ class TeslaControlSettingsAdapter:
       **option_kwargs("TeslaTrafficControlMaxSpeed"),
       description=tr("Do not establish a new traffic-light control event above this speed. Existing braking is never cancelled abruptly, and changes apply without restarting."),  # noqa: E501
     )
+    self.auto_speed_limit = toggle_item_sp(
+      title=tr(TITLES["TeslaAutoSpeedLimit"]),
+      description=tr("Turn the Tesla speed wheel so the cruise set speed follows the car's own speed limit plus the offset below. Independent of the official Speed Limit settings."),  # noqa: E501
+      param="TeslaAutoSpeedLimit",
+    )
+    self.auto_speed_limit_offset = option_item_sp(
+      title=tr(TITLES["TeslaAutoSpeedLimitOffset"]),
+      param="TeslaAutoSpeedLimitOffset",
+      **option_kwargs("TeslaAutoSpeedLimitOffset"),
+      description=tr("Added to the car's speed limit, in the car's display unit (km/h or mph)."),
+    )
     self._settings_layout = TeslaControlSettingsLayout(lambda: gui_app.pop_widget())
     self.settings_button = button_item_sp(
       title=tr("Tesla Control Profile"),
@@ -182,3 +193,5 @@ class TeslaControlSettingsAdapter:
     self.traffic_control_mode.action_item.set_enabled(planner_stopped and ui_state.has_longitudinal_control)
     self.traffic_stop_reference.action_item.set_enabled(ui_state.has_longitudinal_control)
     self.traffic_control_max_speed.action_item.set_enabled(ui_state.has_longitudinal_control)
+    self.auto_speed_limit.action_item.set_enabled(ui_state.has_longitudinal_control)
+    self.auto_speed_limit_offset.set_visible(ui_state.params.get_bool("TeslaAutoSpeedLimit"))

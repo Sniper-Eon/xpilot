@@ -185,6 +185,8 @@ inline static std::unordered_map<std::string, ParamKeyAttributes> keys = {
     {"LongitudinalTuningConfig", {PERSISTENT | BACKUP, JSON}},
     {"AccelPersonalityEnabled", {PERSISTENT | BACKUP, BOOL, "0"}},
     {"AccelPersonality", {PERSISTENT | BACKUP, INT, "1"}},
+    {"TeslaAutoSpeedLimit", {PERSISTENT | BACKUP, BOOL, "0"}},
+    {"TeslaAutoSpeedLimitOffset", {PERSISTENT | BACKUP, INT, "0"}},  // car display units
     {"TeslaTrafficSignalControlEnabled", {PERSISTENT | BACKUP, BOOL, "0"}},
     {"TeslaTrafficStopReference", {PERSISTENT | BACKUP, INT, "50"}},  // decimeters
     {"TeslaTrafficControlMaxSpeed", {PERSISTENT | BACKUP, INT, "60"}},  // km/h
