@@ -5,7 +5,7 @@ Failure cases listed before moving the fork changes out of process_config.py:
 - P1 a fork-only process gate is lost (DM switch, C3XL microphone/amplifier) or applied to another process
 - P2 trafficcontrold or alert_output disappears or runs on the wrong hardware
 - P3 an official process is dropped or changed (webrtcd, copyparty and logging must follow official)
-- P4 the UI loses its crash restart flag
+- P4 a fork crash-restart flag returns (official has none)
 Every scenario compares which processes would run for started/notCar/DM/audio/profile combinations.
 """
 import argparse
@@ -134,7 +134,7 @@ def main():
       failures.append({'scenario': [started, not_car, dm, audio, mic, profile], 'fork_only': sorted(cand & FORK_ONLY)})
 
   restart = {p.name for p in candidate.procs if p.restart_if_crash}
-  checks = {'process_tables': not failures, 'ui_restart_only': restart == {'ui'},
+  checks = {'process_tables': not failures, 'no_fork_crash_restart': not restart,
             'official_names_kept': {p.name for p in official.procs} <= {p.name for p in candidate.procs}}
   result = {'scenarios': scenarios, 'checks': checks, 'failures': failures[:20], 'passed': all(checks.values()),
             'head': subprocess.check_output(['git', '-C', str(ROOT), 'rev-parse', 'HEAD'], text=True).strip()}
