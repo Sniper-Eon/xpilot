@@ -4,7 +4,6 @@ import numpy as np
 
 from openpilot.cereal import messaging
 from openpilot.common.filter_simple import FirstOrderFilter
-from openpilot.common.params import Params
 from openpilot.common.swaglog import cloudlog
 from openpilot.sunnypilot.selfdrive.controls.lib.longitudinal_backends.legacy_mpc.contract import ACCEL_MAX, ACCEL_MIN
 from openpilot.common.constants import CV
@@ -53,10 +52,6 @@ class LegacyLongitudinalPlanner(LongitudinalPlannerSP):
 
   def __init__(self, CP, CP_SP, *, mpc_factory, init_v=0.0, init_a=0.0, dt=DT_MDL):
     self.CP = CP
-    # Official removed ExperimentalMode; only the retained Experimental/TN backends still read it.
-    self.params = Params()
-    self.experimental_mode = False
-    self._params_frame = 0
     self.mpc = mpc_factory(dt=dt)
     self._init_backend(CP, CP_SP, self.mpc, dt)
     self.fcw = False
@@ -81,9 +76,6 @@ class LegacyLongitudinalPlanner(LongitudinalPlannerSP):
     return should_stop
 
   def update(self, sm):
-    if self._params_frame % int(1. / self.dt) == 0:
-      self.experimental_mode = self.CP.openpilotLongitudinalControl and self.params.get_bool("ExperimentalMode")
-    self._params_frame += 1
     LongitudinalPlannerSP.update(self, sm)
 
     accel_coast = (get_coast_accel(sm['carControl'].orientationNED[1])

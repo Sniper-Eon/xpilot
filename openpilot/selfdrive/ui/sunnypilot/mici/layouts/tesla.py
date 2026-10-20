@@ -36,10 +36,6 @@ class TeslaSettingsMici(NavScroller):
                                description='关闭后不启动 DM 进程。只能停车时修改，下次驾驶生效。')
     self.dm_toggle.set_enabled(lambda: ui_state.is_offroad() and has_driver_camera())
     self._scroller.add_widget(self.dm_toggle)
-    self.experimental_toggle = BigToggle('Experimental Mode', initial_state=ui_state.params.get_bool('ExperimentalMode'),
-                                         toggle_callback=lambda value: ui_state.params.put_bool('ExperimentalMode', value, block=True),
-                                         description='Tesla Experimental and TN-NoDEC only: End to End when on, ACC when off.')
-    self._scroller.add_widget(self.experimental_toggle)
     for key in BOOL_KEYS:
       toggle = BigToggle(LABELS[key], initial_state=bool(ui_state.params.get(key, return_default=True)),
                          toggle_callback=lambda value, k=key: self._set_param(k, value))
@@ -157,7 +153,6 @@ class TeslaSettingsMici(NavScroller):
   def show_event(self):
     super().show_event()
     self.dm_toggle.set_checked(driver_monitoring_configured(ui_state.params))
-    self.experimental_toggle.set_checked(ui_state.params.get_bool('ExperimentalMode'))
     for key, toggle in self.toggles:
       toggle.set_checked(bool(ui_state.params.get(key, return_default=True)))
     for key, button in self.choice_buttons.items():

@@ -113,7 +113,7 @@ def test_tn_backend_does_not_depend_on_dynamic_experimental_control():
   assert "self.dec" not in source
   assert "dynamic_experimental_control" not in source.lower()
   assert "enable_dec" not in source
-  assert "return self.experimental_mode" in source
+  assert "return True  # experimental mode is always on" in source
 
 
 def test_custom_backends_share_one_generated_legacy_solver_contract():

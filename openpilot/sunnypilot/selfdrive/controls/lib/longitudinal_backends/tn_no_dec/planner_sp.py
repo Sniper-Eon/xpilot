@@ -27,7 +27,7 @@ class LongitudinalPlannerSP(UpstreamLongitudinalPlannerSP):
 
   def is_e2e(self, sm: messaging.SubMaster) -> bool:
     # TN-NoDEC deliberately ignores Dynamic Experimental Control.
-    return self.experimental_mode
+    return True  # experimental mode is always on since official 922513f
 
   def update_accel_controller(self, sm: messaging.SubMaster, v_cruise: float, prev_accel_constraint: bool,
                               stock_accel_max: float, reset_state: bool) -> tuple[bool, float]:

@@ -32,7 +32,7 @@
         "openpilot/selfdrive/car/card.py",
         "openpilot/selfdrive/car/cruise.py"
       ],
-      "contract": "Tesla-only custom selection; atomic latch and manager stop-before-clear; Official uses upstream planner, Experimental/TN share legacy planner with frozen solver ABI; Official brake/stop tuning is explicitly approximate; Official has no DEC after upstream sunset; retained Experimental alone owns legacy DEC; TN freshness and diagnostic hooks execute through the common SP publisher; card reads the active session without writing a latch; since 922513f official removed ExperimentalMode and Chill (selfdriveState.experimentalMode is deprecated), so Official always plans e2e while Experimental/TN read the fork-local ExperimentalMode param in the legacy planner (gated by openpilotLongitudinalControl, refreshed each second); the card DEC initial-speed hunk is gone because official InitialCruiseSpeedKph replaced the experimental 105 km/h start",
+      "contract": "Tesla-only custom selection; atomic latch and manager stop-before-clear; Official uses upstream planner, Experimental/TN share legacy planner with frozen solver ABI; Official brake/stop tuning is explicitly approximate; Official has no DEC after upstream sunset; retained Experimental alone owns legacy DEC; TN freshness and diagnostic hooks execute through the common SP publisher; card reads the active session without writing a latch; since 922513f experimental mode is always on: Official always plans e2e, Experimental plans e2e unless DEC selects ACC, TN-NoDEC always plans e2e; there is no ExperimentalMode param; the card DEC initial-speed hunk is gone because official InitialCruiseSpeedKph replaced the experimental 105 km/h start",
       "acceptance": "Official/Experimental/TN-NoDEC selected session and default tuning replay",
       "source": {
         "official": "922513f3128b00611d695ce465989a9bc8af9d59",
@@ -49,11 +49,6 @@
             "default": false,
             "persistent": true,
             "scope": "Tesla Experimental only"
-          },
-          "ExperimentalMode": {
-            "default": false,
-            "persistent": true,
-            "scope": "Tesla Experimental and TN-NoDEC only"
           }
         },
         "schema": "Preserve LongitudinalPlanSP.dec@0 and all previously published Tesla/AccelController ordinals; no protocol migration in A",

@@ -27,7 +27,6 @@ def run_case(route, backend, enabled, experimental, endpoint, stage):
     params = Params()
     params.put('LongitudinalPlannerMode', backend, block=True)
     params.put_bool('DynamicExperimentalControl', enabled, block=True)
-    params.put_bool('ExperimentalMode', experimental, block=True)
     params.put_bool('SmartCruiseControlVision', False, block=True)
     params.put_bool('SmartCruiseControlMap', False, block=True)
     params.put('SpeedLimitMode', 0, block=True)
@@ -192,12 +191,12 @@ def main():
     route = list(LogReader(str(FIXTURE)))
     for backend in range(3):
       for enabled in (False, True):
-        for experimental in (False, True):
+        for experimental in (True,):  # always on since official 922513f
           for endpoint in (500., 5.):
             result['cases'].append(run_case(route, backend, enabled, experimental, endpoint, args.stage))
     for backend in range(3):
       for enabled in (False, True):
-        for experimental in (False, True):
+        for experimental in (True,):  # always on since official 922513f
           result['cruise_cases'].append(cruise_case(route, backend, enabled, experimental, args.stage))
     result['passed'] = True
   except Exception:

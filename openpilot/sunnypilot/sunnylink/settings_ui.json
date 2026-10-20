@@ -588,26 +588,6 @@
           "description": "",
           "items": [
             {
-              "key": "ExperimentalMode",
-              "widget": "toggle",
-              "title": "Experimental Mode (Tesla Experimental and TN-NoDEC)",
-              "description": "Official always plans End to End. The retained Tesla Experimental and TN-NoDEC backends use this to select End to End or ACC.",
-              "visibility": [
-                {
-                  "type": "capability",
-                  "field": "brand",
-                  "equals": "tesla"
-                }
-              ],
-              "enablement": [
-                {
-                  "type": "capability",
-                  "field": "has_longitudinal_control",
-                  "equals": true
-                }
-              ]
-            },
-            {
               "key": "DynamicExperimentalControl",
               "widget": "toggle",
               "title": "Experimental Backend Dynamic Experimental Control",

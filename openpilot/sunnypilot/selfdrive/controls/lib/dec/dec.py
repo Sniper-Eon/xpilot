@@ -371,7 +371,7 @@ class DynamicExperimentalController:
     # Default: ACC
     self._mode_manager.request_mode('acc', confidence=0.7)
 
-  def update(self, sm: messaging.SubMaster, experimental_mode: bool) -> None:
+  def update(self, sm: messaging.SubMaster) -> None:
     self._read_params()
 
     self.set_mpc_fcw_crash_cnt()
@@ -384,5 +384,5 @@ class DynamicExperimentalController:
       self._radar_mode()
 
     self._mode_manager.update()
-    self._active = experimental_mode and self._enabled
+    self._active = self._enabled
     self._frame += 1

@@ -72,7 +72,6 @@ def control_chain(route, cold_start=False):
       with OpenpilotPrefix():
         p = Params()
         p.put('LongitudinalPlannerMode', backend, block=True)
-        p.put_bool('ExperimentalMode', True, block=True)
         planner = create_longitudinal_planner(cp, cp_sp, params=p)
         controller = create_long_control(cp, cp_sp, params=p)
         sm = Inputs(route)
@@ -369,7 +368,7 @@ def replay_rows():
   rows = {}
   for backend in range(3):
     for profile in range(3):
-      for e2e in (False, True):
+      for e2e in (True,):  # experimental mode is always on since official 922513f
         with OpenpilotPrefix():
           p = Params()
           if profile == 2:
@@ -380,7 +379,7 @@ def replay_rows():
           config = p.get('LongitudinalTuningConfig')
         messages = list(LogReader(str(FIXTURE)))
         outputs = replay_process_with_name('plannerd', messages, fingerprint='TESLA_MODEL_Y',
-          custom_params={'LongitudinalPlannerMode': backend, 'LongitudinalTuningConfig': config, 'ExperimentalMode': e2e,
+          custom_params={'LongitudinalPlannerMode': backend, 'LongitudinalTuningConfig': config,
             'AccelPersonalityEnabled': True, 'AccelPersonality': 1, 'DynamicExperimentalControl': False,
             'SmartCruiseControlVision': False, 'SmartCruiseControlMap': False, 'SpeedLimitMode': 0}, disable_progress=True)
         key = f'{backend}:{profile}:{int(e2e)}'

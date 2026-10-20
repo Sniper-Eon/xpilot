@@ -182,7 +182,6 @@ inline static std::unordered_map<std::string, ParamKeyAttributes> keys = {
     {"DynamicAutoStockSpeedKph", {PERSISTENT | BACKUP, INT, "80"}},
     {"DynamicAutoStockSpeedLowKph", {PERSISTENT | BACKUP, INT, "70"}},
     {"LongitudinalPlannerMode", {PERSISTENT | BACKUP, INT, "0"}},
-    {"ExperimentalMode", {PERSISTENT | BACKUP, BOOL}},  // Tesla Experimental/TN backends only; official removed it
     {"ActiveLongitudinalBackend", {CLEAR_ON_MANAGER_START | CLEAR_ON_OFFROAD_TRANSITION, INT}},
     {"LongitudinalTuningConfig", {PERSISTENT | BACKUP, JSON}},
     {"AccelPersonalityEnabled", {PERSISTENT | BACKUP, BOOL, "0"}},

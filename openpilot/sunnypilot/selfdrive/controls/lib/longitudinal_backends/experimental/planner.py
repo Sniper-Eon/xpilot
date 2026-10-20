@@ -16,12 +16,11 @@ class LongitudinalPlanner(LegacyLongitudinalPlanner):
     self.dec = DynamicExperimentalController(CP, mpc)
 
   def is_e2e(self, sm) -> bool:
-    if not self.dec.active():
-      return self.experimental_mode
-    return self.experimental_mode and self.dec.mode() == "blended"
+    # Experimental mode is always on since official 922513f; only DEC can select ACC.
+    return not self.dec.active() or self.dec.mode() == "blended"
 
   def _update_backend(self, sm) -> None:
-    self.dec.update(sm, self.experimental_mode)
+    self.dec.update(sm)
 
   def _publish_backend_state(self, longitudinal_plan_sp) -> None:
     dec_state = custom.LongitudinalPlanSP.DynamicExperimentalControl.DynamicExperimentalControlState
