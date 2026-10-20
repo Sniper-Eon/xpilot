@@ -1,7 +1,7 @@
 {
   "official_baseline": "922513f3128b00611d695ce465989a9bc8af9d59",
   "files": 85,
-  "changed_lines": 1351,
+  "changed_lines": 1320,
   "seams": {
     ".gitignore": 3,
     ".gitmodules": 4,
@@ -18,7 +18,7 @@
     "openpilot/common/hardware/comma/agnos.py": 15,
     "openpilot/common/hardware/comma/hardware.h": 6,
     "openpilot/common/hardware/comma/hardware.py": 3,
-    "openpilot/common/params_keys.h": 45,
+    "openpilot/common/params_keys.h": 44,
     "openpilot/common/transformations/camera.py": 23,
     "openpilot/selfdrive/assets/fonts/NotoSansCJKsc-Regular.otf": 4,
     "openpilot/selfdrive/car/card.py": 26,
@@ -65,8 +65,8 @@
     "openpilot/sunnypilot/selfdrive/controls/lib/speed_limit/speed_limit_assist.py": 14,
     "openpilot/sunnypilot/selfdrive/controls/lib/speed_limit/speed_limit_resolver.py": 11,
     "openpilot/sunnypilot/selfdrive/selfdrived/events.py": 29,
-    "openpilot/sunnypilot/sunnylink/settings_ui.json": 74,
-    "openpilot/sunnypilot/sunnylink/settings_ui_src/pages/cruise.yaml": 36,
+    "openpilot/sunnypilot/sunnylink/settings_ui.json": 54,
+    "openpilot/sunnypilot/sunnylink/settings_ui_src/pages/cruise.yaml": 26,
     "openpilot/sunnypilot/system/params_migration.py": 5,
     "openpilot/system/athena/registration.py": 103,
     "openpilot/system/athena/tests/test_registration.py": 32,
