@@ -379,18 +379,6 @@ def apply_backend_profile(params: Any, backend: BackendSpec, profile: int) -> Lo
   return _validated_values(values)
 
 
-def adjusted_obstacle(raw_upstream_obstacle: float, v_lead: float, v_ego: float,
-                      tuning: LongitudinalTuning, t_follow: float) -> float:
-  """Translate an obstacle for the unchanged upstream 6-parameter solver."""
-  default = LongitudinalTuning()
-  if tuning == default:
-    return raw_upstream_obstacle
-  lead_equivalence_delta = v_lead ** 2 / (2 * tuning.comfort_brake) - v_lead ** 2 / (2 * default.comfort_brake)
-  default_safe = v_ego ** 2 / (2 * default.comfort_brake) + t_follow * v_ego + default.stop_distance
-  tuned_safe = v_ego ** 2 / (2 * tuning.comfort_brake) + t_follow * v_ego + tuning.stop_distance
-  return raw_upstream_obstacle + lead_equivalence_delta + default_safe - tuned_safe
-
-
 def _ramp(current: LongitudinalTuning, target: LongitudinalTuning, dt: float) -> LongitudinalTuning:
   if dt <= 0:
     return current

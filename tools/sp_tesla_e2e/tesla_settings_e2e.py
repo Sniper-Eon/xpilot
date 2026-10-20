@@ -28,7 +28,7 @@ def main():
     from openpilot.selfdrive.ui.sunnypilot.layouts.settings.vehicle.brands.tesla import TeslaSettings
     from openpilot.selfdrive.ui.sunnypilot.layouts.settings.vehicle.brands.tesla_control import TeslaControlSettingsLayout
     from openpilot.selfdrive.ui.sunnypilot.layouts.settings.vehicle.brands.tesla_planner import TeslaPlannerSettingsLayout
-    from openpilot.sunnypilot.selfdrive.controls.lib.longitudinal_backends.registry import ordered_backends
+    from openpilot.sunnypilot.selfdrive.controls.lib.longitudinal_backends.registry import tunable_backends
     from openpilot.sunnypilot.selfdrive.controls.lib.longitudinal_backends.tuning import DEFAULT_VALUES, backend_values
     from openpilot.system.ui.lib.application import gui_app
     from openpilot.system.ui.lib.multilang import multilang
@@ -67,7 +67,7 @@ def main():
                         {'schemaVersion': 1, 'revision': 3, 'shared': {'following.time.standard_s': 1.55},
                          'backends': {'official': {'profile': 2, 'values': dict(DEFAULT_VALUES), 'customValues': dict(DEFAULT_VALUES)}}}):
           ui_state.params.put('LongitudinalTuningConfig', invalid, block=True)
-          for backend in ordered_backends():
+          for backend in tunable_backends():
             mici._tuning_page(backend)
             assert mici.tuning_error
             page = pushed.call_args.args[0]
@@ -94,7 +94,12 @@ def main():
               assert ui_state.params.get('LongitudinalTuningConfig') == invalid
             results.append({'case': 'invalid-config-preserved', 'version': invalid['schemaVersion'], 'backend': backend.slug})
         ui_state.params.remove('LongitudinalTuningConfig')
-        for backend in ordered_backends():
+        ui_state.params.put('LongitudinalPlannerMode', 0, block=True)
+        official = TeslaPlannerSettingsLayout(lambda: None)
+        assert not official.profile.is_visible and not any(option.is_visible for option in official.options)
+        assert all('Official' not in button.get_text() for button in mici._scroller._items if hasattr(button, 'get_text'))
+        results.append({'case': 'official-has-no-manual-tuning'})
+        for backend in tunable_backends():
           mici._apply_profile(backend, 2)
           values = backend_values(ui_state.params, backend).as_dict()
           mici._value_page(backend, 'comfort_brake')
@@ -107,16 +112,7 @@ def main():
           c3._on_profile_changed(2)
           assert not c3.tuning_error and c3.profile.action_item.enabled
           assert all(option.is_visible for option in c3.options)
-          if backend.tuning_notice:
-            assert backend.tuning_notice in c3.status_description
-            assert c3.status.title == "Official部分参数为近似调节"
-            assert c3.status.is_visible and c3.status.description_visible
-          else:
-            assert not c3.status.is_visible
-          for field, option in zip(("stop_distance", "comfort_brake", "lead_danger_factor", "t_follow_relaxed",
-                                    "t_follow_standard", "t_follow_aggressive", "x_ego_obstacle_cost", "j_ego_cost",
-                                    "jerk_factor_relaxed", "a_change_cost", "danger_zone_cost"), c3.options, strict=True):
-            assert ("近似" in option.title) == (field in backend.approximate_tuning_fields)
+          assert not c3.status.is_visible
           action = next(option.action_item for option in c3.options if option.action_item.param_key == 'MpcComfortBrake')
           before = backend_values(ui_state.params, backend).comfort_brake
           action.set_value(round(before * 100) + action.value_change_step)

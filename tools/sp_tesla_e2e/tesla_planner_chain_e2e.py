@@ -21,7 +21,7 @@ from openpilot.sunnypilot.selfdrive.controls.lib.longitudinal_backends.factory i
 from openpilot.sunnypilot.selfdrive.controls.lib.longitudinal_backends.longcontrol_factory import create_long_control
 from openpilot.sunnypilot.selfdrive.controls.lib.longitudinal_backends.session import latch_active_backend
 from openpilot.sunnypilot.selfdrive.controls.lib.longitudinal_backends.tuning import (
-  apply_backend_profile, save_backend_values, DEFAULT_VALUES, LongitudinalTuning, adjusted_obstacle,
+  apply_backend_profile, save_backend_values, DEFAULT_VALUES,
 )
 from openpilot.sunnypilot.selfdrive.controls.lib.longitudinal_backends.registry import get_backend
 from openpilot.sunnypilot.selfdrive.traffic_control.controller import TrafficControlPhase
@@ -415,13 +415,6 @@ def main():
     result['chain'] = control_chain(list(LogReader(str(FIXTURE))))
     result['multiprocess'] = process_latch()
     result['official_default_parity'] = official_default_parity()
-    result['tuning_metadata'] = {spec.slug: {'approximate_fields': sorted(spec.approximate_tuning_fields),
-                                           'notice': spec.tuning_notice} for spec in [get_backend(i) for i in range(3)]}
-    raw_obstacle = 100. + 10. ** 2 / (2 * 2.5)
-    translated = adjusted_obstacle(raw_obstacle, 10., 20., LongitudinalTuning(comfort_brake=3.), 1.45)
-    translated_gap = translated - (10. ** 2 / (2 * 2.5) + 1.45 * 10. + 6.)
-    exact_gap = 100. + 10. ** 2 / (2 * 3.) - (10. ** 2 / (2 * 3.) + 1.45 * 10. + 6.)
-    result['official_translation_residual_m'] = translated_gap - exact_gap
     result['passed'] = (all(r['passed'] for group in ('chain', 'multiprocess') for r in result[group])
                         and not result['official_default_parity']['differences'])
   else:

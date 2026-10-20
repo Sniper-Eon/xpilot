@@ -2,14 +2,13 @@ import copy
 import threading
 import time
 
-import numpy as np
 import pytest
 
 from openpilot.cereal import log, messaging
 from openpilot.common.params import UnknownKeyName
 from openpilot.sunnypilot.selfdrive.controls.lib.longitudinal_backends.registry import BackendId, get_backend
 from openpilot.sunnypilot.selfdrive.controls.lib.longitudinal_backends.tuning import (
-  CONFIG_PARAM, DEFAULT_VALUES, LongitudinalTuning, TuningController, adjusted_obstacle, backend_profile, backend_values,
+  CONFIG_PARAM, DEFAULT_VALUES, LongitudinalTuning, TuningController, backend_profile, backend_values,
   follow_distance_for_personality, save_backend_values,
 )
 
@@ -256,28 +255,6 @@ def test_default_profile_is_numerically_identical_to_upstream():
   tuning = backend_values(params, get_backend(BackendId.OFFICIAL))
 
   assert tuning.as_dict() == DEFAULT_VALUES
-  assert adjusted_obstacle(42.0, 15.0, 15.0, tuning, 1.45) == 42.0
-
-
-def test_default_tuning_returns_the_original_obstacle_without_float_math():
-  raw = np.array([42.0, 42.00000000000001, 1.0e8], dtype=np.float64)
-
-  adjusted = adjusted_obstacle(raw, 15.0, 15.0, LongitudinalTuning(), 1.45)
-
-  assert adjusted is raw
-  assert np.array_equal(adjusted, raw)
-
-
-def test_comfort_brake_and_stop_distance_adjust_the_solver_obstacle():
-  params = FakeParams()
-  backend = get_backend(BackendId.EXPERIMENTAL)
-  tuned = {**DEFAULT_VALUES, "comfort_brake": 2.7, "stop_distance": 4.5}
-  save_backend_values(params, backend, tuned, profile=2)
-  tuning = backend_values(params, backend)
-
-  # The compiled solver keeps upstream's 2.5 m/s² and 6 m. The adapter moves
-  # the obstacle so the resulting residual is equivalent to the requested values.
-  assert adjusted_obstacle(42.0, 15.0, 15.0, tuning, 1.45) != 42.0
 
 
 def test_hot_ramped_values_move_gradually_and_hot_values_apply_immediately():

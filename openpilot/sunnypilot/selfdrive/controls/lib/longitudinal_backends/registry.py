@@ -16,8 +16,6 @@ class BackendSpec:
   provider: str
   capabilities: frozenset[str] = frozenset()
   stopping_policy: str | None = None
-  approximate_tuning_fields: frozenset[str] = frozenset()
-  tuning_notice: str = ""
 
 
 # The official provider always points at the current upstream planner. It is
@@ -29,9 +27,6 @@ OFFICIAL_BACKEND = BackendSpec(
   label="Official",
   provider="openpilot.selfdrive.controls.lib.longitudinal_planner:LongitudinalPlanner",
   capabilities=frozenset({"upstream"}),
-  approximate_tuning_fields=frozenset({"comfort_brake", "stop_distance"}),
-  tuning_notice=("Official keeps the upstream six-parameter solver. Comfort Brake and Stop Distance use obstacle-shift approximations, " +
-                 "not equivalent eight-parameter MPC tuning. Defaults preserve upstream behavior."),
 )
 
 EXPERIMENTAL_BACKEND = BackendSpec(
@@ -69,6 +64,11 @@ def get_backend(value: object) -> BackendSpec:
 
 def ordered_backends() -> tuple[BackendSpec, ...]:
   return tuple(BACKENDS[backend_id] for backend_id in sorted(BACKENDS))
+
+
+def tunable_backends() -> tuple[BackendSpec, ...]:
+  # Official is the unmodified upstream planner; only the retained legacy backends accept manual MPC tuning.
+  return tuple(backend for backend in ordered_backends() if backend.id != BackendId.OFFICIAL)
 
 
 def validate_registry() -> None:

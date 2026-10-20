@@ -2,7 +2,7 @@ from importlib import import_module
 from typing import Any, Protocol
 
 from openpilot.common.params import Params
-from openpilot.sunnypilot.selfdrive.controls.lib.longitudinal_backends.registry import BackendSpec, OFFICIAL_BACKEND
+from openpilot.sunnypilot.selfdrive.controls.lib.longitudinal_backends.registry import BackendId, BackendSpec, OFFICIAL_BACKEND
 from openpilot.sunnypilot.selfdrive.controls.lib.longitudinal_backends.session import latch_active_backend
 
 
@@ -28,5 +28,6 @@ def create_longitudinal_planner(CP, CP_SP, *, params=None) -> PlannerBackend:
   spec = latch_active_backend(params)
   planner = _load_provider(spec)(CP, CP_SP)
   planner.active_backend_id = spec.id
-  planner.mpc.configure_runtime_tuning(params, spec)
+  if spec.id != BackendId.OFFICIAL:
+    planner.mpc.configure_runtime_tuning(params, spec)
   return planner

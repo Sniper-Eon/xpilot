@@ -106,15 +106,6 @@ def save_tuning(params, backend, values):
     return 'Not saved: invalid values or following times out of order.'
 
 
-# Kept in the UI source so font glyph collection covers the provider's notice.
-OFFICIAL_TUNING_NOTICE = ('Official keeps the upstream six-parameter solver. Comfort Brake and Stop Distance use obstacle-shift approximations, ' +
-                        'not equivalent eight-parameter MPC tuning. Defaults preserve upstream behavior.')
-
-
-def tuning_notice(backend):
-  return backend.tuning_notice or (OFFICIAL_TUNING_NOTICE if backend.slug == 'official' else '')
-
-
 TUNING_ITEMS = (
   ("stop_distance", "MpcStopDistance", tr_noop("Stop Distance"), "m"),
   ("comfort_brake", "MpcComfortBrake", tr_noop("Comfort Brake"), "m/s²"),

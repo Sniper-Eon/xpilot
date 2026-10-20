@@ -94,7 +94,7 @@ def test_factory_returns_the_selected_backend_without_a_wrapper(monkeypatch):
 
   assert result is planner
   assert planner.active_backend_id == BackendId.OFFICIAL
-  assert configured == [(params, spec)]
+  assert configured == []  # Official stays the unmodified upstream planner
 
 
 def test_common_backend_hooks_do_not_require_dec():

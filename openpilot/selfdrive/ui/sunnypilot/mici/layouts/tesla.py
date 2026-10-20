@@ -3,10 +3,10 @@ from openpilot.selfdrive.ui.mici.widgets.button import BigButton, BigToggle
 from openpilot.selfdrive.ui.ui_state import ui_state
 from openpilot.system.ui.lib.application import gui_app
 from openpilot.system.ui.widgets.scroller import NavScroller
-from openpilot.sunnypilot.selfdrive.controls.lib.longitudinal_backends.registry import ordered_backends
+from openpilot.sunnypilot.selfdrive.controls.lib.longitudinal_backends.registry import ordered_backends, tunable_backends
 from openpilot.sunnypilot.selfdrive.controls.lib.longitudinal_backends.tuning import VALUE_SPECS
 from openpilot.selfdrive.ui.sunnypilot.tesla_settings import (
-  BOOL_KEYS, CHOICES, LABELS, TUNING_UNITS, apply_tuning_profile, load_tuning, save_tuning, setting_label, tuning_notice,
+  BOOL_KEYS, CHOICES, LABELS, TUNING_UNITS, apply_tuning_profile, load_tuning, save_tuning, setting_label,
 )
 from openpilot.sunnypilot.selfdrive.traffic_control import planner_session_is_active
 from openpilot.sunnypilot.hardware.driver_monitoring import driver_monitoring_configured
@@ -52,7 +52,7 @@ class TeslaSettingsMici(NavScroller):
     self.mode.set_click_callback(lambda: self._choose_param('LongitudinalPlannerMode', [(b.label, int(b.id)) for b in ordered_backends()]))
     self.mode.set_enabled(lambda: ui_state.is_offroad() and not planner_session_is_active(ui_state.sm))
     self._scroller.add_widget(self.mode)
-    for backend in ordered_backends():
+    for backend in tunable_backends():
       button = BigButton(f'{backend.label} Tuning')
       button.set_click_callback(lambda b=backend: self._tuning_page(b))
       self._scroller.add_widget(button)
@@ -84,7 +84,7 @@ class TeslaSettingsMici(NavScroller):
   def _tuning_page(self, backend):
     page = _page()
     values, self.tuning_error = load_tuning(ui_state.params, backend)
-    notice = BigButton('Tuning Status', self.tuning_error or tuning_notice(backend) or 'Valid Configuration', scroll=True)
+    notice = BigButton('Tuning Status', self.tuning_error or 'Valid Configuration', scroll=True)
     notice.set_enabled(False)
     page._scroller.add_widget(notice)
     preset_buttons = []
@@ -92,7 +92,7 @@ class TeslaSettingsMici(NavScroller):
 
     def refresh():
       current, self.tuning_error = load_tuning(ui_state.params, backend)
-      notice.set_value(self.tuning_error or tuning_notice(backend) or 'Valid Configuration')
+      notice.set_value(self.tuning_error or 'Valid Configuration')
       for button in preset_buttons:
         button.set_enabled(current is not None)
       for field, button in tuning_buttons.items():
@@ -110,8 +110,7 @@ class TeslaSettingsMici(NavScroller):
       preset_buttons.append(button)
       page._scroller.add_widget(button)
     for key in VALUE_SPECS:
-      label = LABELS[key] + (' (Approx.)' if key in backend.approximate_tuning_fields else '')
-      button = BigButton(label, f'{getattr(values, key):.2f} {TUNING_UNITS[key]}'.strip() if values is not None else 'Unavailable')
+      button = BigButton(LABELS[key], f'{getattr(values, key):.2f} {TUNING_UNITS[key]}'.strip() if values is not None else 'Unavailable')
       button.set_enabled(values is not None)
       button.set_click_callback(lambda k=key: self._value_page(backend, k, refresh))
       tuning_buttons[key] = button
@@ -122,7 +121,7 @@ class TeslaSettingsMici(NavScroller):
     page = _page()
     minimum, maximum, step, _ = VALUE_SPECS[key]
     values, self.tuning_error = load_tuning(ui_state.params, backend)
-    status = BigButton('Tuning Status', self.tuning_error or tuning_notice(backend) or 'Valid Configuration', scroll=True)
+    status = BigButton('Tuning Status', self.tuning_error or 'Valid Configuration', scroll=True)
     status.set_enabled(False)
     page._scroller.add_widget(status)
     value = BigButton(LABELS[key], f'{getattr(values, key):.2f} {TUNING_UNITS[key]}'.strip() if values is not None else 'Unavailable')
@@ -137,7 +136,7 @@ class TeslaSettingsMici(NavScroller):
       updated = current.as_dict()
       updated[key] = round(max(minimum, min(maximum, updated[key] + delta)), 2)
       self.tuning_error = save_tuning(ui_state.params, backend, updated)
-      status.set_value(self.tuning_error or tuning_notice(backend) or 'Valid Configuration')
+      status.set_value(self.tuning_error or 'Valid Configuration')
       if not self.tuning_error:
         value.set_value(f'{updated[key]:.2f} {TUNING_UNITS[key]}'.strip())
         if on_saved:

@@ -8,7 +8,7 @@ from openpilot.sunnypilot.selfdrive.controls.lib.longitudinal_backends.tuning im
   DEFAULT_VALUES, VALUE_SPECS, backend_profile,
 )
 from openpilot.sunnypilot.selfdrive.traffic_control import planner_session_is_active
-from openpilot.selfdrive.ui.sunnypilot.tesla_settings import CHOICES, TITLES, TUNING_ITEMS, apply_tuning_profile, load_tuning, save_tuning, tuning_notice
+from openpilot.selfdrive.ui.sunnypilot.tesla_settings import CHOICES, TITLES, TUNING_ITEMS, apply_tuning_profile, load_tuning, save_tuning
 from openpilot.system.ui.lib.multilang import tr
 from openpilot.system.ui.sunnypilot.widgets.list_view import ListItemSP, multiple_button_item_sp, option_item_sp, toggle_item_sp
 from openpilot.system.ui.widgets import Widget
@@ -125,18 +125,19 @@ class TeslaPlannerSettingsLayout(Widget):
 
   def _update_visibility(self):
     tn = self._backend().id == BackendId.TN_NO_DEC
+    tunable = self._backend().id != BackendId.OFFICIAL  # Official is the unmodified upstream planner
     custom = not self.tuning_error and int(ui_state.params.get("MpcTuningProfile", return_default=True)) == 2
+    self.profile.set_visible(tunable)
     self.profile.action_item.set_enabled(not self.tuning_error)
-    self.status_description = self.tuning_error or tuning_notice(self._backend())
-    self.status.set_title(tr("配置无效，原值已保留") if self.tuning_error else tr("Official部分参数为近似调节"))
+    self.status_description = self.tuning_error if tunable else ""
+    self.status.set_title(tr("配置无效，原值已保留"))
     self.status.set_description(self.status_description)
     self.status.show_description(True)
     self.status.set_visible(bool(self.status_description))
     self.tn_accel_enabled.set_visible(tn)
     self.tn_accel_profile.set_visible(tn and ui_state.params.get_bool("AccelPersonalityEnabled"))
-    for (field, _, title, _), option in zip(TUNING_ITEMS, self.options, strict=True):
-      option.set_title(tr(title) + (tr("（近似）") if field in self._backend().approximate_tuning_fields else ""))
-      option.set_visible(not self.tuning_error)
+    for option in self.options:
+      option.set_visible(tunable and not self.tuning_error)
       option.action_item.set_enabled(custom)
 
   def _update_state(self):
