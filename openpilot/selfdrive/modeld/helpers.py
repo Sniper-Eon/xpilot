@@ -38,17 +38,7 @@ def wait_for_chestnut(timeout: float = 10.) -> None:
       raise TimeoutError("chestnut did not enumerate")
     time.sleep(0.1)
 
-def compiled_model_file(path: Path) -> bool:
-  """A regular file that is not an unhydrated LFS pointer; download/activation verifies hashes."""
-  try:
-    with path.open('rb') as f:
-      header = f.read(64)
-      return bool(header) and not header.startswith(b'version https://git-lfs.github.com/spec/v1')
-  except OSError:
-    return False
-
-def chestnut_warps_compiled() -> bool:
-  return all(compiled_model_file(MODELS_DIR / f'big_driving_warp_{size}_tinygrad.pkl') for size in ('1344x760', '1928x1208'))
-
 def chestnut_compiled() -> bool:
-  return compiled_model_file(modeld_pkl_path(chestnut=True)) and chestnut_warps_compiled()
+  path = modeld_pkl_path(chestnut=True)
+  return path.is_file() and all(
+    (MODELS_DIR / f'big_driving_warp_{size}_tinygrad.pkl').is_file() for size in ('1344x760', '1928x1208'))

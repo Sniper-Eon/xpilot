@@ -7,8 +7,6 @@ See the LICENSE.md file in the root directory for more details.
 
 import asyncio
 import os
-from pathlib import Path
-import shutil
 import time
 
 import requests
@@ -121,10 +119,6 @@ class ModelManagerSP:
     expected_hash = artifact.downloadUri.sha256
     filename = artifact.fileName
     full_path = os.path.join(destination_path, filename)
-    if not Path(full_path).resolve().is_relative_to(Path(destination_path).resolve()):  # noqa: ASYNC240
-      raise ValueError("Model artifact path escapes destination")
-    Path(full_path).parent.mkdir(parents=True, exist_ok=True)
-    temporary = f"{full_path}.{os.getpid()}.download"
 
     try:
       if await verify_file(full_path, expected_hash):
@@ -135,10 +129,9 @@ class ModelManagerSP:
         self._report_status()
         return
 
-      await self._download_file(url, temporary, artifact)
-      if not await verify_file(temporary, expected_hash):
+      await self._download_file(url, full_path, artifact)
+      if not await verify_file(full_path, expected_hash):
         raise ValueError(f"Hash validation failed for {filename}")
-      os.replace(temporary, full_path)
 
       artifact.downloadProgress.status = custom.ModelManagerSP.DownloadStatus.downloaded
       artifact.downloadProgress.progress = 100
@@ -147,8 +140,6 @@ class ModelManagerSP:
       self._report_status()
 
     except DownloadCancelled:
-      if os.path.isfile(temporary):  # noqa: ASYNC240
-        os.remove(temporary)
       self._download_start_times.pop(artifact.fileName, None)
       artifact.downloadProgress.status = custom.ModelManagerSP.DownloadStatus.failed
       artifact.downloadProgress.eta = 0
@@ -160,8 +151,8 @@ class ModelManagerSP:
 
     except Exception as e:
       cloudlog.error(f"Error downloading {filename}: {str(e)}")
-      if os.path.isfile(temporary):  # noqa: ASYNC240
-        os.remove(temporary)
+      if os.path.isfile(full_path):  # noqa: ASYNC240
+        os.remove(full_path)
       artifact.downloadProgress.status = custom.ModelManagerSP.DownloadStatus.failed
       artifact.downloadProgress.eta = 0
       self._sync_artifact_progress(artifact)
@@ -262,7 +253,7 @@ class ModelManagerSP:
         validate_active_bundles(self.params, self.source_models)
         self.active_bundle = get_active_bundle(self.params, chestnut=self.chestnut_present)
 
-        if get_selected_bundle(self.params, "chestnut") is not None and self.params.get(ACTIVE_BUNDLE_KEYS["qcom"]) is None:
+        if get_selected_bundle(self.params, "chestnut") is not None and get_selected_bundle(self.params, "qcom") is None:
           if self.params.get("ModelManager_DownloadRef") is None:
             from openpilot.sunnypilot.models.model_name import DEFAULT_MODEL_REF
             self.params.put("ModelManager_DownloadRef", DEFAULT_MODEL_REF)
@@ -294,15 +285,14 @@ class ModelManagerSP:
           if model.artifact.fileName:
             active_files.append(model.artifact.fileName)
 
-    # Legacy root files belong to the previous runtime and remain available for rollback.
+    # Remove all files except active ones
     model_dir = Paths.model_root()
-    active_directories = {Path(name).parts[0] for name in active_files}
     try:
       for filename in os.listdir(model_dir):
-        path = Path(model_dir) / filename
-        if (len(filename) == 64 and all(c in "0123456789abcdef" for c in filename) and
-            filename not in active_directories and path.is_dir() and not path.is_symlink()):
-          shutil.rmtree(path)
+        if filename not in active_files:
+          file_path = os.path.join(model_dir, filename)
+          if os.path.isfile(file_path):
+            os.remove(file_path)
       cloudlog.info("Model cache cleared, keeping active model files")
     except Exception as e:
       cloudlog.exception(f"Error clearing model cache: {str(e)}")
