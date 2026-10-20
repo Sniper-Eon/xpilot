@@ -26,7 +26,7 @@ class BmsLayout(Widget):
     self.page = 0
     self._display = (float('-inf'), None, None)
     self.tabs = [Button(label, click_callback=lambda index=i: self._select_page(index), font_size=42)
-                 for i, label in enumerate(('概览', '电芯', '诊断'))]
+                 for i, label in enumerate(('Overview', 'Cells', 'Diagnostics'))]
     for tab in self.tabs:
       self._child(tab)
 
@@ -125,9 +125,9 @@ class BmsLayout(Widget):
     self.accent, amber = rl.Color(98, 229, 181, 255), rl.Color(255, 194, 94, 255)
     rl.draw_rectangle_rounded(rect, .025, 12, rl.Color(13, 16, 22, 255))
     x, y, w = rect.x+20*s, rect.y+16*s, rect.width-40*s
-    self._text('电池与能耗', x, y, 56*s, self.white, True)
+    self._text('Battery & Energy', x, y, 56*s, self.white, True)
     fresh = any(v is not None for v in data.values())
-    status = ('实时数据' if fresh else '等待车辆数据') if self.supported else '仅支持 Model 3 / Y'
+    status = ('Live data' if fresh else 'Waiting for vehicle data') if self.supported else 'Model 3 / Y only'
     sw = measure_text_cached(gui_app.font(), status, 34*s).x
     self._text(status, x+w-sw, y+15*s, 34*s, self.accent if fresh else amber)
     gap = 20*s
@@ -142,44 +142,44 @@ class BmsLayout(Widget):
     delta = None if data['cell_min'] is None or data['cell_max'] is None else (data['cell_max']-data['cell_min'])*1000
     if self.page == 0:
       if data['soc_display'] is not None:
-        self._card(rl.Rectangle(x, top, half, 310*s), '剩余电量 · SOC', data['soc_display'], '%', 0, True,
+        self._card(rl.Rectangle(x, top, half, 310*s), 'State of Charge', data['soc_display'], '%', 0, True,
                    f"BMS {data['soc']:.1f}%")
       else:
-        self._card(rl.Rectangle(x, top, half, 310*s), '剩余电量 · SOC', data['soc'], '%', 1, True)
-      self._card(rl.Rectangle(x+half+gap, top, half, 310*s), '平均能耗', data['consumption'], 'Wh/km', 0, True,
-                 '近 2 km 滑动平均')
+        self._card(rl.Rectangle(x, top, half, 310*s), 'State of Charge', data['soc'], '%', 1, True)
+      self._card(rl.Rectangle(x+half+gap, top, half, 310*s), 'Avg Consumption', data['consumption'], 'Wh/km', 0, True,
+                 'Rolling 2 km average')
       third = (w-2*gap)/3
-      for i, (label, key, unit, digits) in enumerate([('电池功率', 'power', 'kW', 1),
-                                                     ('电池电压', 'voltage', 'V', 1), ('电池电流', 'current', 'A', 1)]):
+      for i, (label, key, unit, digits) in enumerate([('Battery Power', 'power', 'kW', 1),
+                                                     ('Battery Voltage', 'voltage', 'V', 1), ('Battery Current', 'current', 'A', 1)]):
         self._card(rl.Rectangle(x+i*(third+gap), top+330*s, third, 204*s), label, data[key], unit, digits)
-      self._card(rl.Rectangle(x, top+554*s, half, 190*s), '剩余电量', data['remaining'], 'kWh')
-      self._card(rl.Rectangle(x+half+gap, top+554*s, half, 190*s), 'BMS 估算满充容量', data['capacity'], 'kWh')
-      self._text('正值为耗电，负值为能量回收。能耗为近 2 km 平均值。', x, top+775*s, 34*s, self.muted)
+      self._card(rl.Rectangle(x, top+554*s, half, 190*s), 'Remaining Energy', data['remaining'], 'kWh')
+      self._card(rl.Rectangle(x+half+gap, top+554*s, half, 190*s), 'BMS Full Capacity', data['capacity'], 'kWh')
+      self._text('Positive = discharge, negative = regen. Consumption is a 2 km average.', x, top+775*s, 34*s, self.muted)
     elif self.page == 1:
       temp_delta = None if data['temp_min'] is None or data['temp_max'] is None else data['temp_max']-data['temp_min']
-      cards = [('最低电芯温度', data['temp_min'], '°C', 1), ('最高电芯温度', data['temp_max'], '°C', 1),
-               ('最低单体电压', data['cell_min'], 'V', 3), ('最高单体电压', data['cell_max'], 'V', 3),
-               ('电芯温差', temp_delta, '°C', 1), ('单体电压差', delta, 'mV', 0)]
+      cards = [('Min Cell Temp', data['temp_min'], '°C', 1), ('Max Cell Temp', data['temp_max'], '°C', 1),
+               ('Min Cell Voltage', data['cell_min'], 'V', 3), ('Max Cell Voltage', data['cell_max'], 'V', 3),
+               ('Cell Temp Spread', temp_delta, '°C', 1), ('Cell Voltage Spread', delta, 'mV', 0)]
       for i, (label, value, unit, digits) in enumerate(cards):
         self._card(rl.Rectangle(x+(i%2)*(half+gap), top+(i//2)*250*s, half, 230*s), label, value, unit, digits)
-      self._text('过期或不可信的数据不显示；数值不等同于电池健康结论。', x, top+770*s, 32*s, self.muted)
+      self._text('Stale or untrusted data is hidden. Values are not a battery health verdict.', x, top+770*s, 32*s, self.muted)
     else:
-      cards = [('累计充入', data['charged'], 'kWh'), ('累计放出', data['discharged'], 'kWh'),
-               ('实时车速', speed, 'km/h'), ('方向盘转角', cs.steeringAngleDeg if cs_fresh else None, '°')]
+      cards = [('Total Charged', data['charged'], 'kWh'), ('Total Discharged', data['discharged'], 'kWh'),
+               ('Vehicle Speed', speed, 'km/h'), ('Steering Angle', cs.steeringAngleDeg if cs_fresh else None, '°')]
       for i, (label, value, unit) in enumerate(cards):
         self._card(rl.Rectangle(x+(i%2)*(half+gap), top+(i//2)*214*s, half, 194*s), label, value, unit)
-      warnings = [label for key, label in [('drive_power_low', '驱动供电不足'), ('support_power_low', '辅助供电不足')] if data[key] == 1]
-      status = ' / '.join(warnings) if warnings else ('供电告警位：未置位' if data['drive_power_low'] is not None else '供电状态：等待数据')
+      warnings = [label for key, label in [('drive_power_low', 'Drive power low'), ('support_power_low', 'Support power low')] if data[key] == 1]
+      status = ' / '.join(warnings) if warnings else ('Power warnings: clear' if data['drive_power_low'] is not None else 'Power status: waiting for data')
       self._text(status, x+10*s, top+451*s, 40*s, amber if warnings else self.white)
-      brake = ('已踩下' if cs.brakePressed else '未踩下') if cs_fresh else '等待数据'
-      self._text('制动踏板：'+brake, x+10*s, top+507*s, 36*s, self.muted)
+      brake = ('pressed' if cs.brakePressed else 'released') if cs_fresh else 'waiting for data'
+      self._text('Brake pedal: '+brake, x+10*s, top+507*s, 36*s, self.muted)
       from openpilot.sunnypilot.selfdrive.car.tesla.bms import FRAME_LENGTHS
       for i, address in enumerate(FRAME_LENGTHS):
         item = self.state.frames.get(address)
         active = item is not None and 0<=now-item[1]<=3
-        label = '在线' if active else ('已过期' if item else '未收到')
+        label = 'Online' if active else ('Stale' if item else 'Not received')
         bx, by = x+(i%4)*(w+gap)/4, top+579*s+(i//4)*82*s
         rw = (w-3*gap)/4
         rl.draw_rectangle_rounded(rl.Rectangle(bx, by, rw, 65*s), .15, 8, rl.Color(28,33,42,255))
         self._text(f'{address:03X}  ·  {label}', bx+20*s, by+12*s, 34*s, self.accent if active else self.muted)
-      self._text('只读监测 · 不发送 CAN 指令，不执行故障码扫描。', x, top+777*s, 32*s, self.muted)
+      self._text('Read-only monitor: sends no CAN commands and runs no fault-code scan.', x, top+777*s, 32*s, self.muted)

@@ -134,7 +134,7 @@ class TeslaPlannerSettingsLayout(Widget):
     self.profile.set_visible(tunable)
     self.profile.action_item.set_enabled(not self.tuning_error)
     self.status_description = self.tuning_error if tunable else ""
-    self.status.set_title(tr("配置无效，原值已保留"))
+    self.status.set_title(tr("Invalid configuration; original values kept"))
     self.status.set_description(self.status_description)
     self.status.show_description(True)
     self.status.set_visible(bool(self.status_description))

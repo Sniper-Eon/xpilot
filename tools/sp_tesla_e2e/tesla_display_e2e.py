@@ -74,7 +74,7 @@ try:
   sm = FakeSubMaster(alert_msg)
   for name, renderer_type in (('c3-alert', C3AlertRenderer), ('mici-alert', MiciAlertRenderer)):
     alert = renderer_type.__new__(renderer_type).get_alert(sm)
-    fields_ok = (alert.text1 == '相机故障' and alert.text2 == '车门未关好' and
+    fields_ok = (alert.text1 == alert_msg.alertText1 and alert.text2 == alert_msg.alertText2 and
                  alert.size == alert_msg.alertSize.raw and alert.status == alert_msg.alertStatus.raw)
     if name == 'mici-alert':
       fields_ok = fields_ok and alert.visual_alert == alert_msg.alertHudVisual and alert.alert_type == alert_msg.alertType

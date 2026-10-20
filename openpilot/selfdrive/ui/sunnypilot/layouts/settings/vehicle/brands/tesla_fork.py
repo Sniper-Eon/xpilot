@@ -35,13 +35,13 @@ class TeslaSettings(BrandSettings):
     )
     self.blindspot_ambient_toggle = toggle_item_sp(
       tr(TITLES["TeslaBlindspotAmbientEnabled"]),
-      tr("检测到盲区时，对应侧常亮红色。按车机深浅色模式自动切换昼夜亮度，缺失时参考近光灯状态。"), param="TeslaBlindspotAmbientEnabled")
+      tr("Light the matching side solid red while a car is in the blindspot. Day/night brightness follows the car's dark mode, or the low beams when that is unavailable."), param="TeslaBlindspotAmbientEnabled")
     self.blindspot_ambient_day_brightness = option_item_sp(
       param="TeslaBlindspotAmbientDayBrightness", title=lambda: tr(TITLES["TeslaBlindspotAmbientDayBrightness"]),
-      description=tr("白天使用的百分比亮度，0–100%。"), **option_kwargs("TeslaBlindspotAmbientDayBrightness"), inline=True)
+      description=tr("Brightness used in daytime, 0–100%."), **option_kwargs("TeslaBlindspotAmbientDayBrightness"), inline=True)
     self.blindspot_ambient_brightness = option_item_sp(
       param="TeslaBlindspotAmbientBrightness", title=lambda: tr(TITLES["TeslaBlindspotAmbientBrightness"]),
-      description=tr("夜间使用的百分比亮度，0–100%。"), **option_kwargs("TeslaBlindspotAmbientBrightness"), inline=True)
+      description=tr("Brightness used at night, 0–100%."), **option_kwargs("TeslaBlindspotAmbientBrightness"), inline=True)
     self._bms = BmsLayout(lambda: gui_app.pop_widget())
     self.bms_button = button_item_sp(title=tr("BMS"), button_text=tr("Open"),
                                      description=tr("Read-only battery and energy dashboard."),

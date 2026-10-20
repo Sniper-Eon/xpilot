@@ -121,11 +121,10 @@
         "openpilot/sunnypilot/selfdrive/car/tesla/bms.py"
       ],
       "review_edges": [
-        "openpilot/selfdrive/ui/sunnypilot/layouts/settings/settings.py",
-        "openpilot/system/ui/lib/font_characters.py"
+        "openpilot/selfdrive/ui/sunnypilot/layouts/settings/settings.py"
       ],
       "acceptance": "passive CAN replay, C3 content geometry, page touches and stale display",
-      "contract": "Passive subscription only while visible and compatible CarParams known; resets data across car changes; C3/C4 alert translation at renderer boundary"
+      "contract": "Passive subscription only while visible and compatible CarParams known; resets data across car changes"
     },
     {
       "id": "dos-f4-and-hardware-profiles",

@@ -37,8 +37,8 @@ TITLES = {
   'DynamicAutoStockSpeedKph': tr_noop('Speed Threshold High'), 'DynamicAutoStockSpeedLowKph': tr_noop('Speed Threshold Low'),
   'TeslaARS408Radar': tr_noop('Tesla Radar Backend'), 'TeslaTrafficSignalControlEnabled': tr_noop('Traffic Light Control (Experimental)'),
   'TeslaTrafficStopReference': tr_noop('Traffic Light Stop Reference'), 'TeslaTrafficControlMaxSpeed': tr_noop('Traffic Light Control Maximum Speed'),
-  'TeslaBlindspotAmbientEnabled': tr_noop('盲区联动氛围灯'), 'TeslaBlindspotAmbientDayBrightness': tr_noop('盲区氛围灯：白天亮度'),
-  'TeslaBlindspotAmbientBrightness': tr_noop('盲区氛围灯：夜间亮度'), 'AccelPersonality': tr_noop('TN Accel Profile'),
+  'TeslaBlindspotAmbientEnabled': tr_noop('Blindspot Ambient Lights'), 'TeslaBlindspotAmbientDayBrightness': tr_noop('Blindspot Lights: Day Brightness'),
+  'TeslaBlindspotAmbientBrightness': tr_noop('Blindspot Lights: Night Brightness'), 'AccelPersonality': tr_noop('TN Accel Profile'),
   'AccelPersonalityEnabled': tr_noop('TN Accel Personality'),
   'TeslaAutoSpeedLimit': tr_noop('Auto Speed Limit'), 'TeslaAutoSpeedLimitOffset': tr_noop('Auto Speed Limit Offset'),
 }

@@ -31,9 +31,9 @@ class TeslaSettingsMici(NavScroller):
     back.set_click_callback(gui_app.pop_widget)
     self._scroller.add_widget(back)
     # Device-level fork toggles live here so official settings stay unmodified.
-    self.dm_toggle = BigToggle('DM 驾驶员监控', initial_state=driver_monitoring_configured(ui_state.params),
+    self.dm_toggle = BigToggle('Driver Monitoring', initial_state=driver_monitoring_configured(ui_state.params),
                                toggle_callback=self._set_driver_monitoring,
-                               description='关闭后不启动 DM 进程。只能停车时修改，下次驾驶生效。')
+                               description='When off, the DM processes do not start. Change only while parked; applies on the next drive.')
     self.dm_toggle.set_enabled(lambda: ui_state.is_offroad() and has_driver_camera())
     self._scroller.add_widget(self.dm_toggle)
     for key in BOOL_KEYS:

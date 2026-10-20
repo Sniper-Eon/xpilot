@@ -84,7 +84,7 @@ def main():
             ui_state.params.put('LongitudinalPlannerMode', int(backend.id), block=True)
             c3 = TeslaPlannerSettingsLayout(lambda: None)
             assert c3.tuning_error and not c3.profile.action_item.enabled
-            assert c3.status.title == "配置无效，原值已保留"
+            assert c3.status.title == "Invalid configuration; original values kept"
             assert c3.status.is_visible and c3.status.description_visible
             assert c3.status.action_item is None
             assert all(not option.action_item.enabled and not option.is_visible for option in c3.options)

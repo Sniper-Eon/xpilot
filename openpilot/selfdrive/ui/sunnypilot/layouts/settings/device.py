@@ -81,8 +81,8 @@ class DeviceLayoutSP(DeviceLayout):
     )
 
     self._driver_monitoring = toggle_item_sp(
-      title=lambda: tr("DM 驾驶员监控"),
-      description=lambda: tr("开启驾驶员监控。关闭后不启动 DM 进程。只能停车时修改，下次驾驶生效。"),
+      title=lambda: tr("Driver Monitoring"),
+      description=lambda: tr("Enable driver monitoring. When off, the DM processes do not start. Change only while parked; applies on the next drive."),
       initial_state=driver_monitoring_configured(ui_state.params),
       callback=lambda state: ui_state.params.put_bool("DriverMonitoringEnabled", state, block=True),
       enabled=lambda: ui_state.is_offroad() and has_driver_camera(),
