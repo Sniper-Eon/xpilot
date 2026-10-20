@@ -41,6 +41,22 @@ count. It does not independently establish that an arbitrary SHA is an official
 release. Divergent selective ports require a reviewed descendant sync candidate;
 this strict gate does not silently waive ancestry.
 
+## Routine official sync
+
+`tools/dev_sp_release/sync_official.py` automates the repeatable steps above:
+
+```sh
+python3 tools/dev_sp_release/sync_official.py plan    # fetch, S0 refs + verified bundles, dry-run conflicts
+python3 tools/dev_sp_release/sync_official.py merge   # fork submodules, gitlinks, parent merge (no commit)
+# resolve conflicts (rerere replays earlier resolutions), then:
+python3 tools/dev_sp_release/sync_official.py check   # markers, seams, settings_ui, syntax, LFS on the configured store
+```
+
+It stops when not on a clean `dev-sp`, when `origin/dev-sp` has commits local
+lacks, or when an official submodule commit cannot be fetched. It does not
+resolve conflicts, push, or replace the native, replay and device gates below.
+Sync small batches often; after the merge run `seam_budget_check.py --write`.
+
 ## Generate and verify the lock
 
 Run from the final clean candidate checkout. Use a directory **outside** its source
