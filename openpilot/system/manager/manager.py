@@ -17,7 +17,8 @@ from openpilot.system.manager.process import ensure_running
 from openpilot.sunnypilot.hardware.driver_monitoring import latch_driver_monitoring
 from openpilot.sunnypilot.selfdrive.controls.lib.longitudinal_backends.session import end_longitudinal_session
 from openpilot.system.manager.process_config import managed_processes
-from openpilot.system.athena.registration import register, UNREGISTERED_DONGLE_ID
+from openpilot.system.athena.registration import UNREGISTERED_DONGLE_ID
+from openpilot.sunnypilot.system.athena.registration import register
 from openpilot.common.swaglog import cloudlog, add_file_handler
 from openpilot.common.version import get_build_metadata
 from openpilot.common.hardware.hw import Paths
