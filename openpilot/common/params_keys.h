@@ -168,7 +168,6 @@ inline static std::unordered_map<std::string, ParamKeyAttributes> keys = {
     {"MpcTFollowStandard", {PERSISTENT | BACKUP, INT, "145"}},
     {"MpcTFollowAggressive", {PERSISTENT | BACKUP, INT, "125"}},
 
-    {"SpeedLimitOffsetMaxSpeed", {PERSISTENT | BACKUP, INT, "0"}},
 
     // Retained Tesla and longitudinal extensions.
     {"TeslaARS408Radar", {PERSISTENT | BACKUP, INT, "0"}},

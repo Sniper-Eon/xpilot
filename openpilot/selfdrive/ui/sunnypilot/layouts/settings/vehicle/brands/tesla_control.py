@@ -30,7 +30,7 @@ class TeslaControlSettingsLayout(Widget):
     self._planner_settings = TeslaPlannerSettingsLayout(lambda: gui_app.pop_widget())
     self.planner_settings = button_item_sp(
       title=tr("Longitudinal Planner"), button_text=tr("Customize"),
-      description=tr("Select and independently tune Official, Experimental, or TN-NoDEC."),
+      description=tr("Select Official, Experimental, or TN-NoDEC. Experimental and TN-NoDEC can be tuned."),
       callback=lambda: gui_app.push_widget(self._planner_settings),
     )
 

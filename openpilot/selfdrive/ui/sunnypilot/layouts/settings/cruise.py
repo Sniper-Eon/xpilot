@@ -6,8 +6,6 @@ See the LICENSE.md file in the root directory for more details.
 """
 from enum import IntEnum
 
-from openpilot.sunnypilot.selfdrive.controls.lib.longitudinal_backends.registry import BackendId, get_backend
-
 from openpilot.selfdrive.ui.sunnypilot.layouts.settings.cruise_sub_layouts.speed_limit_settings import SpeedLimitSettingsLayout
 from openpilot.selfdrive.ui.ui_state import ui_state
 from openpilot.system.ui.lib.multilang import tr, tr_noop
@@ -84,14 +82,8 @@ class CruiseLayout(Widget):
       callback=lambda: self._set_current_panel(PanelType.SLA)
     )
 
-    self.dec_toggle = toggle_item_sp(
-      title=tr("Experimental: Dynamic Experimental Control"),
-      description=tr("Only the Experimental longitudinal backend uses this setting to select ACC or End to End Longitudinal."),
-      param="DynamicExperimentalControl")
-
     items = [
       self.icbm_toggle,
-      self.dec_toggle,
       self.scc_v_toggle,
       self.scc_m_toggle,
       self.custom_acc_toggle,
@@ -146,18 +138,13 @@ class CruiseLayout(Widget):
 
       if has_long or has_icbm:
         self.custom_acc_toggle.action_item.set_enabled(((has_long and not ui_state.CP.pcmCruise) or has_icbm) and ui_state.is_offroad())
-        backend_param = "LongitudinalPlannerMode" if ui_state.is_offroad() else "ActiveLongitudinalBackend"
-        dec_available = ui_state.CP.brand == "tesla" and get_backend(ui_state.params.get(backend_param, return_default=True)).id == BackendId.EXPERIMENTAL
-        self.dec_toggle.action_item.set_enabled(has_long and dec_available)
         self.scc_v_toggle.action_item.set_enabled(True)
         self.scc_m_toggle.action_item.set_enabled(True)
       else:
         ui_state.params.remove("CustomAccIncrementsEnabled")
-        ui_state.params.remove("DynamicExperimentalControl")
         ui_state.params.remove("SmartCruiseControlVision")
         ui_state.params.remove("SmartCruiseControlMap")
         self.custom_acc_toggle.action_item.set_enabled(False)
-        self.dec_toggle.action_item.set_enabled(False)
         self.scc_v_toggle.action_item.set_enabled(False)
         self.scc_m_toggle.action_item.set_enabled(False)
 

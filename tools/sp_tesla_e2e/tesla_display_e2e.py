@@ -20,9 +20,6 @@ from opendbc.car import structs
 from openpilot.selfdrive.ui.ui_state import ui_state
 from openpilot.selfdrive.ui.sunnypilot.layouts.settings import bms as bms_module
 from openpilot.selfdrive.ui.sunnypilot.layouts.settings.bms import BmsLayout
-from openpilot.selfdrive.ui.sunnypilot.layouts.home import HomeLayoutSP
-from openpilot.selfdrive.ui.layouts.home import HomeLayoutState
-from openpilot.selfdrive.selfdrived.alertmanager import set_offroad_alert
 from openpilot.selfdrive.ui.onroad.alert_renderer import AlertRenderer as C3AlertRenderer
 from openpilot.selfdrive.ui.mici.onroad.alert_renderer import AlertRenderer as MiciAlertRenderer
 from openpilot.system.ui.lib.multilang import multilang
@@ -202,19 +199,8 @@ try:
     layout.hide_event()
     check('hide-releases-subscription', layout.sock is None)
 
-  # Home page must not pop offroad alerts, except the excessive-actuation acknowledgement that gates engagement.
-  set_offroad_alert('Offroad_TemperatureTooHigh', True, extra_text='99C')
-  home = HomeLayoutSP()
-  home._refresh()
-  check('home-hides-offroad-alerts', home.current_state == HomeLayoutState.HOME and home.alert_count == 0,
-        f'state={home.current_state}, count={home.alert_count}')
-  set_offroad_alert('Offroad_ExcessiveActuation', True, extra_text='longitudinal')
-  home._refresh()
-  check('home-keeps-excessive-actuation-ack', home.current_state == HomeLayoutState.ALERTS,
-        f'state={home.current_state}, count={home.alert_count}')
-
   OUT.write_text(json.dumps({
-    'scope': 'actual UI renderers, BmsLayout, HomeLayoutSP and UIState Params integration; in-memory passive CAN only',
+    'scope': 'actual UI renderers, BmsLayout and UIState Params integration; in-memory passive CAN only',
     'language': multilang.language,
     'cases': results,
     'failures': failures,

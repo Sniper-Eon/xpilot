@@ -1,8 +1,13 @@
 """Tesla setting metadata and guarded tuning access shared by native layouts."""
-from openpilot.system.ui.lib.multilang import tr_noop
+from openpilot.system.ui.lib.multilang import tr, tr_noop
 from openpilot.sunnypilot.selfdrive.controls.lib.longitudinal_backends.tuning import (
   apply_backend_profile, backend_values, save_backend_values,
 )
+
+
+def trf(text: str, *args, **kwargs) -> str:
+  return tr(text).format(*args, **kwargs)
+
 
 LABELS = {
  'TeslaCoopSteering': 'Cooperative Steering', 'TeslaTouchLongitudinalSwitch': '4-Finger Longitudinal Switch',

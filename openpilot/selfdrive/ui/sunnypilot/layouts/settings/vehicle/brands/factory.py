@@ -16,7 +16,7 @@ from openpilot.selfdrive.ui.sunnypilot.layouts.settings.vehicle.brands.nissan im
 from openpilot.selfdrive.ui.sunnypilot.layouts.settings.vehicle.brands.psa import PSASettings
 from openpilot.selfdrive.ui.sunnypilot.layouts.settings.vehicle.brands.rivian import RivianSettings
 from openpilot.selfdrive.ui.sunnypilot.layouts.settings.vehicle.brands.subaru import SubaruSettings
-from openpilot.selfdrive.ui.sunnypilot.layouts.settings.vehicle.brands.tesla import TeslaSettings
+from openpilot.selfdrive.ui.sunnypilot.layouts.settings.vehicle.brands.tesla_fork import TeslaSettings
 from openpilot.selfdrive.ui.sunnypilot.layouts.settings.vehicle.brands.toyota import ToyotaSettings
 from openpilot.selfdrive.ui.sunnypilot.layouts.settings.vehicle.brands.volkswagen import VolkswagenSettings
 

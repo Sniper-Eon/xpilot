@@ -25,7 +25,7 @@ def main():
   with OpenpilotPrefix(prefix=os.environ['OPENPILOT_PREFIX']):
     from openpilot.selfdrive.ui.ui_state import ui_state
     from openpilot.selfdrive.ui.sunnypilot.mici.layouts.tesla import TeslaSettingsMici, CHOICES
-    from openpilot.selfdrive.ui.sunnypilot.layouts.settings.vehicle.brands.tesla import TeslaSettings
+    from openpilot.selfdrive.ui.sunnypilot.layouts.settings.vehicle.brands.tesla_fork import TeslaSettings
     from openpilot.selfdrive.ui.sunnypilot.layouts.settings.vehicle.brands.tesla_control import TeslaControlSettingsLayout
     from openpilot.selfdrive.ui.sunnypilot.layouts.settings.vehicle.brands.tesla_planner import TeslaPlannerSettingsLayout
     from openpilot.sunnypilot.selfdrive.controls.lib.longitudinal_backends.registry import tunable_backends

@@ -13,7 +13,7 @@ from openpilot.selfdrive.ui.ui_state import ui_state
 from openpilot.system.ui.lib.application import gui_app
 from openpilot.system.ui.lib.multilang import multilang
 from openpilot.selfdrive.ui.sunnypilot.layouts.home import HomeLayoutSP
-from openpilot.selfdrive.ui.sunnypilot.layouts.settings.vehicle.brands.tesla import TeslaSettings
+from openpilot.selfdrive.ui.sunnypilot.layouts.settings.vehicle.brands.tesla_fork import TeslaSettings
 from openpilot.selfdrive.ui.sunnypilot.layouts.settings.vehicle.brands.tesla_control import TeslaControlSettingsLayout
 from openpilot.selfdrive.ui.sunnypilot.layouts.settings.vehicle.brands.tesla_planner import TeslaPlannerSettingsLayout
 from openpilot.selfdrive.ui.layouts.settings.toggles import TogglesLayout

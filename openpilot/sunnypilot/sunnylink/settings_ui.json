@@ -588,60 +588,6 @@
           "description": "",
           "items": [
             {
-              "key": "DynamicExperimentalControl",
-              "widget": "toggle",
-              "title": "Experimental Backend Dynamic Experimental Control",
-              "description": "Only the Tesla Experimental longitudinal backend uses this setting to select ACC or End to End Longitudinal.",
-              "visibility": [
-                {
-                  "type": "capability",
-                  "field": "brand",
-                  "equals": "tesla"
-                }
-              ],
-              "enablement": [
-                {
-                  "type": "capability",
-                  "field": "has_longitudinal_control",
-                  "equals": true
-                },
-                {
-                  "type": "any",
-                  "conditions": [
-                    {
-                      "type": "all",
-                      "conditions": [
-                        {
-                          "type": "offroad_only"
-                        },
-                        {
-                          "type": "param",
-                          "key": "LongitudinalPlannerMode",
-                          "equals": 1
-                        }
-                      ]
-                    },
-                    {
-                      "type": "all",
-                      "conditions": [
-                        {
-                          "type": "not",
-                          "condition": {
-                            "type": "offroad_only"
-                          }
-                        },
-                        {
-                          "type": "param",
-                          "key": "ActiveLongitudinalBackend",
-                          "equals": 1
-                        }
-                      ]
-                    }
-                  ]
-                }
-              ]
-            },
-            {
               "key": "DisengageOnAccelerator",
               "widget": "toggle",
               "title": "Disengage Cruise on Accelerator Pedal",

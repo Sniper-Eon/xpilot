@@ -42,6 +42,10 @@ class TeslaPlannerSettingsLayout(Widget):
       callback=self._on_profile_changed,
       inline=False,
     )
+    self.dec_toggle = toggle_item_sp(
+      title=tr("Dynamic Experimental Control"), param="DynamicExperimentalControl",
+      description=tr("Experimental planner only: let DEC choose ACC or End to End longitudinal."),
+    )
     self.tn_accel_enabled = toggle_item_sp(
       title=tr(TITLES["AccelPersonalityEnabled"]), param="AccelPersonalityEnabled",
       description=tr("Enable TN's acceleration profile controller."),
@@ -65,7 +69,7 @@ class TeslaPlannerSettingsLayout(Widget):
       ))
 
     self.status = ListItemSP(description_visible=True)
-    self.items = [self.status, self.planner, self.profile, self.tn_accel_enabled, self.tn_accel_profile, *self.options]
+    self.items = [self.status, self.planner, self.profile, self.dec_toggle, self.tn_accel_enabled, self.tn_accel_profile, *self.options]
     self._scroller = Scroller(self.items, line_separator=True, spacing=0)
     self._load_selected_backend()
 
@@ -134,6 +138,7 @@ class TeslaPlannerSettingsLayout(Widget):
     self.status.set_description(self.status_description)
     self.status.show_description(True)
     self.status.set_visible(bool(self.status_description))
+    self.dec_toggle.set_visible(self._backend().id == BackendId.EXPERIMENTAL)
     self.tn_accel_enabled.set_visible(tn)
     self.tn_accel_profile.set_visible(tn and ui_state.params.get_bool("AccelPersonalityEnabled"))
     for option in self.options:
