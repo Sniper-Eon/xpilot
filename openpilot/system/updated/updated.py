@@ -29,12 +29,6 @@ FINALIZED = os.path.join(STAGING_ROOT, "finalized")
 
 OVERLAY_INIT = Path(os.path.join(BASEDIR, ".overlay_init"))
 
-# do not allow to engage after this many hours onroad and this many routes
-HOURS_NO_CONNECTIVITY_MAX = 27
-ROUTES_NO_CONNECTIVITY_MAX = 84
-# send an offroad prompt after this many hours onroad and this many routes
-HOURS_NO_CONNECTIVITY_PROMPT = 23
-ROUTES_NO_CONNECTIVITY_PROMPT = 80
 
 
 class UserRequest:
@@ -313,8 +307,6 @@ class Updater:
     for alert in ("Offroad_UpdateFailed", "Offroad_ConnectivityNeeded", "Offroad_ConnectivityNeededPrompt"):
       set_offroad_alert(alert, False)
 
-    dt_uptime_onroad = (self.params.get("UptimeOnroad", return_default=True) - last_uptime_onroad) / (60*60)
-    dt_route_count = self.params.get("RouteCount", return_default=True) - last_route_count
     build_metadata = get_build_metadata()
     if failed_count > 15 and exception is not None and self.has_internet:
       if build_metadata.tested_channel:
@@ -322,12 +314,6 @@ class Updater:
       else:
         extra_text = exception
       set_offroad_alert("Offroad_UpdateFailed", True, extra_text=extra_text)
-    elif failed_count > 0:
-      if dt_uptime_onroad > HOURS_NO_CONNECTIVITY_MAX and dt_route_count > ROUTES_NO_CONNECTIVITY_MAX:
-        set_offroad_alert("Offroad_ConnectivityNeeded", True)
-      elif dt_uptime_onroad > HOURS_NO_CONNECTIVITY_PROMPT and dt_route_count > ROUTES_NO_CONNECTIVITY_PROMPT:
-        remaining = max(HOURS_NO_CONNECTIVITY_MAX - dt_uptime_onroad, 1)
-        set_offroad_alert("Offroad_ConnectivityNeededPrompt", True, extra_text=f"{remaining} hour{'' if remaining == 1 else 's'}.")
 
   def check_for_update(self) -> None:
     cloudlog.info("checking for updates")
