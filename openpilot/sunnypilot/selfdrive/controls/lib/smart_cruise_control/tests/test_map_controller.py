@@ -4,9 +4,7 @@ Copyright (c) 2021-, Haibin Wen, sunnypilot, and a number of other contributors.
 This file is part of sunnypilot and is licensed under the MIT License.
 See the LICENSE.md file in the root directory for more details.
 """
-import json
 import math
-import platform
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -24,16 +22,13 @@ class TestSmartCruiseControlMap(OpenpilotTestCase):
 
   def setup_method(self):
     self.params = Params()
-    self.mem_params = Params("/dev/shm/params") if platform.system() != "Darwin" else self.params
     self.reset_params()
     self.scc_m = SmartCruiseControlMap()
     self.sm = MagicMock()
-    self.sm.__getitem__.return_value = SimpleNamespace(latitude=0.0, longitude=0.0)
+    self.sm.__getitem__.return_value = SimpleNamespace(latitude=0.0, longitude=0.0, targetVelocities=[])
 
   def reset_params(self):
     self.params.put_bool("SmartCruiseControlMap", True, block=True)
-
-    self.params.put("MapTargetVelocities", "{}", block=True)
 
   def test_initial_state(self):
     assert self.scc_m.state == VisionState.disabled
@@ -65,8 +60,8 @@ class TestSmartCruiseControlMap(OpenpilotTestCase):
     # making max_d ~11x too small so the moderate-curve branch never tripped.
     # v_ego=25, a_ego=0, tv=24: fixed max_d≈45m vs buggy ≈4m at a 40m waypoint.
     waypoint_lon_deg = (40.0 / R) * (180.0 / math.pi)
-    self.mem_params.put("MapTargetVelocities",
-                        json.dumps([{"latitude": 0.0, "longitude": waypoint_lon_deg, "velocity": 24.0}]), block=True)
+    self.sm.__getitem__.return_value = SimpleNamespace(latitude=0.0, longitude=0.0, targetVelocities=[
+      SimpleNamespace(latitude=0.0, longitude=waypoint_lon_deg, velocity=24.0)])
 
     self.scc_m.update(self.sm, True, False, 25.0, 0.0, 30.0)
 

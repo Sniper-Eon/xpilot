@@ -550,6 +550,15 @@ struct LiveMapDataSP @0xf416ec09499d9d19 {
   speedLimitAhead @3 :Float32;
   speedLimitAheadDistance @4 :Float32;
   roadName @5 :Text;
+  # Map interface: any provider (OSM mapd, phone, other device) publishes this one message.
+  targetVelocities @6 :List(TargetVelocity);  # curve speeds ahead along the route
+  source @7 :Text;  # provider name, e.g. "osm"
+
+  struct TargetVelocity {
+    latitude @0 :Float64;
+    longitude @1 :Float64;
+    velocity @2 :Float32;  # m/s
+  }
 }
 
 struct ModelDataV2SP @0xa1680744031fdb2d {

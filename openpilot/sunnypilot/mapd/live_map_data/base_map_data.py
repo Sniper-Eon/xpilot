@@ -16,6 +16,8 @@ MAX_SPEED_LIMIT = V_CRUISE_UNSET * CV.KPH_TO_MS
 
 
 class BaseMapData(ABC):
+  SOURCE = ""
+
   def __init__(self):
     self.params = Params()
 
@@ -42,6 +44,10 @@ class BaseMapData(ABC):
   def get_current_road_name(self) -> str:
     pass
 
+  def get_target_velocities(self) -> list[dict]:
+    """Curve speeds ahead as [{"latitude", "longitude", "velocity" (m/s)}]; empty if the provider has none."""
+    return []
+
   def publish(self) -> None:
     speed_limit = self.get_current_speed_limit()
     next_speed_limit, next_speed_limit_distance = self.get_next_speed_limit_and_distance()
@@ -56,6 +62,11 @@ class BaseMapData(ABC):
     live_map_data.speedLimitAhead = next_speed_limit
     live_map_data.speedLimitAheadDistance = next_speed_limit_distance
     live_map_data.roadName = self.get_current_road_name()
+    live_map_data.source = self.SOURCE
+    velocities = self.get_target_velocities()
+    targets = live_map_data.init('targetVelocities', len(velocities))
+    for target, v in zip(targets, velocities, strict=True):
+      target.latitude, target.longitude, target.velocity = float(v["latitude"]), float(v["longitude"]), float(v["velocity"])
 
     self.pm.send('liveMapDataSP', mapd_sp_send)
 

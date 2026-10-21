@@ -1,6 +1,4 @@
-import json
 import math
-import platform
 
 import openpilot.cereal.messaging as messaging
 from openpilot.cereal import custom
@@ -28,19 +26,6 @@ TARGET_OFFSET = 1.0  # seconds - This controls how soon before the curve you rea
                      # done to keep the distance calculations consistent but results in the offset actually being less
                      # time than specified depending on how much of a speed differential there is between v_ego and the
                      # target velocity.
-
-
-def velocities_from_param(param: str, params: Params):
-  if params is None:
-    params = Params()
-
-  json_str = params.get(param)
-  if json_str is None:
-    return None
-
-  velocities = json.loads(json_str)
-
-  return velocities
 
 
 def calculate_accel(t, target_jerk, a_ego):
@@ -74,7 +59,6 @@ class SmartCruiseControlMap:
 
   def __init__(self):
     self.params = Params()
-    self.mem_params = Params("/dev/shm/params") if platform.system() != "Darwin" else self.params
     self.enabled = self.params.get_bool("SmartCruiseControlMap")
     self.long_enabled = False
     self.long_override = False
@@ -88,7 +72,7 @@ class SmartCruiseControlMap:
 
     self.gps_location_service = get_gps_location_service(self.params)
     self.last_position = Coordinate(0.0, 0.0)
-    self.target_velocities = velocities_from_param("MapTargetVelocities", self.mem_params) or []
+    self.target_velocities: list[dict] = []
 
   def get_v_target_from_control(self) -> float:
     if self.is_active:
@@ -109,7 +93,9 @@ class SmartCruiseControlMap:
     lat = self.last_position.latitude
     lon = self.last_position.longitude
 
-    self.target_velocities = velocities_from_param("MapTargetVelocities", self.mem_params) or []
+    map_data = sm['liveMapDataSP']
+    self.target_velocities = [{"latitude": t.latitude, "longitude": t.longitude, "velocity": t.velocity}
+                              for t in map_data.targetVelocities] if sm.alive['liveMapDataSP'] else []
 
     if self.last_position is None or self.target_velocities is None:
       return

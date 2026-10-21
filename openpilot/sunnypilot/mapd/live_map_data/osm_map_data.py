@@ -15,6 +15,8 @@ from openpilot.sunnypilot.navd.helpers import Coordinate
 
 
 class OsmMapData(BaseMapData):
+  SOURCE = "osm"
+
   def __init__(self):
     super().__init__()
     self.mem_params = Params("/dev/shm/params") if platform.system() != "Darwin" else self.params
@@ -62,3 +64,9 @@ class OsmMapData(BaseMapData):
       next_speed_limit_distance = (self.last_position or Coordinate(0, 0)).distance_to(next_speed_limit_coordinates)
 
     return next_speed_limit, next_speed_limit_distance
+
+  def get_target_velocities(self) -> list[dict]:
+    try:
+      return json.loads(self.mem_params.get("MapTargetVelocities") or "[]")
+    except (TypeError, ValueError):
+      return []
