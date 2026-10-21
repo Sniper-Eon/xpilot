@@ -56,7 +56,6 @@ PROCS = {
   "openpilot.selfdrive.modeld.dmonitoringmodeld": 18.0,
   "openpilot.system.hardware.hardwared": 4.0,
   "openpilot.selfdrive.locationd.calibrationd": 2.0,
-  "openpilot.selfdrive.locationd.torqued": 5.0,
   "openpilot.selfdrive.locationd.locationd": 25.0,
   "openpilot.selfdrive.locationd.paramsd": 9.0,
   "openpilot.selfdrive.locationd.lagd": 11.0,

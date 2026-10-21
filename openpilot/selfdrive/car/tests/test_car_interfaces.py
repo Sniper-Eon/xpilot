@@ -15,8 +15,6 @@ from opendbc.car.mock.values import CAR as MOCK
 from opendbc.car.values import PLATFORMS
 from openpilot.selfdrive.car.helpers import convert_carControlSP
 from openpilot.selfdrive.controls.lib.latcontrol_angle import LatControlAngle
-from openpilot.selfdrive.controls.lib.latcontrol_pid import LatControlPID
-from openpilot.selfdrive.controls.lib.latcontrol_torque import LatControlTorque
 from openpilot.selfdrive.controls.lib.longcontrol import LongControl
 
 from openpilot.sunnypilot.selfdrive.car import interfaces as sunnypilot_interfaces
@@ -76,9 +74,4 @@ class TestCarInterfaces(OpenpilotTestCase):
 
     # Test controller initialization
     LongControl(car_params, car_params_sp)
-    if car_params.steerControlType == CarParams.SteerControlType.angle:
-      LatControlAngle(car_params, car_params_sp, car_interface, DT_CTRL)
-    elif car_params.lateralTuning.which() == 'pid':
-      LatControlPID(car_params, car_params_sp, car_interface, DT_CTRL)
-    elif car_params.lateralTuning.which() == 'torque':
-      LatControlTorque(car_params, car_params_sp, car_interface, DT_CTRL)
+    LatControlAngle(car_params, car_params_sp, car_interface, DT_CTRL)

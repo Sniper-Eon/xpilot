@@ -30,7 +30,6 @@ from openpilot.sunnypilot.hardware.driver_monitoring import driver_monitoring_en
 from openpilot.sunnypilot.mads.mads import ModularAssistiveDrivingSystem
 from openpilot.sunnypilot import get_sanitize_int_param
 from openpilot.sunnypilot.selfdrive.car.car_specific import CarSpecificEventsSP
-from openpilot.sunnypilot.selfdrive.car.intelligent_cruise_button_management.controller import IntelligentCruiseButtonManagement
 from openpilot.sunnypilot.selfdrive.car.tesla.control_runtime import TeslaControlRuntime
 from openpilot.sunnypilot.selfdrive.selfdrived.button_state_tracker import ButtonStateTracker
 from openpilot.sunnypilot.selfdrive.selfdrived.events import EventsSP
@@ -116,7 +115,7 @@ class SelfdriveD:
       ignore += ['narrowRoadCameraState', 'wideRoadCameraState']
     self.sm = messaging.SubMaster(['deviceState', 'pandaStates', 'peripheralState', 'modelV2', 'extrinsicsCalibration',
                                    'carOutput', 'driverMonitoringState', 'longitudinalPlan', 'deviceMotion', 'lateralDelay',
-                                   'managerState', 'vehicleParameters', 'radarState', 'lateralTorqueParameters',
+                                   'managerState', 'vehicleParameters', 'radarState',
                                    'controlsState', 'carControl', 'driverAssistance', 'alertDebug', 'userBookmark',
                                    'lateralManeuverPlan', 'modelDataV2SP', 'longitudinalPlanSP'] + \
                                    self.camera_packets + self.sensor_packets + self.gps_packets,
@@ -185,7 +184,6 @@ class SelfdriveD:
     self.events_sp_prev = []
 
     self.mads = ModularAssistiveDrivingSystem(self)
-    self.icbm = IntelligentCruiseButtonManagement(self.CP, self.CP_SP)
 
     self.car_events_sp = CarSpecificEventsSP(self.CP, self.CP_SP)
 
@@ -530,7 +528,6 @@ class SelfdriveD:
         self.params.put('LongitudinalPersonality', self.personality)
         self.events.add(EventName.personalityChanged)
 
-    self.icbm.run(CS, self.sm['carControl'], self.sm['longitudinalPlanSP'], self.is_metric)
 
   def data_sample(self):
     _car_state = messaging.recv_one(self.car_state_sock)
@@ -642,11 +639,6 @@ class SelfdriveD:
     mads.enabled = self.mads.enabled
     mads.active = self.mads.active
     mads.available = self.mads.enabled_toggle
-
-    icbm = ss_sp.intelligentCruiseButtonManagement
-    icbm.state = self.icbm.state
-    icbm.sendButton = self.icbm.cruise_button
-    icbm.vTarget = self.icbm.v_target
 
     self.button_state_tracker.publish(ss_sp)
 

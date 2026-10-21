@@ -543,15 +543,6 @@ CONFIGS = [
     ignore=["logMonoTime"],
   ),
   ProcessConfig(
-    proc_name="torqued",
-    pubs=["deviceMotion", "extrinsicsCalibration", "lateralDelay", "carState", "carControl", "carOutput"],
-    subs=["lateralTorqueParameters"],
-    ignore=["logMonoTime"],
-    init_callback=get_car_params_callback,
-    should_recv_callback=MessageBasedRcvCallback("deviceMotion", True),
-    tolerance=NUMPY_TOLERANCE,
-  ),
-  ProcessConfig(
     proc_name="modeld",
     pubs=["deviceState", "narrowRoadCameraState", "wideRoadCameraState", "extrinsicsCalibration", "lateralDelay",
           "driverMonitoringState", "carState", "carControl", "controlsState"],

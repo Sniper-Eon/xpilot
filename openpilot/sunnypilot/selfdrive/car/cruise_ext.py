@@ -11,7 +11,6 @@ from opendbc.car.structs import car
 from opendbc.car import structs
 from openpilot.common.constants import CV
 from openpilot.common.params import Params
-from openpilot.sunnypilot.selfdrive.car.intelligent_cruise_button_management.helpers import get_minimum_set_speed
 from openpilot.sunnypilot.selfdrive.controls.lib.speed_limit.speed_limit_assist import ACTIVE_STATES as SLA_ACTIVE_STATES
 from openpilot.sunnypilot.selfdrive.controls.lib.speed_limit.helpers import compare_cluster_target
 
@@ -38,6 +37,10 @@ def update_manual_button_timers(CS: car.CarState, button_timers: dict[car.CarSta
       # Start/end timer and store current state on change of button pressed
       button_timers[b.type.raw] = 1 if b.pressed else 0
 
+
+
+def get_minimum_set_speed(is_metric: bool) -> int:
+  return 30 if is_metric else 20
 
 class VCruiseHelperSP:
   def __init__(self, CP: structs.CarParams, CP_SP: structs.CarParamsSP) -> None:

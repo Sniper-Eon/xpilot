@@ -13,7 +13,7 @@ from openpilot.common.utils import tabulate
 
 from opendbc.car.structs import car
 from openpilot.common.filter_simple import FirstOrderFilter
-from openpilot.selfdrive.controls.lib.latcontrol_torque import LP_FILTER_CUTOFF_HZ
+LP_FILTER_CUTOFF_HZ = 1.2  # was latcontrol_torque.LP_FILTER_CUTOFF_HZ
 from openpilot.tools.lib.logreader import LogReader
 from openpilot.common.hardware.hw import Paths
 from openpilot.common.constants import CV
