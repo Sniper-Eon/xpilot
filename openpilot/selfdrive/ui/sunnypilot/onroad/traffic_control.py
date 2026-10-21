@@ -5,7 +5,6 @@ from dataclasses import dataclass
 import pyray as rl
 
 from openpilot.selfdrive.ui.ui_state import ui_state
-from openpilot.selfdrive.ui.onroad.hud_renderer import UI_CONFIG
 from openpilot.sunnypilot.selfdrive.traffic_control.controller import TrafficControlPhase
 from openpilot.system.ui.lib.application import gui_app
 from openpilot.system.ui.widgets import Widget
@@ -30,7 +29,7 @@ def traffic_card_rect(rect: rl.Rectangle, compact: bool = False) -> rl.Rectangle
     return rl.Rectangle(rect.x + 8, rect.y + 60, 32, 64)
   return rl.Rectangle(
     rect.x + 46.0,
-    rect.y + UI_CONFIG.header_height + TRAFFIC_CARD_TOP_OFFSET,
+    rect.y + 300 + TRAFFIC_CARD_TOP_OFFSET,  # 300: former tici header height
     TRAFFIC_CARD_WIDTH,
     TRAFFIC_CARD_HEIGHT,
   )

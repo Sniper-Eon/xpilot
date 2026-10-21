@@ -11,7 +11,6 @@ import pyray as rl
 
 from openpilot.cereal import custom
 from openpilot.common.constants import CV
-from openpilot.selfdrive.ui.onroad.hud_renderer import UI_CONFIG
 from openpilot.selfdrive.ui.ui_state import ui_state
 from openpilot.sunnypilot.selfdrive.controls.lib.speed_limit.common import Mode as SpeedLimitMode
 from openpilot.common.hardware import HARDWARE
@@ -182,11 +181,11 @@ class SpeedLimitRenderer(Widget, SpeedLimitAlertRenderer):
     rl.draw_text_ex(font, text, rl.Vector2(pos_center.x - sz.x / 2, pos_center.y - sz.y / 2), size, 0, color)
 
   def _render(self, rect: rl.Rectangle):
-    width = UI_CONFIG.set_speed_width_metric if ui_state.is_metric else UI_CONFIG.set_speed_width_imperial
+    width = (200 if ui_state.is_metric else 172)  # tici set-speed box widths
     x = rect.x + 60 + width + 30 - 6
     y = rect.y + 45 - 6
 
-    sign_rect = rl.Rectangle(x, y, width, UI_CONFIG.set_speed_height + 6 * 2)
+    sign_rect = rl.Rectangle(x, y, width, 204 + 6 * 2)
 
     alpha = self._pre_active_fade.alpha
 

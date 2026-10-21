@@ -57,10 +57,7 @@ def run_replay(variant: LayoutVariant) -> None:
   gui_app.init_window("ui diff test", fps=FPS)
 
   # Dynamically import main layout based on variant
-  if variant == "mici":
-    from openpilot.selfdrive.ui.mici.layouts.main import MiciMainLayout as MainLayout
-  else:
-    from openpilot.selfdrive.ui.layouts.main import MainLayout
+  from openpilot.selfdrive.ui.mici.layouts.main import MiciMainLayout as MainLayout
   main_layout = MainLayout()
 
   # Disable interactive timeout — replay clicks use left_down=False so they never reset the timer,

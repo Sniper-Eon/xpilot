@@ -2,12 +2,33 @@ import math
 import pyray as rl
 from collections.abc import Callable
 
-from openpilot.selfdrive.ui.layouts.settings.initial_cruise_speed import get_speed_options, set_initial_cruise_speed
 from openpilot.selfdrive.ui.mici.widgets.button import BigButton, LABEL_COLOR
 from openpilot.selfdrive.ui.mici.widgets.dialog import BigDialogBase
 from openpilot.selfdrive.ui.ui_state import ui_state
 from openpilot.system.ui.lib.application import gui_app, FontWeight, TextAlignment, FONT_SCALE
 from openpilot.system.ui.lib.multilang import tr
+from openpilot.common.constants import CV
+from openpilot.selfdrive.car.cruise import V_CRUISE_INITIAL, V_CRUISE_MAX
+
+SPEED_STEP = 5
+
+
+def _speed_conversion() -> float:
+  return 1 if ui_state.is_metric else CV.KPH_TO_MPH
+
+
+def get_speed_options() -> tuple[list[int], int]:
+  """Initial cruise speeds in display units, and the index of the nearest to the saved one"""
+  conversion = _speed_conversion()
+  options = list(range(round(V_CRUISE_INITIAL * conversion), round(V_CRUISE_MAX * conversion) + 1, SPEED_STEP))
+  idx = round((ui_state.initial_cruise_speed * conversion - options[0]) / SPEED_STEP)
+  return options, max(0, min(len(options) - 1, idx))
+
+
+def set_initial_cruise_speed(speed: int) -> None:
+  """Save an initial cruise speed in display units"""
+  ui_state.params.put("InitialCruiseSpeedKph", round(speed / _speed_conversion()), block=True)
+  ui_state.update_params()
 from openpilot.system.ui.lib.scroll_panel2 import AUTO_SCROLL_TC, GuiScrollPanel2, ScrollState
 from openpilot.system.ui.lib.text_measure import measure_text_cached
 from openpilot.system.ui.widgets import Widget

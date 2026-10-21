@@ -287,10 +287,7 @@ def clip(route: Route, output: str, start: int, end: int, headless: bool = True,
   timer, duration = Timer(), end - start
 
   import pyray as rl
-  if big:
-    from openpilot.selfdrive.ui.onroad.augmented_road_view import AugmentedRoadView
-  else:
-    from openpilot.selfdrive.ui.mici.onroad.augmented_road_view import AugmentedRoadView
+  from openpilot.selfdrive.ui.mici.onroad.augmented_road_view import AugmentedRoadView
   from openpilot.selfdrive.ui.ui_state import ui_state
   from openpilot.system.ui.lib.application import gui_app, FontWeight
   timer.lap("import")

@@ -28,7 +28,6 @@ KNOWN_LEAKS = {
   "openpilot.system.ui.widgets.keyboard.Keyboard",
   "openpilot.system.ui.widgets.slider.BigSlider",
   "openpilot.selfdrive.ui.mici.widgets.dialog.BigInputDialog",
-  "openpilot.system.ui.widgets.option_dialog.MultiOptionDialog",
 }
 
 
@@ -56,12 +55,7 @@ class TestWidgetLeaks(OpenpilotTestCase):
     from openpilot.selfdrive.ui.mici.widgets.dialog import BigDialog, BigConfirmationDialog, BigInputDialog
     from openpilot.selfdrive.ui.mici.layouts.settings.device.device_layout import MiciFccModal
 
-    # tici dialogs
-    from openpilot.selfdrive.ui.onroad.cabin_camera_dialog import CabinCameraDialog as TiciCabinCameraDialog
-    from openpilot.selfdrive.ui.layouts.onboarding import OnboardingWindow as TiciOnboardingWindow
-    from openpilot.selfdrive.ui.widgets.pairing_dialog import PairingDialog as TiciPairingDialog
     from openpilot.system.ui.widgets.confirm_dialog import ConfirmDialog
-    from openpilot.system.ui.widgets.option_dialog import MultiOptionDialog
     from openpilot.system.ui.widgets.html_render import HtmlModal
     from openpilot.system.ui.widgets.keyboard import Keyboard
 
@@ -78,10 +72,8 @@ class TestWidgetLeaks(OpenpilotTestCase):
       lambda: BigConfirmationDialog("test", gui_app.texture("icons_mici/settings/network/new/trash.png", 54, 64), lambda: None),
       lambda: BigInputDialog("test"),
       lambda: MiciFccModal(text="test"),
-      # tici
-      TiciCabinCameraDialog, TiciOnboardingWindow, TiciPairingDialog, Keyboard,
+      Keyboard,
       lambda: ConfirmDialog("test", "ok"),
-      lambda: MultiOptionDialog("test", ["a", "b"]),
       lambda: HtmlModal(text="test"),
     ):
       widget = ctor()
