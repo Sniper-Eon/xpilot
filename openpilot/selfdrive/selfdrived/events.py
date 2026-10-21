@@ -201,10 +201,6 @@ def invalid_lkas_setting_alert(CP: car.CarParams, CS: car.CarState, sm: messagin
   text = "Toggle stock LKAS on or off to engage"
   if CP.brand == "tesla":
     text = "Switch to Traffic-Aware Cruise Control to engage"
-  elif CP.brand == "mazda":
-    text = "Enable your car's LKAS to engage"
-  elif CP.brand == "nissan":
-    text = "Disable your car's stock LKAS to engage"
   return NormalPermanentAlert("Invalid LKAS setting", text)
 
 

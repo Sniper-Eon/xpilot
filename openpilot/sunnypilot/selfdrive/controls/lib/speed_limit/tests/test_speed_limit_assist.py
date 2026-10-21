@@ -11,10 +11,8 @@ from openpilot.common.parameterized import parameterized
 
 from openpilot.cereal import custom
 from opendbc.car.car_helpers import interfaces
-from opendbc.car.rivian.values import CAR as RIVIAN
 from opendbc.car.structs import car
 from opendbc.car.tesla.values import CAR as TESLA
-from opendbc.car.toyota.values import CAR as TOYOTA
 from openpilot.common.constants import CV
 from openpilot.common.params import Params
 from openpilot.common.realtime import DT_MDL
@@ -43,7 +41,7 @@ SPEED_LIMITS = {
   'freeway': 80 * CV.MPH_TO_MS,      # 80 mph
 }
 
-DEFAULT_CAR = TOYOTA.TOYOTA_RAV4_TSS2
+DEFAULT_CAR = TESLA.TESLA_MODEL_Y
 
 
 class TestSpeedLimitAssist(OpenpilotTestCase):
@@ -102,12 +100,11 @@ class TestSpeedLimitAssist(OpenpilotTestCase):
     assert not self.sla.is_active
     assert V_CRUISE_UNSET == self.sla.get_v_target_from_control()
 
-  @parameterized.expand([RIVIAN.RIVIAN_R1, TESLA.TESLA_MODEL_Y], names=["car_name"])
+  @parameterized.expand([TESLA.TESLA_MODEL_Y], names=["car_name"])
   def test_disallowed_brands(self, car_name):
     """
       Speed Limit Assist is disabled for the following brands and conditions:
-      - All Tesla and is a release branch;
-      - All Rivian
+      - All Tesla and is a release branch
     """
     self.car_name = car_name
     self.openpilot_setup_method()  # rebuild the platform for this brand

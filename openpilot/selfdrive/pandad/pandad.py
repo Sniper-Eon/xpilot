@@ -12,7 +12,6 @@ from openpilot.common.params import Params
 from openpilot.common.hardware import HARDWARE
 from openpilot.common.swaglog import cloudlog
 
-from openpilot.sunnypilot.selfdrive.pandad.rivian_long_flasher import flash_rivian_long
 from openpilot.sunnypilot.hardware.panda import InternalPanda
 from openpilot.sunnypilot.hardware.panda_startup import PandaStartup, PandaStartupResult
 
@@ -127,8 +126,6 @@ def main() -> None:
 
       panda_serials = Panda.list()
       if len(panda_serials):
-        # custom flasher for xnor's Rivian Longitudinal Upgrade Kit
-        flash_rivian_long(panda_serials)
         # find the internal supported panda (e.g. skip external Black Panda)
         panda_serials = check_panda_support(panda_serials)
 

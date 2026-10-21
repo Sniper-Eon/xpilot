@@ -90,8 +90,6 @@ AlertCallbackType = Callable[[car.CarParams, car.CarState, messaging.SubMaster, 
 
 def wrong_car_mode_alert(CP: car.CarParams, CS: car.CarState, sm: messaging.SubMaster, metric: bool, soft_disable_time: int, personality) -> Alert:
   text = "Enable Adaptive Cruise to Engage"
-  if CP.brand == "honda":
-    text = "Enable Main Switch to Engage"
   return NoEntryAlert(text)
 
 

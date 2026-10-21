@@ -5,7 +5,7 @@ import random
 from openpilot.cereal import log
 from opendbc.car.structs import car
 import openpilot.cereal.messaging as messaging
-from opendbc.car.honda.interface import CarInterface
+from opendbc.car.tesla.interface import CarInterface
 from openpilot.common.realtime import DT_CTRL
 from openpilot.selfdrive.selfdrived.events import ET, Events
 from openpilot.selfdrive.selfdrived.alertmanager import AlertManager
@@ -53,7 +53,7 @@ def cycle_alerts(duration=200, is_metric=False):
   cameras = ['narrowRoadCameraState', 'wideRoadCameraState', 'cabinCameraState']
 
   CS = car.CarState.new_message()
-  CP = CarInterface.get_non_essential_params("HONDA_CIVIC")
+  CP = CarInterface.get_non_essential_params("TESLA_MODEL_3")
   sm = messaging.SubMaster(['deviceState', 'pandaStates', 'narrowRoadCameraState', 'modelV2', 'extrinsicsCalibration',
                             'driverMonitoringState', 'longitudinalPlan', 'deviceMotion',
                             'managerState'] + cameras)

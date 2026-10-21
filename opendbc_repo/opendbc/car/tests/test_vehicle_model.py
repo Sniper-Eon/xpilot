@@ -3,14 +3,14 @@ import math
 
 import numpy as np
 
-from opendbc.car.honda.interface import CarInterface
-from opendbc.car.honda.values import CAR
+from opendbc.car.tesla.interface import CarInterface
+from opendbc.car.tesla.values import CAR
 from opendbc.car.vehicle_model import VehicleModel, dyn_ss_sol, create_dyn_state_matrices
 
 
 class TestVehicleModel(unittest.TestCase):
   def setUp(self):
-    CP = CarInterface.get_non_essential_params(CAR.HONDA_CIVIC)
+    CP = CarInterface.get_non_essential_params(CAR.TESLA_MODEL_3)
     self.VM = VehicleModel(CP)
 
   def test_round_trip_yaw_rate(self):

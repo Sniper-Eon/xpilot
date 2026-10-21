@@ -16,13 +16,10 @@ from opendbc.car import DT_CTRL, gen_empty_fingerprint, structs
 from opendbc.car.can_definitions import CanData
 from opendbc.car.car_helpers import FRAME_FINGERPRINT, interfaces
 from opendbc.car.fingerprints import MIGRATION
-from opendbc.car.honda.values import CAR as HONDA, HondaFlags
 from opendbc.car.logreader import LogReader
 from opendbc.car.structs import car
 from opendbc.car.tests.routes import CarTestRoute, non_tested_cars, routes
-from opendbc.car.toyota.values import ToyotaFlags
 from opendbc.car.values import PLATFORMS, Platform
-from opendbc.car.volkswagen.values import VolkswagenFlags
 from opendbc.safety.tests.libsafety import libsafety_py
 from opendbc.testing import fuzzy_test
 
@@ -33,9 +30,6 @@ SteerControlType = structs.CarParams.SteerControlType
 # panda safety stores angle_meas in brand-specific CAN units (angle_deg_to_can in opendbc/safety/modes/*.h).
 ANGLE_DEG_TO_CAN = {
   "tesla": -10,
-  "toyota": 17.452007,
-  "nissan": 100,
-  "psa": 10,
 }
 
 NUM_JOBS = int(os.environ.get("NUM_JOBS", "1"))
@@ -298,13 +292,8 @@ class TestCarModelBase(unittest.TestCase):
       self.skipTest("no need to check panda safety for dashcamOnly")
     if self.CP.notCar:
       self.skipTest("skipping test for notCar")
-    if self.CP.flags & ToyotaFlags.SECOC:
-      self.skipTest("SecOC transmit tests require the vehicle key")
 
     controller_params = self.CP
-    if self.CP.brand == "volkswagen" and self.CP.flags & VolkswagenFlags.MLB and self.CP.openpilotLongitudinalControl:
-      # Some archived MLB routes record alpha longitudinal, which current MLB safety does not support.
-      controller_params = self.CarInterface.get_params(self.platform, self.fingerprint, self.CP.carFw, False, False, docs=False)
 
     CC_SP = structs.CarControlSP()
 
@@ -351,7 +340,6 @@ class TestCarModelBase(unittest.TestCase):
       prev_panda_vehicle_speed_min = self.safety.get_vehicle_speed_min()
       prev_panda_vehicle_speed_max = self.safety.get_vehicle_speed_max()
       prev_panda_cruise_engaged = self.safety.get_cruise_engaged_prev()
-      prev_panda_acc_main_on = self.safety.get_acc_main_on()
 
       packet = libsafety_py.make_CANPacket(address, bus, dat)
       self.safety.safety_rx_hook(packet)
@@ -364,12 +352,7 @@ class TestCarModelBase(unittest.TestCase):
       if self.safety.get_gas_pressed_prev() != prev_panda_gas:
         self.assertEqual(CS.gasPressed, self.safety.get_gas_pressed_prev())
       if self.safety.get_brake_pressed_prev() != prev_panda_brake:
-        # TODO: remove this exception once this mismatch is resolved
-        brake_pressed = CS.brakePressed
-        if CS.brakePressed and not self.safety.get_brake_pressed_prev():
-          if self.CP.carFingerprint in (HONDA.HONDA_PILOT, HONDA.HONDA_RIDGELINE) and CS.deprecated.brake > 0.05:
-            brake_pressed = False
-        self.assertEqual(brake_pressed, self.safety.get_brake_pressed_prev())
+        self.assertEqual(CS.brakePressed, self.safety.get_brake_pressed_prev())
       if self.safety.get_regen_braking_prev() != prev_panda_regen_braking:
         self.assertEqual(CS.regenBraking, self.safety.get_regen_braking_prev())
       if self.safety.get_steering_disengage_prev() != prev_panda_steering_disengage:
@@ -385,11 +368,8 @@ class TestCarModelBase(unittest.TestCase):
         self.assertFalse(v_ego_raw > self.safety.get_vehicle_speed_max() + 1e-3 or
                          v_ego_raw < self.safety.get_vehicle_speed_min() - 1e-3)
 
-      if not (self.CP.brand == "honda" and not (self.CP.flags & HondaFlags.BOSCH)):
-        if self.safety.get_cruise_engaged_prev() != prev_panda_cruise_engaged:
-          self.assertEqual(CS.cruiseState.enabled, self.safety.get_cruise_engaged_prev())
-      if self.CP.brand == "honda" and self.safety.get_acc_main_on() != prev_panda_acc_main_on:
-        self.assertEqual(CS.cruiseState.available, self.safety.get_acc_main_on())
+      if self.safety.get_cruise_engaged_prev() != prev_panda_cruise_engaged:
+        self.assertEqual(CS.cruiseState.enabled, self.safety.get_cruise_engaged_prev())
 
   def test_panda_safety_carstate(self):
     if self.CP.dashcamOnly:
@@ -429,26 +409,17 @@ class TestCarModelBase(unittest.TestCase):
         checks["vEgoRaw"] += (v_ego_raw > self.safety.get_vehicle_speed_max() + 1e-3 or
                               v_ego_raw < self.safety.get_vehicle_speed_min() - 1e-3)
 
-      if self.CP.steerControlType == SteerControlType.angle and not self.CP.notCar and self.CP.brand not in ("ford", "volkswagen"):
+      if self.CP.steerControlType == SteerControlType.angle and not self.CP.notCar:
         angle_can = (CS.steeringAngleDeg + CS.steeringAngleOffsetDeg) * ANGLE_DEG_TO_CAN[self.CP.brand]
         checks["steeringAngleDeg"] += (angle_can > self.safety.get_angle_meas_max() + 1 or
                                        angle_can < self.safety.get_angle_meas_min() - 1)
 
-      # TODO: remove this exception once this mismatch is resolved
-      brake_pressed = CS.brakePressed
-      if CS.brakePressed and not self.safety.get_brake_pressed_prev():
-        if self.CP.carFingerprint in (HONDA.HONDA_PILOT, HONDA.HONDA_RIDGELINE) and CS.deprecated.brake > 0.05:
-          brake_pressed = False
-      checks["brakePressed"] += brake_pressed != self.safety.get_brake_pressed_prev()
+      checks["brakePressed"] += CS.brakePressed != self.safety.get_brake_pressed_prev()
       checks["regenBraking"] += CS.regenBraking != self.safety.get_regen_braking_prev()
       checks["steeringDisengage"] += CS.steeringDisengage != self.safety.get_steering_disengage_prev()
 
       if self.CP.pcmCruise:
-        if self.CP.brand == "honda" and not (self.CP.flags & HondaFlags.BOSCH):
-          if CS.cruiseState.enabled and not CS_prev.cruiseState.enabled:
-            checks["controlsAllowed"] += not self.safety.get_controls_allowed()
-        else:
-          checks["controlsAllowed"] += not CS.cruiseState.enabled and self.safety.get_controls_allowed()
+        checks["controlsAllowed"] += not CS.cruiseState.enabled and self.safety.get_controls_allowed()
         if not self.CP.notCar:
           checks["cruiseState"] += CS.cruiseState.enabled != self.safety.get_cruise_engaged_prev()
       else:
@@ -459,8 +430,6 @@ class TestCarModelBase(unittest.TestCase):
         if button_enable and not mismatch:
           self.safety.set_controls_allowed(False)
 
-      if self.CP.brand == "honda":
-        checks["mainOn"] += CS.cruiseState.available != self.safety.get_acc_main_on()
       CS_prev = CS
 
     failed_checks = {key: value for key, value in checks.items() if value > 0}

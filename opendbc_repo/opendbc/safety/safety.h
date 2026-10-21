@@ -8,29 +8,8 @@
 
 // all the safety modes
 #include "opendbc/safety/modes/defaults.h"
-#include "opendbc/safety/modes/honda.h"
-#include "opendbc/safety/modes/toyota.h"
 #include "opendbc/safety/modes/tesla.h"
-#include "opendbc/safety/modes/gm.h"
-#include "opendbc/safety/modes/ford.h"
-#include "opendbc/safety/modes/hyundai.h"
-#include "opendbc/safety/modes/chrysler.h"
-#include "opendbc/safety/modes/chrysler_cusw.h"
-#include "opendbc/safety/modes/rivian.h"
-#include "opendbc/safety/modes/mg.h"
-#include "opendbc/safety/modes/subaru.h"
-#include "opendbc/safety/modes/subaru_preglobal.h"
-#include "opendbc/safety/modes/mazda.h"
-#include "opendbc/safety/modes/nissan.h"
-#include "opendbc/safety/modes/volkswagen_mlb.h"
-#include "opendbc/safety/modes/volkswagen_mqb.h"
-#include "opendbc/safety/modes/volkswagen_meb.h"
-#include "opendbc/safety/modes/volkswagen_pq.h"
 #include "opendbc/safety/modes/elm327.h"
-#include "opendbc/safety/modes/body.h"
-#include "opendbc/safety/modes/psa.h"
-#include "opendbc/safety/modes/byd.h"
-#include "opendbc/safety/modes/hyundai_canfd.h"
 
 uint32_t GET_BYTES_LE(const CANPacket_t *msg, int start, int len) {
   uint32_t ret = 0U;
@@ -403,33 +382,10 @@ static void reset_sample(struct sample_t *sample) {
 int set_safety_hooks(uint16_t mode, uint16_t param) {
   const safety_hook_config safety_hook_registry[] = {
     {SAFETY_SILENT, &nooutput_hooks},
-    {SAFETY_HONDA_NIDEC, &honda_nidec_hooks},
-    {SAFETY_TOYOTA, &toyota_hooks},
     {SAFETY_ELM327, &elm327_hooks},
-    {SAFETY_GM, &gm_hooks},
-    {SAFETY_HONDA_BOSCH, &honda_bosch_hooks},
-    {SAFETY_HYUNDAI, &hyundai_hooks},
-    {SAFETY_CHRYSLER, &chrysler_hooks},
-    {SAFETY_SUBARU, &subaru_hooks},
-    {SAFETY_VOLKSWAGEN_MQB, &volkswagen_mqb_hooks},
-    {SAFETY_VOLKSWAGEN_MEB, &volkswagen_meb_hooks},
-    {SAFETY_NISSAN, &nissan_hooks},
     {SAFETY_NOOUTPUT, &nooutput_hooks},
-    {SAFETY_HYUNDAI_LEGACY, &hyundai_legacy_hooks},
-    {SAFETY_MAZDA, &mazda_hooks},
-    {SAFETY_BODY, &body_hooks},
-    {SAFETY_FORD, &ford_hooks},
-    {SAFETY_RIVIAN, &rivian_hooks},
     {SAFETY_TESLA, &tesla_hooks},
-    {SAFETY_HYUNDAI_CANFD, &hyundai_canfd_hooks},
 #ifdef ALLOW_DEBUG
-    {SAFETY_MG, &mg_hooks},
-    {SAFETY_CHRYSLER_CUSW, &chrysler_cusw_hooks},
-    {SAFETY_PSA, &psa_hooks},
-    {SAFETY_BYD, &byd_hooks},
-    {SAFETY_SUBARU_PREGLOBAL, &subaru_preglobal_hooks},
-    {SAFETY_VOLKSWAGEN_MLB, &volkswagen_mlb_hooks},
-    {SAFETY_VOLKSWAGEN_PQ, &volkswagen_pq_hooks},
     {SAFETY_ALLOUTPUT, &alloutput_hooks},
 #endif
   };

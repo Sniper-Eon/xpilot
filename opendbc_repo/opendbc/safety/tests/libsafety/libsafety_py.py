@@ -65,8 +65,6 @@ class CANPacket:
 ffi.cdef("""
 int get_alternative_experience(void);
 int get_desired_angle_last(void);
-void set_honda_bosch_long(bool c);
-int get_honda_hw(void);
 void set_ignition_can(bool c);
 uint32_t get_acc_main_on_mismatches(void);
 int get_temp_debug(void);

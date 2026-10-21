@@ -140,27 +140,6 @@ class Car:
       safety_config.safetyModel = structs.CarParams.SafetyModel.noOutput
       self.CP.safetyConfigs = [safety_config]
 
-    if self.CP.secOcRequired:
-      # Copy user key if available
-      try:
-        with open("/cache/params/SecOCKey") as f:
-          user_key = f.readline().strip()
-          if len(user_key) == 32:
-            self.params.put("SecOCKey", user_key, block=True)
-      except Exception:
-        pass
-
-      secoc_key = self.params.get("SecOCKey")
-      if secoc_key is not None:
-        saved_secoc_key = bytes.fromhex(secoc_key.strip())
-        if len(saved_secoc_key) == 16:
-          self.CP.secOcKeyAvailable = True
-          self.CI.CS.secoc_key = saved_secoc_key
-          if controller_available:
-            self.CI.CC.secoc_key = saved_secoc_key
-        else:
-          cloudlog.warning("Saved SecOC key is invalid")
-
     # Write previous route's CarParams
     prev_cp = self.params.get("CarParamsPersistent")
     if prev_cp is not None:

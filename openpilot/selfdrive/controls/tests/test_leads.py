@@ -1,7 +1,7 @@
 from openpilot.common.test import OpenpilotTestCase
 import openpilot.cereal.messaging as messaging
 
-from opendbc.car.toyota.values import CAR as TOYOTA
+from opendbc.car.tesla.values import CAR as TESLA
 from openpilot.selfdrive.test.process_replay import replay_process_with_name
 
 
@@ -25,7 +25,7 @@ class TestLeads(OpenpilotTestCase):
       return msgs
 
     msgs = [m for _ in range(3) for m in single_iter_pkg()]
-    out = replay_process_with_name("card", msgs, fingerprint=TOYOTA.TOYOTA_COROLLA_TSS2)
+    out = replay_process_with_name("card", msgs, fingerprint=TESLA.TESLA_MODEL_3)
     states = [m for m in out if m.which() == "radarTracks"]
     failures = [not state.valid for state in states]
 

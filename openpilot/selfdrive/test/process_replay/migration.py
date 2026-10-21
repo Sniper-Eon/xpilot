@@ -10,10 +10,6 @@ import argparse
 from openpilot.cereal import messaging, log
 from opendbc.car.structs import car
 from opendbc.car.fingerprints import MIGRATION
-from opendbc.car.toyota.values import EPS_SCALE, ToyotaSafetyFlags
-from opendbc.car.ford.values import CAR as FORD, FordFlags, FordSafetyFlags
-from opendbc.car.hyundai.values import HyundaiSafetyFlags
-from opendbc.car.gm.values import GMSafetyFlags
 from openpilot.selfdrive.modeld.constants import ModelConstants
 from openpilot.selfdrive.modeld.fill_model_msg import fill_xyz_poly, fill_lane_line_meta
 from openpilot.selfdrive.test.process_replay.vision_meta import meta_from_encode_index
@@ -309,15 +305,7 @@ def migrate_carOutput(msgs):
 @migration(inputs=["pandaStates", "pandaStateDEPRECATED", "carParams"])
 def migrate_pandaStates(msgs):
   # TODO: safety param migration should be handled automatically
-  safety_param_migration = {
-    "TOYOTA_PRIUS": EPS_SCALE["TOYOTA_PRIUS"] | ToyotaSafetyFlags.STOCK_LONGITUDINAL,
-    "TOYOTA_RAV4": EPS_SCALE["TOYOTA_RAV4"] | ToyotaSafetyFlags.ALT_BRAKE,
-    "KIA_EV6": HyundaiSafetyFlags.EV_GAS | HyundaiSafetyFlags.CANFD_LKA_STEER_MSG,
-    "CHEVROLET_VOLT": GMSafetyFlags.EV,
-    "CHEVROLET_BOLT_EUV": GMSafetyFlags.EV | GMSafetyFlags.HW_CAM,
-  }
-  # TODO: get new Ford route
-  safety_param_migration |= dict.fromkeys({p for p in FORD if not (p.config.flags & FordFlags.CANFD)}, FordSafetyFlags.LONG_CONTROL)
+  safety_param_migration: dict = {}
 
   # Migrate safety param base on carParams
   CP = next((m.carParams for _, m in msgs if m.which() == 'carParams'), None)

@@ -4,7 +4,7 @@ from openpilot.common.parameterized import parameterized
 from openpilot.common.fuzzy import capnp_random_dict, fuzzy_test
 
 from openpilot.cereal import log
-from opendbc.car.toyota.values import CAR as TOYOTA
+from opendbc.car.tesla.values import CAR as TESLA
 import openpilot.selfdrive.test.process_replay.process_replay as pr
 
 # These processes currently fail because of unrealistic data breaking assumptions
@@ -25,4 +25,4 @@ class TestFuzzProcesses(OpenpilotTestCase):
       msg["logMonoTime"] = i * 1_000_000_000
     lr = [log.Event.new_message(**m).as_reader() for m in msgs]
     cfg.timeout = 5
-    pr.replay_process(cfg, lr, fingerprint=TOYOTA.TOYOTA_COROLLA_TSS2, disable_progress=True)
+    pr.replay_process(cfg, lr, fingerprint=TESLA.TESLA_MODEL_3, disable_progress=True)

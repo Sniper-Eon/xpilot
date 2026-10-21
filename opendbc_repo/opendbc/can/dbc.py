@@ -7,20 +7,7 @@ from functools import cache
 from opendbc import DBC_PATH, get_generated_dbcs
 
 # TODO: these should just be passed in along with the DBC file
-from opendbc.car.honda.hondacan import honda_checksum
-from opendbc.car.toyota.toyotacan import toyota_checksum
-from opendbc.car.subaru.subarucan import subaru_checksum
-from opendbc.car.chrysler.chryslercan import chrysler_checksum, fca_giorgio_checksum
-from opendbc.car.hyundai.hyundaicanfd import hkg_can_fd_checksum
-from opendbc.car.volkswagen.mlbcan import volkswagen_mlb_checksum
-from opendbc.car.volkswagen.mqbcan import volkswagen_meb_alt_crc_checksum, volkswagen_mqb_meb_checksum, xor_checksum
 from opendbc.car.tesla.teslacan import tesla_checksum
-from opendbc.car.body.bodycan import body_checksum
-from opendbc.car.byd.bydcan import byd_checksum
-from opendbc.car.psa.psacan import psa_checksum
-from opendbc.car.rivian.riviancan import rivian_checksum
-from opendbc.car.ford.fordcan import FORD_CHECKSUM_FIELDS, ford_checksum
-from opendbc.car.mg.mgcan import mg_checksum
 
 
 class SignalType:
@@ -202,11 +189,6 @@ def tesla_setup_signal(sig: Signal, dbc_name: str, line_num: int) -> None:
     sig.calc_checksum = tesla_checksum
 
 
-def ford_setup_signal(sig: Signal, dbc_name: str, line_num: int) -> None:
-  if sig.name in ("VehVActlBrk_No_Cnt", "VehVActlEng_No_Cnt", "VehRollYaw_No_Cnt"):
-    sig.type = SignalType.COUNTER
-
-
 @dataclass
 class ChecksumState:
   checksum_type: int
@@ -217,42 +199,8 @@ class ChecksumState:
 
 
 def get_checksum_state(dbc_name: str) -> ChecksumState | None:
-  if dbc_name.startswith(("honda_", "acura_")):
-    return ChecksumState(SignalType.HONDA_CHECKSUM, honda_checksum)
-  elif dbc_name.startswith(("toyota_", "lexus_")):
-    return ChecksumState(SignalType.TOYOTA_CHECKSUM, toyota_checksum)
-  elif dbc_name.startswith("hyundai_canfd_generated"):
-    return ChecksumState(SignalType.HKG_CAN_FD_CHECKSUM, hkg_can_fd_checksum)
-  elif dbc_name.startswith("vw_meb_2024"):
-    return ChecksumState(SignalType.VOLKSWAGEN_MQB_MEB_CHECKSUM, volkswagen_meb_alt_crc_checksum)
-  elif dbc_name.startswith(("vw_mqb", "vw_mqbevo", "vw_meb")):
-    return ChecksumState(SignalType.VOLKSWAGEN_MQB_MEB_CHECKSUM, volkswagen_mqb_meb_checksum)
-  elif dbc_name.startswith("vw_mlb"):
-    return ChecksumState(SignalType.VOLKSWAGEN_MLB_CHECKSUM, volkswagen_mlb_checksum)
-  elif dbc_name.startswith("vw_pq"):
-    return ChecksumState(SignalType.XOR_CHECKSUM, xor_checksum)
-  elif dbc_name.startswith("subaru_global_"):
-    return ChecksumState(SignalType.SUBARU_CHECKSUM, subaru_checksum)
-  elif dbc_name.startswith("chrysler_"):
-    return ChecksumState(SignalType.CHRYSLER_CHECKSUM, chrysler_checksum)
-  elif dbc_name.startswith("fca_giorgio"):
-    return ChecksumState(SignalType.FCA_GIORGIO_CHECKSUM, fca_giorgio_checksum)
-  elif dbc_name.startswith("comma_body"):
-    return ChecksumState(SignalType.BODY_CHECKSUM, body_checksum)
-  elif dbc_name.startswith("tesla_model3_party"):
+  if dbc_name.startswith("tesla_model3_party"):
     return ChecksumState(SignalType.TESLA_CHECKSUM, tesla_checksum, tesla_setup_signal)
-  elif dbc_name.startswith("psa_"):
-    return ChecksumState(SignalType.PSA_CHECKSUM, psa_checksum)
-  elif dbc_name.startswith("byd_"):
-    return ChecksumState(SignalType.BYD_CHECKSUM, byd_checksum)
-  elif dbc_name == "ford_lincoln_base_pt":
-    # Other _Cs fields are optional or use model-specific checksum algorithms.
-    return ChecksumState(SignalType.FORD_CHECKSUM, ford_checksum, ford_setup_signal, checksum_pattern=r"_Cs$",
-                         checksum_fields=FORD_CHECKSUM_FIELDS)
-  elif dbc_name == "mg":
-    return ChecksumState(SignalType.MG_CHECKSUM, mg_checksum, checksum_pattern=r"Chksm|^ChLKARespToqPVHSC2$")
-  elif dbc_name == "rivian_primary_actuator":
-    return ChecksumState(SignalType.RIVIAN_CHECKSUM, rivian_checksum, checksum_pattern=r"_Checksum$")
   return None
 
 
