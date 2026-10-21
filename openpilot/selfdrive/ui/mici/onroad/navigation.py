@@ -1,16 +1,29 @@
+import time
 import numpy as np
 import pyray as rl
 
 from msgq.visionipc import VisionIpcClient
 from openpilot.cereal.visionipc import VisionStreamType
 from openpilot.common.constants import CV
-from openpilot.selfdrive.navigation.helpers import latest_gps_source
-from openpilot.selfdrive.navigation.renderer import EGO, ROUTE_INTENSITY, SIZE
 from openpilot.selfdrive.ui.mici.onroad.cameraview import CONNECTION_RETRY_INTERVAL
 from openpilot.selfdrive.ui.ui_state import ui_state
 from openpilot.system.ui.lib.application import FontWeight, TextAlignmentVertical
 from openpilot.system.ui.widgets import Widget
 from openpilot.system.ui.widgets.label import UnifiedLabel, gui_label
+
+# Navigation interface: any provider publishes navInstruction and a SIZE x SIZE gray map on the
+# VisionIPC "mapsd" VISION_STREAM_MAP stream (route pixels at ROUTE_INTENSITY, ego at EGO).
+SIZE = 256
+EGO = np.array([SIZE / 2, SIZE / 2 + 64.0])
+ROUTE_INTENSITY = 128
+
+
+def latest_gps_source(sm) -> str | None:
+  """The service with the freshest usable GPS fix, or None."""
+  now = time.monotonic()
+  sources = [s for s in ('gpsLocation', 'gpsLocationExternal')
+             if sm.valid[s] and sm[s].hasFix and 0 <= now - sm.recv_time[s] < 2]
+  return max(sources, key=lambda s: sm.logMonoTime[s]) if sources else None
 
 PANEL_WIDTH = 261
 STALE_SECONDS = 3
