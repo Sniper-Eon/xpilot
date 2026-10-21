@@ -17,18 +17,18 @@ from openpilot.cereal import custom, log, messaging
 from openpilot.common.gps import get_gps_location_service
 from openpilot.common.params import Params, ParamKeyFlag
 from openpilot.common.prefix import OpenpilotPrefix
-from openpilot.sunnypilot.selfdrive.controls.lib.longitudinal_backends.factory import create_longitudinal_planner
-from openpilot.sunnypilot.selfdrive.controls.lib.longitudinal_backends.longcontrol_factory import create_long_control
-from openpilot.sunnypilot.selfdrive.controls.lib.longitudinal_backends.session import latch_active_backend
-from openpilot.sunnypilot.selfdrive.controls.lib.longitudinal_backends.tuning import (
+from openpilot.tesla.long.factory import create_longitudinal_planner
+from openpilot.tesla.long.longcontrol_factory import create_long_control
+from openpilot.tesla.long.session import latch_active_backend
+from openpilot.tesla.long.tuning import (
   apply_backend_profile, save_backend_values, DEFAULT_VALUES,
 )
-from openpilot.sunnypilot.selfdrive.controls.lib.longitudinal_backends.registry import get_backend
-from openpilot.sunnypilot.selfdrive.traffic_control.controller import TrafficControlPhase
-from openpilot.sunnypilot.selfdrive.traffic_control.final_plan_arbitrator import FinalPlanArbitrator
+from openpilot.tesla.long.registry import get_backend
+from openpilot.tesla.traffic.controller import TrafficControlPhase
+from openpilot.tesla.traffic.final_plan_arbitrator import FinalPlanArbitrator
 from openpilot.tools.lib.logreader import LogReader
 
-FIXTURE = Path('openpilot/sunnypilot/selfdrive/controls/tests/fixtures/tesla_legacy_planner_warm.rlog.zst')
+FIXTURE = Path('openpilot/tesla/long/tests/fixtures/tesla_legacy_planner_warm.rlog.zst')
 
 
 class Inputs:
@@ -425,8 +425,8 @@ def main():
       result['baseline_sha256'] = hashlib.sha256(args.baseline.read_bytes()).hexdigest()
       result['differences'] = [k for k, v in result['replay'].items() if v != baseline['replay'][k]]
       result['passed'] = not result['differences']
-  backend_root = Path('openpilot/sunnypilot/selfdrive/controls/lib/longitudinal_backends')
-  paths = [Path(__file__), Path('openpilot/sunnypilot/selfdrive/traffic_control/final_plan_arbitrator.py'),
+  backend_root = Path('openpilot/tesla/long')
+  paths = [Path(__file__), Path('openpilot/tesla/traffic/final_plan_arbitrator.py'),
            Path('openpilot/selfdrive/controls/lib/longitudinal_planner.py'),
            Path('openpilot/selfdrive/controls/lib/longitudinal_mpc_lib/long_mpc.py'), *sorted(backend_root.rglob('*.py'))]
   paths.append(Path('openpilot/system/manager/manager.py'))

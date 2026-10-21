@@ -24,7 +24,7 @@ def apply_fork_processes(procs: list, only_onroad) -> list:
   _gate(by_name["micd"], lambda params: has_microphone())
   _gate(by_name["soundd"], lambda params: has_audio_output())
   return procs + [
-    PythonProcess("trafficcontrold", "openpilot.sunnypilot.selfdrive.traffic_control.trafficcontrold", only_onroad),
+    PythonProcess("trafficcontrold", "openpilot.tesla.traffic.trafficcontrold", only_onroad),
     PythonProcess("alert_output", "openpilot.sunnypilot.system.alert_output",
                   lambda started, params, CP: not PC and get_hardware_profile() == HardwareProfile.C3XL),
   ]

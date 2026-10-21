@@ -6,8 +6,8 @@ from openpilot.common.params import Params
 from openpilot.common.realtime import Priority, config_realtime_process
 from openpilot.common.swaglog import cloudlog
 from openpilot.selfdrive.controls.lib.ldw import LaneDepartureWarning
-from openpilot.sunnypilot.selfdrive.controls.lib.longitudinal_backends import create_longitudinal_planner
-from openpilot.sunnypilot.selfdrive.traffic_control.final_plan_arbitrator import (
+from openpilot.tesla.long import create_longitudinal_planner
+from openpilot.tesla.traffic.final_plan_arbitrator import (
   create_final_plan_arbitrator,
 )
 import openpilot.cereal.messaging as messaging

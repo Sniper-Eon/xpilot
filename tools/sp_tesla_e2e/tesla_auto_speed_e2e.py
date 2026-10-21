@@ -23,7 +23,7 @@ from opendbc.car import structs
 from opendbc.car.tesla.interface import CarInterface
 from opendbc.car.tesla.values import CAR
 from opendbc.sunnypilot.car.tesla.values import TeslaFlagsSP, TeslaSafetyFlagsSP
-from openpilot.sunnypilot.selfdrive.car.tesla.card_adapter import TeslaCardAdapter
+from openpilot.tesla.car.card_adapter import TeslaCardAdapter
 
 ROOT = Path(__file__).resolve().parents[2]
 IDLE_WHEEL = bytes([1, 0, 0, 0, 0, 0, 0, 0])
@@ -86,9 +86,9 @@ def official_sla_untouched():
                          "openpilot/sunnypilot/selfdrive/controls/lib/speed_limit/__init__.py",
                          "openpilot/sunnypilot/selfdrive/controls/lib/speed_limit/speed_limit_assist.py"], cwd=ROOT).returncode == 0
   events = (ROOT / "openpilot/sunnypilot/selfdrive/selfdrived/events.py").read_text()
-  adapter = (ROOT / "openpilot/sunnypilot/selfdrive/car/tesla/card_adapter.py").read_text()
+  adapter = (ROOT / "openpilot/tesla/car/card_adapter.py").read_text()
   return (same and "resolve_pcm_long_required_max" not in events and "SpeedLimitMode" not in adapter and
-          not (ROOT / "openpilot/sunnypilot/selfdrive/car/tesla/speed_limit_policy.py").exists())
+          not (ROOT / "openpilot/tesla/car/speed_limit_policy.py").exists())
 
 
 def main():
@@ -107,7 +107,7 @@ def main():
                                                 limit=5, set_speed=30) == (30, [])
   results["6_official_sla_untouched"] = official_sla_untouched()
 
-  files = ["openpilot/sunnypilot/selfdrive/car/tesla/card_adapter.py", "opendbc_repo/opendbc/sunnypilot/car/tesla/carstate_ext.py",
+  files = ["openpilot/tesla/car/card_adapter.py", "opendbc_repo/opendbc/sunnypilot/car/tesla/carstate_ext.py",
            "opendbc_repo/opendbc/sunnypilot/car/tesla/speed_limit_controller.py"]
   print(json.dumps({
     "commit": subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True, text=True).stdout.strip(),

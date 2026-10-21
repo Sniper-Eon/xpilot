@@ -30,7 +30,7 @@ from openpilot.sunnypilot.hardware.driver_monitoring import driver_monitoring_en
 from openpilot.sunnypilot.mads.mads import ModularAssistiveDrivingSystem
 from openpilot.sunnypilot import get_sanitize_int_param
 from openpilot.sunnypilot.selfdrive.car.car_specific import CarSpecificEventsSP
-from openpilot.sunnypilot.selfdrive.car.tesla.control_runtime import TeslaControlRuntime
+from openpilot.tesla.car.control_runtime import TeslaControlRuntime
 from openpilot.sunnypilot.selfdrive.selfdrived.button_state_tracker import ButtonStateTracker
 from openpilot.sunnypilot.selfdrive.selfdrived.events import EventsSP
 

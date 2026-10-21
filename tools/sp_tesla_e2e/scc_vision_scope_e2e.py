@@ -25,7 +25,7 @@ import types
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 VISION = "openpilot/sunnypilot/selfdrive/controls/lib/smart_cruise_control/vision_controller.py"
-TESLA = "openpilot/sunnypilot/selfdrive/car/tesla/scc_vision.py"
+TESLA = "openpilot/tesla/car/scc_vision.py"
 PLANNER = "openpilot/sunnypilot/selfdrive/controls/lib/longitudinal_planner.py"
 VISION_MODULE = "openpilot.sunnypilot.selfdrive.controls.lib.smart_cruise_control.vision_controller"
 

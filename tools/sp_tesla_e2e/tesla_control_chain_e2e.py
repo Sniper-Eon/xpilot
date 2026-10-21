@@ -24,8 +24,8 @@ from opendbc.safety.tests.libsafety import libsafety_py
 from openpilot.cereal import messaging
 from openpilot.common.params import Params
 from openpilot.selfdrive.selfdrived.events import Events
-from openpilot.sunnypilot.selfdrive.car.tesla.card_adapter import TeslaCardAdapter
-from openpilot.sunnypilot.selfdrive.car.tesla.control_runtime import EventName, TeslaControlRuntime
+from openpilot.tesla.car.card_adapter import TeslaCardAdapter
+from openpilot.tesla.car.control_runtime import EventName, TeslaControlRuntime
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -294,7 +294,7 @@ def main():
     except Exception as error:
       cases.append({"case": name, "passed": False, "error": repr(error), "traceback": traceback.format_exc()})
   sources = [Path(__file__), ROOT / "docs/sp-tesla-migration/TESLA_CONTROL_FIXES.md", ROOT / "opendbc_repo/opendbc/safety/modes/tesla.h"]
-  for directory in ("opendbc_repo/opendbc/car/tesla", "opendbc_repo/opendbc/sunnypilot/car/tesla", "openpilot/sunnypilot/selfdrive/car/tesla"):
+  for directory in ("opendbc_repo/opendbc/car/tesla", "opendbc_repo/opendbc/sunnypilot/car/tesla", "openpilot/tesla/car"):
     sources.extend(sorted((ROOT / directory).rglob("*.py")))
   result = {
     "passed": all(row["passed"] for row in cases), "scope": "offline synthetic CAN, actual CI/CS/controller/adapter and compiled safety; no physical CAN",

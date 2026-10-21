@@ -9,7 +9,7 @@ from opendbc.car.structs import CarParams, CarParamsSP, CarState, CarControl
 from opendbc.sunnypilot.car.tesla.values import TeslaSafetyFlagsSP
 from opendbc.safety.tests.libsafety import libsafety_py
 from opendbc.can import CANPacker
-from openpilot.sunnypilot.selfdrive.car.tesla.card_adapter import TeslaCardAdapter
+from openpilot.tesla.car.card_adapter import TeslaCardAdapter
 
 TEMPLATE=bytes.fromhex("0cffd5aa00f801")
 

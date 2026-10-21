@@ -43,11 +43,11 @@ except Exception:
   sys.modules["opendbc.can"] = types.SimpleNamespace(CANParser=object)
   STUBS.append("opendbc.can")
 
-from openpilot.sunnypilot.selfdrive.traffic_control.controller import (  # noqa: E402
+from openpilot.tesla.traffic.controller import (  # noqa: E402
   TeslaTrafficControlController, TrafficControlConfig, TrafficControlMode, TrafficControlPhase as P,
 )
-from openpilot.sunnypilot.selfdrive.traffic_control.stop_profile import StopProfileGenerator  # noqa: E402
-from openpilot.sunnypilot.selfdrive.traffic_control.tesla_observer import TeslaTrafficControlObservation  # noqa: E402
+from openpilot.tesla.traffic.stop_profile import StopProfileGenerator  # noqa: E402
+from openpilot.tesla.traffic.tesla_observer import TeslaTrafficControlObservation  # noqa: E402
 
 # final_plan_arbitrator.py constants (Standard personality, Tesla default delay).
 MAX_TRAFFIC_STOP_BRAKE = 3.0
@@ -204,7 +204,7 @@ def main():
   parser = argparse.ArgumentParser()
   parser.add_argument("--out", default="/tmp/sp_traffic_override_e2e.json")
   args = parser.parse_args()
-  controller_path = ROOT / "openpilot/sunnypilot/selfdrive/traffic_control/controller.py"
+  controller_path = ROOT / "openpilot/tesla/traffic/controller.py"
   results, ok = [], True
   for sc in SCENARIOS:
     for offset in (0.0, 0.125, 0.25, 0.375):

@@ -25,7 +25,7 @@ from openpilot.selfdrive.car.helpers import convert_carControlSP, convert_to_cap
 
 from openpilot.sunnypilot.mads.helpers import set_alternative_experience, set_car_specific_params
 from openpilot.sunnypilot.selfdrive.car import interfaces as sunnypilot_interfaces
-from openpilot.sunnypilot.selfdrive.car.tesla.card_adapter import CONTEXT_SERVICES, TeslaCardAdapter
+from openpilot.tesla.car.card_adapter import CONTEXT_SERVICES, TeslaCardAdapter
 
 REPLAY = "REPLAY" in os.environ
 

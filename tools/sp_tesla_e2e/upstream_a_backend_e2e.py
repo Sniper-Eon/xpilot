@@ -15,8 +15,8 @@ import traceback
 from openpilot.cereal import custom
 from openpilot.common.params import Params
 from openpilot.common.prefix import OpenpilotPrefix
-from openpilot.sunnypilot.selfdrive.controls.lib.longitudinal_backends.factory import create_longitudinal_planner
-from openpilot.sunnypilot.selfdrive.controls.lib.longitudinal_backends.longcontrol_factory import create_long_control
+from openpilot.tesla.long.factory import create_longitudinal_planner
+from openpilot.tesla.long.longcontrol_factory import create_long_control
 from openpilot.tools.lib.logreader import LogReader
 from tools.sp_tesla_e2e.tesla_planner_chain_e2e import FIXTURE, Inputs, Published
 
@@ -117,7 +117,7 @@ def cruise_case(route, backend, enabled, experimental, stage):
   from openpilot.selfdrive.car.card import Car
   from openpilot.selfdrive.car.cruise import VCruiseHelper
   from openpilot.selfdrive.pandad import can_list_to_can_capnp
-  from openpilot.sunnypilot.selfdrive.car.tesla.card_adapter import TeslaCardAdapter
+  from openpilot.tesla.car.card_adapter import TeslaCardAdapter
   from tools.sp_tesla_e2e.tesla_control_chain_e2e import make_ci, sample
 
   with OpenpilotPrefix():
@@ -182,9 +182,9 @@ def main():
             'command': sys.argv, 'cases': [], 'cruise_cases': [], 'passed': False}
   paths = [Path(__file__), Path('openpilot/selfdrive/controls/lib/longitudinal_planner.py'),
            Path('openpilot/sunnypilot/selfdrive/controls/lib/longitudinal_planner.py'),
-           Path('openpilot/cereal/custom.capnp'), Path('openpilot/sunnypilot/selfdrive/controls/lib/dec/dec.py'),
+           Path('openpilot/cereal/custom.capnp'), Path('openpilot/tesla/long/dec/dec.py'),
            Path('openpilot/selfdrive/car/card.py'), Path('openpilot/selfdrive/car/cruise.py')]
-  paths.extend(sorted(Path('openpilot/sunnypilot/selfdrive/controls/lib/longitudinal_backends').rglob('*.py')))
+  paths.extend(sorted(Path('openpilot/tesla/long').rglob('*.py')))
   result['source_sha256'] = {str(p.resolve().relative_to(root)) if p.resolve().is_relative_to(root) else str(p.resolve()):
                            hashlib.sha256(p.read_bytes()).hexdigest() for p in paths}
   try:

@@ -2,7 +2,7 @@
 import time
 
 from openpilot.cereal import messaging
-from openpilot.sunnypilot.selfdrive.car.tesla.bms import BmsState, FRAME_LENGTHS
+from openpilot.tesla.car.bms import BmsState, FRAME_LENGTHS
 from openpilot.tesla.ui.grid import SlotSpec
 from openpilot.tesla.ui.slot import Slot
 

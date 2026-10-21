@@ -15,8 +15,8 @@ from openpilot.common.hardware import HARDWARE
 from openpilot.selfdrive.ui.ui_state import ui_state
 from openpilot.system.ui.lib.application import gui_app
 from openpilot.system.ui.lib.multilang import multilang
-from openpilot.selfdrive.ui.sunnypilot.onroad.traffic_control import TrafficControlRenderer, traffic_card_rect
-from openpilot.selfdrive.ui.sunnypilot.mici.layouts.tesla import TeslaSettingsMici
+from openpilot.tesla.ui.traffic_overlay import TrafficControlRenderer, traffic_card_rect
+from openpilot.tesla.ui.settings_page import TeslaSettingsMici
 from openpilot.selfdrive.ui.mici.layouts.settings.toggles import TogglesLayoutMici
 from openpilot.system.ui.widgets.scroller import NavScroller
 
@@ -69,7 +69,7 @@ for index,_ in enumerate(gui_app.render()):
     assert target.x < 536 and target.x + target.width > 0
     rl.rl_draw_render_batch_active()
     rl.take_screenshot(str(out/'cooperative-steering.png'))
-    settings._tuning_page(__import__('openpilot.sunnypilot.selfdrive.controls.lib.longitudinal_backends.registry',fromlist=['ordered_backends']).ordered_backends()[2])
+    settings._tuning_page(__import__('openpilot.tesla.long.registry',fromlist=['ordered_backends']).ordered_backends()[2])
     gui_app._nav_stack[-1]._scroller.scroll_to(1688,smooth=False)
   if index==94:
     rl.rl_draw_render_batch_active()

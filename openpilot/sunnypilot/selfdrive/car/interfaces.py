@@ -11,7 +11,7 @@ from opendbc.car.interfaces import CarInterfaceBase
 from openpilot.common.params import Params
 from openpilot.common.swaglog import cloudlog
 from openpilot.sunnypilot.selfdrive.controls.lib.speed_limit.helpers import set_speed_limit_assist_availability
-from openpilot.sunnypilot.selfdrive.car.tesla.control_profile import initialization_snapshot as tesla_initialization_snapshot
+from openpilot.tesla.car.control_profile import initialization_snapshot as tesla_initialization_snapshot
 
 
 
