@@ -41,8 +41,12 @@ def top_names(path: Path) -> set[str] | None:
   """Top-level names of a module; None means `import *` makes it permissive."""
   if path not in _names:
     names: set[str] | None = set()
-    if path.is_file() and path.suffix == ".py":
-      for node in ast.parse(path.read_text(errors="replace")).body:
+    try:
+      body = ast.parse(path.read_text(errors="replace")).body if path.is_file() and path.suffix == ".py" else None
+    except SyntaxError:
+      body = None  # reported by check_file
+    if body is not None:
+      for node in body:
         for n in ast.walk(node) if isinstance(node, (ast.If, ast.Try, ast.With)) else [node]:
           if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
             names.add(n.name)
