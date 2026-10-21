@@ -13,7 +13,6 @@ from openpilot.common.hardware import PC
 from openpilot.common.hardware.hw import Paths
 from openpilot.common.swaglog import cloudlog
 from openpilot.common.version import get_build_metadata
-from openpilot.system.athena.registration import is_registered_device
 
 MAX_SIZE = 1_000_000 * 100  # allow up to 100M
 MAX_TOMBSTONE_FN_LEN = 62  # 85 - 23 ("<dongle id>/crash/")
@@ -133,7 +132,7 @@ def report_tombstone_apport(fn):
 def main() -> NoReturn:
   build_metadata = get_build_metadata()
   comma_remote = build_metadata.openpilot.comma_remote and "commaai" in build_metadata.openpilot.git_origin
-  should_report = comma_remote and is_registered_device() and not PC
+  should_report = False  # no crash reporting backend
 
   # Clear apport folder on start, otherwise duplicate crashes won't register
   clear_apport_folder()

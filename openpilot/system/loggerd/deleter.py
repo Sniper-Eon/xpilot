@@ -7,8 +7,18 @@ from pathlib import Path
 from openpilot.common.hardware.hw import Paths
 from openpilot.common.swaglog import cloudlog
 from openpilot.system.loggerd.config import get_available_bytes, get_available_percent
-from openpilot.system.loggerd.uploader import listdir_by_creation
 from openpilot.system.loggerd.xattr_cache import getxattr
+
+
+def listdir_by_creation(d: str) -> list[str]:
+  if not os.path.isdir(d):
+    return []
+  try:
+    return sorted((f for f in os.listdir(d) if os.path.isdir(os.path.join(d, f))),
+                  key=lambda f: [s.rjust(10, '0') for s in f.rsplit('--', 1)])
+  except OSError:
+    cloudlog.exception("listdir_by_creation failed")
+    return []
 
 MIN_BYTES = 5 * 1024 * 1024 * 1024
 MIN_PERCENT = 10

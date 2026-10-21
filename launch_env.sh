@@ -32,4 +32,4 @@ if [ "$profile_value" = "c3xl" ]; then
 fi
 
 SP_SOURCE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-export PYTHONPATH="$SP_SOURCE_ROOT:$SP_SOURCE_ROOT/opendbc_repo:$SP_SOURCE_ROOT/msgq_repo:$SP_SOURCE_ROOT/tinygrad_repo:$SP_SOURCE_ROOT/rednose_repo:$SP_SOURCE_ROOT/teleoprtc_repo${PYTHONPATH:+:$PYTHONPATH}"
+export PYTHONPATH="$SP_SOURCE_ROOT:$SP_SOURCE_ROOT/opendbc_repo:$SP_SOURCE_ROOT/msgq_repo:$SP_SOURCE_ROOT/tinygrad_repo:$SP_SOURCE_ROOT/rednose_repo${PYTHONPATH:+:$PYTHONPATH}"

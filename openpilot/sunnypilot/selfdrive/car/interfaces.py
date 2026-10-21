@@ -15,7 +15,6 @@ from openpilot.sunnypilot.selfdrive.controls.lib.speed_limit.helpers import set_
 from openpilot.sunnypilot.selfdrive.car.tesla.control_profile import initialization_snapshot as tesla_initialization_snapshot
 
 
-from openpilot.sunnypilot.sunnylink.statsd import STATSLOGSP
 
 
 def _enforce_torque_lateral_control(CP: structs.CarParams, params: Params | None = None, enabled: bool = False) -> bool:
@@ -97,11 +96,6 @@ def setup_interfaces(CI: CarInterfaceBase, params: Params | None = None) -> None
   _initialize_torque_lateral_control(CI, CI.CP, enforce_torque, nnlc_enabled)
   _cleanup_unsupported_params(CI.CP, CI.CP_SP)
 
-  try:
-    STATSLOGSP.raw('sunnypilot.car_params', CI.CP.to_dict())
-  except RuntimeError:
-    pass  # to_dict fails on macOS due to library issues.
-  # STATSLOGSP.raw('sunnypilot_params.car_params_sp', CP_SP.to_dict()) # https://github.com/sunnypilot/opendbc/pull/361
 
 
 def initialize_params(params) -> list[dict[str, Any]]:

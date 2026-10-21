@@ -32,7 +32,7 @@ class TogglesLayoutMici(NavScroller):
     record_mic = BigParamControl("record & upload mic audio", "RecordAudio", description_icon=gui_app.texture("icons_mici/microphone.png", 64, 64),
                                  toggle_callback=restart_needed_callback,
                                  description="Record microphone audio while driving.\n" +
-                                             "Audio is included in dashcam videos in sunnylink.")
+                                             "Audio is included in dashcam videos.")
     enable_openpilot = BigParamControl("enable sunnypilot", "OpenpilotEnabledToggle", toggle_callback=restart_needed_callback,
                                        description="Enable to use sunnypilot driver assistance.\n" +
                                                    "Disable to use your car's stock driver assistance.")

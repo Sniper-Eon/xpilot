@@ -9,7 +9,6 @@ import urllib.parse
 from datetime import datetime, UTC
 
 from openpilot.cereal import log, messaging
-from openpilot.common.api import Api
 from openpilot.common.time_helpers import system_time_valid
 from openpilot.common.params import Params
 from openpilot.common.serial import Serial
@@ -52,12 +51,8 @@ def get_assistnow_messages() -> list[bytes]:
       'gnss': 'gps,glo',
       'datatype': 'eph,alm,aux',
     }, safe=':,'), timeout=5)
-  elif dongle_id := params.get('DongleId'):
-    cloudlog.warning("Downloading AssistNow data from comma's AGPS proxy")
-    api = Api(dongle_id)
-    r = api.get(f"v1/{dongle_id}/assist", access_token=api.get_token(), timeout=5)
   else:
-    raise RuntimeError("Neither AssistNowToken nor DongleId is configured")
+    raise RuntimeError("AssistNowToken is not configured")
 
   r.raise_for_status()
   dat = r.content

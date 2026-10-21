@@ -8,13 +8,12 @@ from tqdm import tqdm
 from typing import Literal
 from collections.abc import Callable
 from openpilot.cereal.messaging import PubMaster
-from openpilot.common.api import Api
 from openpilot.common.basedir import BASEDIR
 from openpilot.common.params import Params
 from openpilot.common.prefix import OpenpilotPrefix
 from openpilot.selfdrive.ui.tests.diff.diff import DIFF_OUT_DIR
 from openpilot.system.updated.updated import parse_release_notes
-from openpilot.common.version import terms_version, training_version, terms_version_sp, sunnylink_consent_version
+from openpilot.common.version import terms_version, training_version, terms_version_sp
 
 LayoutVariant = Literal["mici", "tizi"]
 
@@ -31,15 +30,12 @@ def setup_state():
   params.put("UpdaterCurrentDescription", "0.10.1 / test-branch / abc1234 / Nov 30", block=True)
   params.put("UpdaterCurrentReleaseNotes", parse_release_notes(BASEDIR), block=True)
   params.put("HasAcceptedTermsSP", terms_version_sp, block=True)
-  params.put("CompletedSunnylinkConsentVersion", sunnylink_consent_version, block=True)
   # Params for mici home
   params.put("Version", "0.10.1", block=True)
   params.put("GitBranch", "test-branch", block=True)
   params.put("GitCommit", "abc12340ff9131237ba23a1d0fbd8edf9c80e87", block=True)
   params.put("GitCommitDate", "'1732924800 2024-11-30 00:00:00 +0000'", block=True)
 
-  # Patch Api.get_token to return a static token so the pairing QR code is deterministic across runs
-  Api.get_token = lambda self, payload_extra=None, expiry_hours=0: "test_token"
 
 
 def run_replay(variant: LayoutVariant) -> None:
