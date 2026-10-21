@@ -31,7 +31,8 @@ def module_path(name: str) -> Path | None:
   for p in (base.with_suffix(".py"), base / "__init__.py", base.with_suffix(".pyx")):
     if p.is_file():
       return p
-  return base if base.is_dir() else None
+  # a directory is a (namespace) package only if it still holds sources; deleted packages leave __pycache__ behind
+  return base if base.is_dir() and any(base.rglob("*.py")) else None
 
 
 _names: dict[Path, set[str] | None] = {}
