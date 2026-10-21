@@ -6,11 +6,9 @@ from openpilot.cereal import messaging
 from openpilot.common.hardware import COMMA_HARDWARE
 from openpilot.common.realtime import Priority, config_realtime_process, set_core_affinity
 from openpilot.system.ui.lib.application import gui_app
-from openpilot.selfdrive.ui.layouts.main import MainLayout
 from openpilot.selfdrive.ui.mici.layouts.main import MiciMainLayout
 from openpilot.selfdrive.ui.ui_state import ui_state
-
-BIG_UI = gui_app.big_ui()
+from openpilot.tesla.ui.screen import BigScreenHost, is_big_screen
 
 
 def main():
@@ -18,11 +16,8 @@ def main():
   # above plannerd and radard
   config_realtime_process(0, Priority.CTRL_HIGH)
 
-  gui_app.init_window("UI")
-  if BIG_UI:
-    MainLayout()
-  else:
-    MiciMainLayout()
+  gui_app.init_window("UI", host=BigScreenHost() if is_big_screen() else None)
+  MiciMainLayout()
 
   pm = messaging.PubMaster(['uiDebug'])
   for should_render, frame_time, cpu_time in gui_app.render():

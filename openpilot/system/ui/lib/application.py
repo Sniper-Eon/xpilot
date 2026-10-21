@@ -38,6 +38,8 @@ SHOW_FPS = os.getenv("SHOW_FPS") == "1"
 SHOW_TOUCHES = os.getenv("SHOW_TOUCHES") == "1"
 STRICT_MODE = os.getenv("STRICT_MODE") == "1"
 SCALE = float(os.getenv("SCALE", "1.0"))
+# ponytail: fixed supersample for the big-screen host texture (536x240 -> 2144x960); derive from window scale if GPU time matters
+HOST_TEXTURE_SCALE = 4
 GRID_SIZE = int(os.getenv("GRID", "0"))
 PROFILE_RENDER = int(os.getenv("PROFILE_RENDER", "0"))
 PROFILE_STATS = int(os.getenv("PROFILE_STATS", "100"))  # Number of functions to show in profile output
@@ -160,6 +162,7 @@ class MouseEvent(NamedTuple):
 class MouseState:
   def __init__(self, scale: float = 1.0):
     self._scale = scale
+    self.to_logical: Callable[[float, float], tuple[float, float]] | None = None  # host mode: screen px -> mici px
     self._events: deque[MouseEvent] = deque(maxlen=MOUSE_THREAD_RATE)  # bound event list
     self._prev_mouse_event: list[MouseEvent | None] = [None] * MAX_TOUCH_SLOTS
 
@@ -198,8 +201,11 @@ class MouseState:
     #  detect swipe-stop-lift via event gaps instead of the fragile decel heuristic.
     for slot in range(MAX_TOUCH_SLOTS):
       mouse_pos = rl.get_touch_position(slot)
-      x = mouse_pos.x / self._scale if self._scale != 1.0 else mouse_pos.x
-      y = mouse_pos.y / self._scale if self._scale != 1.0 else mouse_pos.y
+      if self.to_logical is not None:
+        x, y = self.to_logical(mouse_pos.x, mouse_pos.y)
+      else:
+        x = mouse_pos.x / self._scale if self._scale != 1.0 else mouse_pos.x
+        y = mouse_pos.y / self._scale if self._scale != 1.0 else mouse_pos.y
       ev = MouseEvent(
         MousePos(x, y),
         slot,
@@ -237,6 +243,7 @@ class GuiApplication(GuiApplicationExt):
     self._scaled_height += self._scaled_height % 2
 
     self._render_texture: rl.RenderTexture | None = None
+    self._host = None
     self._burn_in_shader: rl.Shader | None = None
     self._ffmpeg_proc: subprocess.Popen | None = None
     self._ffmpeg_queue: queue.Queue | None = None
@@ -289,8 +296,16 @@ class GuiApplication(GuiApplicationExt):
   def request_close(self):
     self._window_close_requested = True
 
-  def init_window(self, title: str, fps: int = _DEFAULT_FPS):
+  def init_window(self, title: str, fps: int = _DEFAULT_FPS, host=None):
+    """host: big-screen host (openpilot/tesla/ui/screen.py). The mici UI then renders at 536x240 into a
+    texture drawn at host.viewport(), and host.render() draws around it in screen pixels."""
     with self._startup_profile_context():
+      if host is not None:
+        self._host = host
+        self._width, self._height, self._scale = 536, 240, HOST_TEXTURE_SCALE
+        self._scaled_width, self._scaled_height = 536 * HOST_TEXTURE_SCALE, 240 * HOST_TEXTURE_SCALE
+        self._nav_stack_widgets_to_render = 2
+        self._mouse.to_logical = host.to_logical
       def _close(sig, frame):
         self.close()
         sys.exit(0)
@@ -302,10 +317,10 @@ class GuiApplication(GuiApplicationExt):
         flags |= rl.ConfigFlags.FLAG_VSYNC_HINT
       rl.set_config_flags(flags)
 
-      rl.init_window(self._scaled_width, self._scaled_height, title)
+      rl.init_window(*(host.size if host else (self._scaled_width, self._scaled_height)), title)
 
       needs_render_texture = self._scale != 1.0 or BURN_IN_MODE or RECORD
-      if self._scale != 1.0:
+      if self._scale != 1.0 and host is None:
         rl.set_mouse_scale(1 / self._scale, 1 / self._scale)
       if needs_render_texture:
         self._render_texture = rl.load_render_texture(self._scaled_width, self._scaled_height)
@@ -598,6 +613,10 @@ class GuiApplication(GuiApplicationExt):
     rl.close_window()
 
   @property
+  def host(self):
+    return self._host
+
+  @property
   def mouse_events(self) -> list[MouseEvent]:
     return self._mouse_events
 
@@ -664,7 +683,7 @@ class GuiApplication(GuiApplicationExt):
           rl.begin_drawing()
           rl.clear_background(rl.BLACK)
           src_rect = rl.Rectangle(0, 0, float(self._scaled_width), -float(self._scaled_height))
-          dst_rect = rl.Rectangle(0, 0, float(self._scaled_width), float(self._scaled_height))
+          dst_rect = self._host.viewport() if self._host else rl.Rectangle(0, 0, float(self._scaled_width), float(self._scaled_height))
           texture = self._render_texture.texture
           if texture:
             if BURN_IN_MODE and self._burn_in_shader:
@@ -673,6 +692,8 @@ class GuiApplication(GuiApplicationExt):
               rl.end_shader_mode()
             else:
               rl.draw_texture_pro(texture, src_rect, dst_rect, rl.Vector2(0, 0), 0.0, rl.WHITE)
+          if self._host:
+            self._host.render()
 
         if self._show_fps:
           rl.draw_fps(10, 10)
