@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Real GPU UI E2E for the big-screen host; saves screenshots and JSON, changes no settings.
 Failure modes:
-- offroad viewport not at (456,180,1608,720) or onroad viewport not at grid.VIEW (mici drawn in the wrong place)
-- to_logical and viewport disagree (touches land beside the widget that is drawn)
-- a nav row selects the wrong page, leaves nested pages behind (nav stack grows) or shows a redundant Back card
-- a tap on the nav column reaches mici as a press inside a mici widget
+- offroad (UI v3) the mici texture is drawn on a native page, or not drawn (FALLBACK_VIEW) on the Models fallback
+- onroad viewport not at grid.VIEW, or to_logical and viewport disagree (touches land beside the widget that is drawn)
+- a nav row selects the wrong page, shows the wrong native page or leaves pages on the nav stack
+- a tap on the nav column or a native page reaches mici as a press inside a mici widget
+- the Plugin Store sub-page does not open with its breadcrumb, or Back in the title band does not close it
 - the host still draws its own alert banner (alerts must appear once, inside the view)
 - onroad cards missing, outside their zone, or overlapping the view
 - the blind-spot overlay does not draw, or breaks the frame
@@ -21,7 +22,9 @@ from openpilot.common.params import Params
 from openpilot.system.ui.lib.application import gui_app, MouseEvent, MousePos
 from openpilot.selfdrive.ui.ui_state import ui_state
 from openpilot.tesla.ui.grid import VIEW, ZONES
-from openpilot.tesla.ui.screen import BigScreenHost, NAV_TOP, NAV_W, OFFROAD_VIEW, PAGES, ROW_H
+from openpilot.tesla.ui.offroad import FALLBACK_VIEW, NAV, content_rect
+from openpilot.tesla.ui.pages.store import StorePage
+from openpilot.tesla.ui.screen import NATIVE, BigScreenHost, NAV_TOP, NAV_W, ROW_H
 from openpilot.selfdrive.ui.mici.layouts.main import MiciMainLayout
 
 parser = argparse.ArgumentParser()
@@ -35,8 +38,23 @@ host = gui_app.host
 errors, cases = [], []
 original_render = host.render
 frame = 0
+draws_before = [0]
 NAV_START, NAV_STEP = 30, 30
-ONROAD = NAV_START + NAV_STEP * len(PAGES) + 10
+ONROAD = NAV_START + NAV_STEP * len(NAV) + 10
+PLUGINS = NAV.index('Plugins')
+mici_draws = 0  # draws of the mici texture outside screenshot(); offroad only the Models fallback may add to it
+in_screenshot = False
+original_draw_texture_pro = rl.draw_texture_pro
+
+
+def counting_draw_texture_pro(texture, *rest):
+  global mici_draws
+  if not in_screenshot and texture.id == gui_app._render_texture.texture.id:
+    mici_draws += 1
+  original_draw_texture_pro(texture, *rest)
+
+
+rl.draw_texture_pro = counting_draw_texture_pro
 
 
 def check(ok, message):
@@ -49,11 +67,15 @@ def rect(r):
 
 
 def screenshot(name):
+  global in_screenshot
+  in_screenshot = True
   target = rl.load_render_texture(2160, 1080)
   rl.begin_texture_mode(target)
   rl.clear_background(rl.BLACK)
   texture = gui_app._render_texture.texture
-  rl.draw_texture_pro(texture, rl.Rectangle(0, 0, texture.width, -texture.height), host.viewport(), rl.Vector2(0, 0), 0, rl.WHITE)
+  view = host.viewport()
+  if view is not None:
+    rl.draw_texture_pro(texture, rl.Rectangle(0, 0, texture.width, -texture.height), view, rl.Vector2(0, 0), 0, rl.WHITE)
   events = gui_app._mouse_events
   gui_app._mouse_events = []
   original_render()  # slot textures were refreshed by this frame's on-screen render, so nothing nests texture modes
@@ -64,38 +86,63 @@ def screenshot(name):
   rl.export_image(image, str(args.output / (name + '.png')))
   rl.unload_image(image)
   rl.unload_render_texture(target)
+  in_screenshot = False
+
+
+def tap(x, y, phase):
+  """Screen tap: press on phase 0, release on phase 1, mapped like the touch thread does."""
+  if phase in (0, 1):
+    lx, ly = host.to_logical(x, y)
+    check(not (0 <= lx <= 536 and 0 <= ly <= 240) or host.viewport() is not None, f'tap ({x},{y}) maps inside mici ({lx},{ly})')
+    gui_app._mouse_events = [MouseEvent(MousePos(lx, ly), 0, phase == 0, phase == 1, phase == 0, time.monotonic())]
 
 
 def render():
   global frame
   frame += 1
   if frame == 20:
-    check(rect(host.viewport()) == list(OFFROAD_VIEW), f'offroad viewport {rect(host.viewport())}')
-    lx, ly = host.to_logical(OFFROAD_VIEW[0] + OFFROAD_VIEW[2], OFFROAD_VIEW[1] + OFFROAD_VIEW[3])
-    check(abs(lx - 536) < 0.01 and abs(ly - 240) < 0.01, f'offroad to_logical corner {lx},{ly}')
+    check(host.viewport() is None, f'offroad Home viewport {host.viewport()}')
+    lx, ly = host.to_logical(1080, 540)
+    check(not (0 <= lx <= 536 and 0 <= ly <= 240), f'offroad screen centre maps inside mici ({lx},{ly})')
     check(not hasattr(host, '_banner'), 'host still owns an alert banner')
-    cases.append({'name': 'offroad', 'viewport': rect(host.viewport())})
-  if NAV_START <= frame < NAV_START + NAV_STEP * len(PAGES):
-    index, phase = divmod(frame - NAV_START, NAV_STEP)
-    if phase in (0, 1):
-      lx, ly = host.to_logical(NAV_W / 2, NAV_TOP + index * ROW_H + ROW_H / 2)
-      check(lx < 0, f'nav row {index} maps inside the mici viewport ({lx},{ly})')
-      gui_app._mouse_events = [MouseEvent(MousePos(lx, ly), 0, phase == 0, phase == 1, phase == 0, time.monotonic())]
+    cases.append({'name': 'offroad', 'viewport': None})
+  nav = NAV_START <= frame < NAV_START + NAV_STEP * len(NAV)
+  index, phase = divmod(frame - NAV_START, NAV_STEP)
+  if nav:
+    tap(NAV_W / 2, NAV_TOP + index * ROW_H + ROW_H / 2, phase)
+    if index == PLUGINS and phase in (26, 27):
+      tap(content_rect()[0] + 40, 40, phase - 26)  # "< Back" in the title band
+  if nav and phase == 5:
+    draws_before[0] = mici_draws
   original_render()
   if frame == 20:
     screenshot('offroad')
-  if NAV_START <= frame < NAV_START + NAV_STEP * len(PAGES):
-    index, phase = divmod(frame - NAV_START, NAV_STEP)
+  if nav:
+    label = NAV[index]
     if phase == 20:
       active = gui_app.get_active_widget()
-      check(host._selected == index, f'nav {index} did not select')
-      check(len(gui_app._nav_stack) == (1 if index == 0 else 2), f'nav {index}: nav stack depth {len(gui_app._nav_stack)}')
-      check(active is main if index == 0 else type(active) is PAGES[index][1], f'nav {index} shows {type(active).__name__}')
-      if index:
-        visible = [w for w in active._scroller.items if w.is_visible]
-        check(not visible or getattr(visible[0], 'text', '') != 'Back', f'nav {index} starts with redundant Back card')
-      screenshot(f'nav-{index}-{PAGES[index][0].lower()}')
-      cases.append({'name': PAGES[index][0], 'active': type(active).__name__, 'stack': len(gui_app._nav_stack)})
+      native = label in NATIVE
+      check(host._selected == index, f'nav {label} did not select')
+      check(len(gui_app._nav_stack) == (1 if native else 2), f'nav {label}: nav stack depth {len(gui_app._nav_stack)}')
+      if native:
+        check(active is main, f'nav {label}: {type(active).__name__} above main')
+        check(type(host._page()) is NATIVE[label] and host._shown is host._page(), f'nav {label} shows {type(host._page()).__name__}')
+        check(host.viewport() is None and mici_draws == draws_before[0], f'nav {label}: mici texture drawn on a native page')
+      else:
+        check(type(active).__name__ == 'ModelsLayoutMici', f'nav {label} shows {type(active).__name__}')
+        check(rect(host.viewport()) == list(FALLBACK_VIEW) and mici_draws > draws_before[0], f'nav {label}: mici fallback not drawn')
+      screenshot(f'nav-{index}-{label.lower()}')
+      cases.append({'name': label, 'active': type(active).__name__, 'page': type(host._page()).__name__, 'stack': len(gui_app._nav_stack),
+                    'mici_draws': mici_draws - draws_before[0]})
+    if index == PLUGINS and phase == 21:
+      host._page()._open_store()  # the "Plugin Store" row callback
+    if index == PLUGINS and phase == 24:
+      check(host._sub is not None and host._sub[0] == 'Store' and type(host._page()) is StorePage, f'store sub-page {host._sub}')
+      check(host.viewport() is None, 'store: mici viewport')
+      screenshot('plugins-store')
+      cases.append({'name': 'Plugins > Store', 'page': type(host._page()).__name__})
+    if index == PLUGINS and phase == 29:
+      check(host._sub is None, 'Back did not close the store sub-page')
   if frame == ONROAD:
     gui_app.pop_widgets_to(main, instant=True)
     ui_state.started = True
@@ -121,7 +168,7 @@ def render():
     cases.append({'name': 'onroad', 'viewport': rect(host.viewport()), 'cards': tiles, 'overlays': len(host._overlays)})
     ui_state.started = False
   if frame == ONROAD + 5:
-    check(len(cases) == len(PAGES) + 2, f'{len(cases)} cases, expected {len(PAGES) + 2}')
+    check(len(cases) == len(NAV) + 3, f'{len(cases)} cases, expected {len(NAV) + 3}')
     gui_app.request_close()
 
 

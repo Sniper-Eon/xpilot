@@ -45,7 +45,8 @@ openpilot/tesla/
   plugins/speed_card/ lead_card/ speed_limit_card/ blindspot_edges/   大屏卡片和盲区边框（只显示）
   ui/screen.py ui/grid.py ui/slot.py ui/slots/   大屏宿主、插槽格式、插槽
   ui/plugin_ui.py           UI 侧插件加载：找到插槽、HudOverlay 和 ScreenOverlay，插件关闭时隐藏
-  ui/plugins_page.py        设置里的"Plugins"页：统一管理所有插件（开关、设置、出错标记）
+  ui/plugins_page.py ui/store_page.py   mici 设置里的"Plugins"页和商店页（小屏用）
+  ui/offroad.py ui/pages/   大屏停车时的原生页面（见第 9 节）
   ui/settings_page.py ui/settings_meta.py        Tesla 设置页（上游 Tesla 选项、DM、地图）
 opendbc_repo/opendbc/safety/plugins/
   plugin.h registry.h auto_speed.h ambient_light.h   panda safety 插件（见第 6 节，已接入，未编译验证）
@@ -206,8 +207,16 @@ typedef struct {
   - 外观用 `Slot.draw_value(rect, value, unit, sub)`（标题、大数字、单位、灰色副行）或 `draw_lines(rect, lines)`，保持统一。
   - 卡片只显示，不接收触摸。连续出错 3 次停止绘制。
 - **整屏叠加层**：`ScreenOverlay`（`update(sm)`、`draw(zones)`，`zones` 是 left/right/top/bottom/view 的屏幕矩形），行驶时在卡片之后绘制；出错隔离同上，插件关闭时隐藏。例：`blindspot_edges`。
-- **停车时**：左列导航（xpilot、Home、Toggles、Models、Plugins、Tesla、Network、Device、Software、Developer），选中的行有蓝色左边条；右边上方是页面标题，中间是 mici 内容（456,180,1608,720，3 倍），下方是版本信息。导航直接构造各设置页（`ui/screen.py` 的 `PAGES`），选择时先回到主界面再打开，导航栈不增长。
-- 布局检查：`tools/sp_tesla_e2e/slot_layout_check.py`（本机）；渲染和触摸：`tools/sp_tesla_e2e/big_screen_e2e.py`（只能在设备上跑）。
+- **停车时（UI v3）**：左列导航（xpilot、Home、Toggles、Models、Plugins、Tesla、Network、Device、Software、Developer），选中的行有蓝色左边条。右边上方 0..150 是标题带，下面 (360,150,1800,930) 是原生列表页（最宽 1500，居中），由宿主按屏幕像素直接画（tici 的 `list_view`/`scroller_tici` 控件），不再画 3 倍的 mici 卡片。
+  - 每页一个模块：`openpilot/tesla/ui/pages/<页>.py`，每个是带 `show_event` 的 Widget（`show_event` 时从 params 重新读状态）。共用部分在 `pages/base.py`（`ListPage`、灰色大写分组标题 `Header`、`ParamToggle`、`SettingRow`、带确认的 `confirm`）。不画图的逻辑在 `ui/offroad.py`（导航项、视口模式、触摸映射、插件行、商店任务 `StoreJobs`、停车提示），`offroad_pages_check.py` 在本机测它。
+  - 页面内容和 mici 一致：Home（版本/分支/提交、网络、车型、更新提示、停车提示按严重度排序）；Toggles、Developer、Software、Device 用 mici 同样的参数、动作和可用条件（行驶中或接合时不能改）；Tesla（DM、OSM 地图、VEHICLE_SETTINGS）；Plugins（加载失败的列在最上面，按类别分组，每个插件一个开关和它的设置行，打开时关掉冲突插件）；Store 是 Plugins 的子页（标题带显示 `Plugins › Store` 和 `‹ Back`）；Network 用 tici 的 `NetworkUI`。
+  - 重置校准、重启、关机、卸载用 `ConfirmDialog`；这些 tici 弹窗压在导航栈上，在 mici 那一遍里隐藏，由宿主全屏画（弹窗打开时页面不接收触摸）。
+  - 仍显示 mici 页面（3 倍，FALLBACK_VIEW=(456,255,1608,720)）的：Models（没有合适的原生模型列表接口），以及 Device 里的训练指南、条款、法规信息、车内摄像头。标题带显示 `Device › …` 和 `‹ Back`（回到主界面）。
+  - 开机引导（onboarding）在栈里时照旧全屏显示 mici（456,180,1608,720），不画导航。
+  - 不画 mici 纹理靠 `system/ui/lib/application.py` 里一行钩子：`host.viewport()` 返回 `None` 时跳过 `draw_texture_pro`。此时 `to_logical` 把所有触摸映射到 mici 屏幕很远之外，下面继续运行的 mici 控件不会响应。这是对 SP 文件唯一的改动。
+  - 已知：`NetworkUI` 自己建一个 `WifiManager`，mici 的 `NetworkLayoutMici` 只在 mici 设置里构造（大屏不构造），所以大屏进程里只有 Network 页那一个；如果以后两边都构造，会有两个实例。
+  - 主机检查只验证逻辑和静态结构，**没有渲染过**；字号、间距、弹窗位置要在设备上用 `big_screen_e2e.py` 截图确认。
+- 布局检查：`tools/sp_tesla_e2e/slot_layout_check.py`、`offroad_pages_check.py`（本机）；渲染和触摸：`tools/sp_tesla_e2e/big_screen_e2e.py`（只能在设备上跑，截图每个导航页和 Store 子页，并检查停车时除 Models 外不画 mici 纹理）。
 
 ## 10. 现有插件
 
@@ -233,6 +242,7 @@ python3 tools/sp_tesla_e2e/manifest_check.py                          # 插件�
 python3 tools/sp_tesla_e2e/phase2_check.py                            # 插件报警、变道策略、横向修正
 python3 tools/sp_tesla_e2e/phase3_check.py                            # 可替换的横向控制器和纵向规划
 python3 tools/sp_tesla_e2e/store_check.py                             # 插件商店：下载、校验、安装、参数（本机 HTTP 服务）
+python3 tools/sp_tesla_e2e/offroad_pages_check.py                     # 大屏停车页面：页面模块、参数名、插件行、商店行、视口、触摸映射
 python3 tools/sp_tesla_e2e/store_e2e.py --repo ~/xpilot-plugins       # 插件仓库端到端：索引 → 安装 → 发现 → 钩子生效
 python3 tools/dev_sp_release/upstream_watch.py                        # 列出值得 cherry-pick 的上游提交
 ```
