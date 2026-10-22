@@ -7,7 +7,6 @@ See the LICENSE.md file in the root directory for more details.
 from enum import Enum
 
 from openpilot.cereal import messaging, log, custom
-from opendbc.car.structs import car
 from opendbc.sunnypilot.car.interfaces import has_bsm
 from openpilot.common.params import Params
 from openpilot.selfdrive.ui.sunnypilot.layouts.settings.display import OnroadBrightness
@@ -35,7 +34,7 @@ class UIStateSP:
     self.is_sp_release: bool = self.params.get_bool("IsReleaseSpBranch")
     self.sm_services_ext = [
       "modelManagerSP", "selfdriveStateSP", "longitudinalPlanSP", "backupManagerSP",
-      "lateralTorqueParameters", "carStateSP", "liveMapDataSP", "carParamsSP", "lateralDelay"
+      "carStateSP", "liveMapDataSP", "carParamsSP", "lateralDelay"
     ]
 
 
@@ -58,9 +57,6 @@ class UIStateSP:
     self.speed_limit_mode = None
     self.standstill_timer: bool = False
     self.torque_bar: bool = False
-    self.enforce_torque_control: bool = False
-    self.custom_torque_params: bool = False
-    self.torque_override_enabled: bool = False
     self._sp_initialized: bool = False
 
   def update(self) -> None:
@@ -167,11 +163,6 @@ class UIStateSP:
     self.speed_limit_mode = self.params.get("SpeedLimitMode", return_default=True)
     self.standstill_timer = self.params.get_bool("StandstillTimer")
     self.torque_bar = self.params.get_bool("TorqueBar")
-    self.enforce_torque_control = self.params.get_bool("EnforceTorqueControl")
-    self.custom_torque_params = self.params.get_bool("CustomTorqueParams")
-    self.torque_override_enabled = self.params.get_bool("TorqueParamsOverrideEnabled")
-    self.torque_override_lat_accel_factor = float(self.params.get("TorqueParamsOverrideLatAccelFactor", return_default=True))
-    self.torque_override_friction = float(self.params.get("TorqueParamsOverrideFriction", return_default=True))
     self.true_v_ego_ui = self.params.get_bool("TrueVEgoUI")
     self.turn_signals = self.params.get_bool("ShowTurnSignals")
     self.boot_offroad_mode = self.params.get("DeviceBootMode", return_default=True)
@@ -187,20 +178,6 @@ class UIStateSP:
     CP = self.CP
 
     if CP is not None:
-      if self.params.get_bool("EnforceTorqueControl") and self.params.get_bool("NeuralNetworkLateralControl"):
-        self.params.put_bool("EnforceTorqueControl", False, block=True)
-        self.params.put_bool("NeuralNetworkLateralControl", False, block=True)
-
-      if self.params.get_bool("LateralJerkTorqueController") and self.params.get_bool("NeuralNetworkLateralControl"):
-        self.params.put_bool("LateralJerkTorqueController", False, block=True)
-        self.params.put_bool("NeuralNetworkLateralControl", False, block=True)
-
-      # Angle steering: no torque-based lateral controls
-      if CP.steerControlType == car.CarParams.SteerControlType.angle:
-        self.params.remove("EnforceTorqueControl")
-        self.params.remove("NeuralNetworkLateralControl")
-        self.params.remove("LateralJerkTorqueController")
-
       # Alpha longitudinal: clear if not available
       if not CP.alphaLongitudinalAvailable:
         self.params.remove("AlphaLongitudinalEnabled")
@@ -210,9 +187,6 @@ class UIStateSP:
         self.params.remove("AutoLaneChangeBsmDelay")
     else:
       # No CarParams: clear all car-dependent params as safety default
-      self.params.remove("EnforceTorqueControl")
-      self.params.remove("NeuralNetworkLateralControl")
-      self.params.remove("LateralJerkTorqueController")
       self.params.remove("AlphaLongitudinalEnabled")
 
     # ICBM: clear if not available or if full longitudinal control is active
