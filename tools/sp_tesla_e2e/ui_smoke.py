@@ -15,7 +15,7 @@ from openpilot.common.hardware import HARDWARE
 from openpilot.selfdrive.ui.ui_state import ui_state
 from openpilot.system.ui.lib.application import gui_app
 from openpilot.system.ui.lib.multilang import multilang
-from openpilot.tesla.ui.traffic_overlay import TrafficControlRenderer, traffic_card_rect
+from openpilot.tesla.plugins.traffic_light.ui import TrafficControlRenderer, traffic_card_rect
 from openpilot.tesla.ui.settings_page import TeslaSettingsMici
 from openpilot.selfdrive.ui.mici.layouts.settings.toggles import TogglesLayoutMici
 from openpilot.system.ui.widgets.scroller import NavScroller

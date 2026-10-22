@@ -17,8 +17,8 @@
 2. **不改上游 Tesla 车端代码。** `opendbc_repo/opendbc/car/tesla/*`、`opendbc_repo/opendbc/sunnypilot/car/tesla/*`、`opendbc/dbc/tesla_model3_*.dbc`、`opendbc/safety/modes/tesla.h` 保持上游原样。需要车端数据，就在插件里用自己的 `CANParser` 读。
 3. **插件只能收紧，不能放松。** 纵向只能更慢或停车，不能绕过 SP 和 panda 的任何检查。
 4. **每个 CAN 发送地址都必须有 panda safety 插件**（`opendbc/safety/plugins/`），在插件里自己校验内容、频率、时效和 `controls_allowed`。没有 safety 插件，panda 会直接拦掉。
-5. **插件出错不能拖垮进程**：输入过期就当周期什么都不发；异常要捕获。UI 插槽连续出错 3 次会被自动停用。
-6. **Params**：新 key 先在 `openpilot/common/params_keys.h` 声明。新功能默认关闭。设置项写进 `openpilot/tesla/ui/settings_meta.py`。
+5. **插件出错不能拖垮进程**：输入过期就当周期什么都不发。宿主兜底：插件在任何钩子里抛异常，就被记进 `XpilotPluginFaults`、本次进程内停用，其他插件和 SP 照常运行；plan filter 出错时计划照常发布。UI 插槽和 HUD 叠加层连续出错 3 次会停止绘制。
+6. **Params**：新 key 先在 `openpilot/common/params_keys.h` 声明。每个插件有一个 BOOL 总开关 `ENABLE_PARAM`，默认关闭；设置项写在插件自己的 `SETTINGS` 里。
 7. **cereal**：只追加字段，不改已有字段的序号和类型。新消息用 `custom.capnp` 里的 `customReserved*` 槽位。
 8. **验证**（沿用 `AGENTS.md`）：
    - 先列出失败模式，再写检查。
@@ -33,17 +33,27 @@
 ```
 openpilot/tesla/
   plugin.py                 Python 插件接口（Plugin 基类，所有钩子都有默认空实现）
-  plugins/__init__.py       插件注册表 PLUGINS，以及 card/plannerd/manager 用的调用宿主
+  plugins/__init__.py       插件注册表 PLUGINS，以及 card/plannerd/manager 用的调用宿主（总开关、出错隔离）
+  plugins/<名字>/plugin.py  插件本体和元数据；plugins/<名字>/ui.py 可选，放插槽和 HUD 叠加层
   plugins/auto_speed/       自动设定速度
   plugins/traffic_light/    红绿灯停车
   plugins/ambient_light/    盲区氛围灯
   ui/screen.py ui/grid.py ui/slot.py ui/slots/   大屏宿主、插槽格式、插槽
-  ui/settings_page.py ui/settings_meta.py        Tesla 设置页
+  ui/plugin_ui.py           UI 侧插件加载：找到插槽和 HudOverlay，插件关闭时隐藏
+  ui/plugins_page.py        设置里的"Plugins"页：统一管理所有插件（开关、设置、出错标记）
+  ui/settings_page.py ui/settings_meta.py        Tesla 设置页（上游 Tesla 选项、DM、地图）
 opendbc_repo/opendbc/safety/plugins/
   plugin.h registry.h auto_speed.h ambient_light.h   panda safety 插件（见第 6 节，已接入，未编译验证）
 ```
 
 ## 4. Python 插件接口（`openpilot/tesla/plugin.py`）
+
+| 元数据 | 用途 |
+|---|---|
+| `NAME` | 插件目录名 |
+| `TITLE`、`DESCRIPTION` | Plugins 页上显示的名字和说明（长按看说明） |
+| `ENABLE_PARAM` | BOOL 总开关。关闭时 card 不创建插件、进程不启动、plan filter 不加载、UI 不显示。车端在下一次行程生效，UI 1 秒内生效 |
+| `SETTINGS` | `Setting(key, label)` 是开关；加 `range=(最小, 最大, 步长, 单位, 除数)` 或 `choices=((标签, 值), ...)` 是选择项 |
 
 | 钩子 | 调用方 / 时机 | 用途 |
 |---|---|---|
@@ -64,24 +74,24 @@ SP 里的调用位置：`selfdrive/car/card.py`（`CarPlugins`）、`selfdrive/c
 1. 新建 `openpilot/tesla/plugins/<名字>/__init__.py`（空文件）和 `plugin.py`：
 
 ```python
-from openpilot.tesla.plugin import Plugin
+from openpilot.tesla.plugin import Plugin, Setting
 
 class MyFeature(Plugin):
   NAME = "my_feature"
-
-  def __init__(self, CP, params):
-    super().__init__(CP, params)
-    self.enabled = params.get_bool("TeslaMyFeature")
+  TITLE = "My Feature"
+  DESCRIPTION = "What it does and what it needs."
+  ENABLE_PARAM = "TeslaMyFeature"
+  SETTINGS = (Setting("TeslaMyFeatureLevel", "Level", range=(0, 10, 1, "", 1)),)
 
   def control_sends(self, CS, CC, now_ns):
     return []   # 有 CAN 发送时，必须同时提供 panda safety 插件
 ```
 
-2. 在 `plugins/__init__.py` 的 `PLUGINS` 里加上这个类。
-3. 在 `params_keys.h` 声明参数（默认关闭），在 `settings_meta.py` 里加设置项。
+2. 在 `plugins/__init__.py` 的 `PLUGINS` 里加上这个类。设置里的 Plugins 页会自动出现它的开关和设置。
+3. 在 `params_keys.h` 声明 `ENABLE_PARAM`（BOOL，默认 "0"）和 `SETTINGS` 里的每个 key。
 4. 有 CAN 发送的：写 `opendbc/safety/plugins/<名字>.h` 并加进 `registry.h`。`safetyParam` 位要和 Python 侧一致（auto_speed 用的是 `0x4000`）。
-5. 有 UI 的：插槽放在 `openpilot/tesla/ui/slots/`，格式见 `ui/grid.py`。
-6. 先写失败模式和检查，再写实现；能在本机跑的就跑。
+5. 有 UI 的：写 `plugins/<名字>/ui.py`，里面的 `Slot` 子类（大屏插槽，格式见 `ui/grid.py`）和 `HudOverlay` 子类（行车画面叠加层，无参构造）会被自动加载；插件关闭时自动隐藏。不属于任何插件的插槽放 `openpilot/tesla/ui/slots/`。
+6. 先写失败模式和检查，再写实现；能在本机跑的就跑（`tools/sp_tesla_e2e/plugin_host_check.py` 会检查元数据和参数声明）。
 
 ## 6. panda safety 插件接口（`opendbc/safety/plugins/`）
 
@@ -118,7 +128,7 @@ typedef struct {
 
 ## 9. UI 插槽（大屏）
 
-- **加插槽**：在 `openpilot/tesla/ui/slots/` 新建文件，继承 `Slot` 并写好 `SPEC = SlotSpec(id, title, cells, services, show, hz, order)`，会被自动发现，在 12×6 网格中自动排布。
+- **加插槽**：插件的插槽写在 `plugins/<名字>/ui.py`；不属于插件的在 `openpilot/tesla/ui/slots/` 新建文件，继承 `Slot` 并写好 `SPEC = SlotSpec(id, title, cells, services, show, hz, order)`，会被自动发现，在 12×6 网格中自动排布。
 - **只显示**：插槽不接收触摸。
 - **视频窗口**：在窗口外按住 1 秒进入编辑，可拖动和缩放；位置保存在 `TeslaVideoWindow`。
 
@@ -135,6 +145,7 @@ typedef struct {
 ```
 python3 tools/sp_tesla_e2e/static_imports.py --baseline <基线 json>   # 有没有断掉的 import
 python3 tools/sp_tesla_e2e/slot_layout_check.py                       # 插槽排布
+python3 tools/sp_tesla_e2e/plugin_host_check.py                       # 插件宿主：出错隔离、总开关、元数据
 python3 tools/dev_sp_release/upstream_watch.py                        # 列出值得 cherry-pick 的上游提交
 ```
 

@@ -12,7 +12,7 @@ DIM = rl.Color(150, 150, 160, 255)
 
 
 class Slot(Widget):
-  """Subclass in openpilot/tesla/ui/slots/, set SPEC, read data in update(), draw in _render(rect).
+  """Subclass in openpilot/tesla/ui/slots/ or in a plugin's ui.py (hidden while the plugin is off), set SPEC, read data in update(), draw in _render(rect).
   Slots draw only: touches go to the mici window, not to slots."""
   SPEC: ClassVar[SlotSpec]
 

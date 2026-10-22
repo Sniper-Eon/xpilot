@@ -11,6 +11,7 @@ from openpilot.selfdrive.ui.mici.widgets.button import BigCircleButton
 from openpilot.selfdrive.ui.mici.widgets.dialog import BigConfirmationDialog, BigDialog
 from openpilot.selfdrive.ui.sunnypilot.mici.layouts.models import ModelsLayoutMici
 from openpilot.selfdrive.ui.ui_state import ui_state
+from openpilot.tesla.ui.plugins_page import PluginsPage
 from openpilot.tesla.ui.settings_page import TeslaSettingsMici
 from openpilot.system.ui.lib.application import gui_app
 from openpilot.system.ui.lib.multilang import tr
@@ -53,9 +54,13 @@ class SettingsLayoutSP(OP.SettingsLayout):
     items = self._scroller._items.copy()
 
     vehicle_panel = TeslaSettingsMici()
-    vehicle_btn = SettingsBigButton("Tesla / Longitudinal", "", gui_app.texture("../../sunnypilot/selfdrive/assets/offroad/icon_models.png", 64, 64))
+    vehicle_btn = SettingsBigButton("Tesla", "", gui_app.texture("../../sunnypilot/selfdrive/assets/offroad/icon_models.png", 64, 64))
     vehicle_btn.set_click_callback(lambda: gui_app.push_widget(vehicle_panel))
     items.insert(1, vehicle_btn)
+    plugins_panel = PluginsPage()  # xpilot: all plugins in one place
+    plugins_btn = SettingsBigButton("Plugins", "", gui_app.texture("../../sunnypilot/selfdrive/assets/offroad/icon_models.png", 64, 64))
+    plugins_btn.set_click_callback(lambda: (plugins_panel.show_event(), gui_app.push_widget(plugins_panel)))
+    items.insert(1, plugins_btn)
     items.insert(1, models_btn)
 
     # front slots (only one ever visible at a time): exit-always-offroad, then enable-onroad

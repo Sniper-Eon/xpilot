@@ -1,7 +1,7 @@
 """Slot format and placement for the big-screen host. No pyray here, so it is checkable anywhere
 (tools/sp_tesla_e2e/slot_layout_check.py).
 
-Slot format: a module in openpilot/tesla/ui/slots/ defines a subclass of openpilot.tesla.ui.slot.Slot with
+Slot format: a module in openpilot/tesla/ui/slots/ (or a plugin's ui.py) defines a subclass of openpilot.tesla.ui.slot.Slot with
   SPEC = SlotSpec(id, title, cells=(cols, rows), services=(...), show="always"|"onroad"|"offroad", hz=5.0, order=100)
 The host finds it at startup and places it around the video window; nothing else needs registering.
 """

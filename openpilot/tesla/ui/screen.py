@@ -5,10 +5,7 @@ Edit: hold a finger 1 s outside the window, then drag the window to move it or i
 resize it; tap outside to save. Slots: see grid.py for the format.
 """
 from contextlib import contextmanager
-import importlib
-import inspect
 import math
-import pkgutil
 import time
 
 import pyray as rl
@@ -16,12 +13,11 @@ import pyray as rl
 from openpilot.cereal import messaging
 from openpilot.common.hardware import HARDWARE
 from openpilot.common.params import Params
-from openpilot.common.swaglog import cloudlog
 from openpilot.selfdrive.ui.mici.onroad.alert_renderer import AlertRenderer
 from openpilot.selfdrive.ui.ui_state import ui_state
 from openpilot.sunnypilot.hardware.profile import HardwareProfile, get_hardware_profile
-from openpilot.tesla.ui import slots as slots_pkg
 from openpilot.tesla.ui.grid import place
+from openpilot.tesla.ui.plugin_ui import MAX_FAILURES, EnabledPlugins, load
 from openpilot.tesla.ui.slot import Slot
 
 SCREEN = (2160, 1080)
@@ -29,7 +25,6 @@ MICI = (536, 240)
 BANNER_SCALE = 2  # the mici alert layout at 2x: 1080x160 logical, full width and 320 px tall on screen
 HOLD_S = 1.0
 CORNER_PX = 90
-MAX_FAILURES = 3
 EDIT_COLOR = rl.Color(70, 160, 255, 255)
 
 
@@ -51,22 +46,9 @@ def scaled(s: float):
     rl.begin_scissor_mode = prev
 
 
-def load_slots() -> list[Slot]:
-  """Every Slot subclass with a SPEC in openpilot/tesla/ui/slots/; a broken module is logged and skipped."""
-  found = []
-  for info in pkgutil.iter_modules(slots_pkg.__path__):
-    try:
-      mod = importlib.import_module(f"{slots_pkg.__name__}.{info.name}")
-      found += [cls() for _, cls in inspect.getmembers(mod, inspect.isclass)
-                if issubclass(cls, Slot) and cls.__module__ == mod.__name__ and hasattr(cls, "SPEC")]
-    except Exception:
-      cloudlog.exception(f"slot module {info.name} failed to load")
-  return found
-
-
 class _Tile:
-  def __init__(self, slot: Slot):
-    self.slot, self.rect, self.texture, self.last, self.failures = slot, None, None, 0.0, 0
+  def __init__(self, plugin: str | None, slot: Slot):
+    self.plugin, self.slot, self.rect, self.texture, self.last, self.failures = plugin, slot, None, None, 0.0, 0
 
 
 class BigScreenHost:
@@ -78,7 +60,8 @@ class BigScreenHost:
     self._max_scale = min(SCREEN[0] / MICI[0], SCREEN[1] / MICI[1])
     self._set_window(float(w.get("x", (SCREEN[0] - MICI[0]) / 2)), float(w.get("y", (SCREEN[1] - MICI[1]) / 2)), float(w.get("scale", 1.0)))
     self._banner = AlertRenderer()
-    self._tiles = [_Tile(s) for s in load_slots()]
+    self._tiles = [_Tile(name, s) for name, s in load(Slot)]  # core slots/ and each plugin's ui.py
+    self._enabled = EnabledPlugins(self._params)
     services = sorted({svc for t in self._tiles for svc in t.slot.SPEC.services})
     self._sm = messaging.SubMaster(services) if services else None
     self._layout_key = None
@@ -99,10 +82,12 @@ class BigScreenHost:
 
   def render(self) -> None:
     self._edit_input()
-    key = (self._x, self._y, self._s, ui_state.started)
+    enabled = self._enabled.get()
+    key = (self._x, self._y, self._s, ui_state.started, frozenset(enabled))
     if key != self._layout_key:
       self._layout_key = key
-      rects = place((self._x, self._y, MICI[0] * self._s, MICI[1] * self._s), [t.slot.SPEC for t in self._tiles], ui_state.started)
+      shown = [t.slot.SPEC for t in self._tiles if t.plugin is None or t.plugin in enabled]
+      rects = place((self._x, self._y, MICI[0] * self._s, MICI[1] * self._s), shown, ui_state.started)
       for t in self._tiles:
         t.rect = rects.get(t.slot.SPEC.id)
     self._draw_tiles()

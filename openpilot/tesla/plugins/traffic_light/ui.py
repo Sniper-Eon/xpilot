@@ -7,7 +7,7 @@ import pyray as rl
 from openpilot.selfdrive.ui.ui_state import ui_state
 from openpilot.tesla.plugins.traffic_light.controller import TrafficControlPhase
 from openpilot.system.ui.lib.application import gui_app
-from openpilot.system.ui.widgets import Widget
+from openpilot.tesla.ui.plugin_ui import HudOverlay
 
 
 RED = rl.Color(255, 72, 72, 255)
@@ -103,10 +103,10 @@ def write_traffic_ui_debug(target, sm) -> None:
   target.trafficDisplayedControlActive = _latest_traffic_display_state.control_active
 
 
-class TrafficControlRenderer(Widget):
+class TrafficControlRenderer(HudOverlay):
   """Icon-only traffic signal driven by the already-published final plan."""
 
-  def __init__(self, *, compact: bool = False) -> None:
+  def __init__(self, *, compact: bool = True) -> None:
     super().__init__()
     self.compact = compact
     self.state = TrafficSignalDisplayState()
