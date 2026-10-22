@@ -32,6 +32,7 @@ from openpilot.sunnypilot import get_sanitize_int_param
 from openpilot.sunnypilot.selfdrive.car.car_specific import CarSpecificEventsSP
 from openpilot.sunnypilot.selfdrive.selfdrived.button_state_tracker import ButtonStateTracker
 from openpilot.sunnypilot.selfdrive.selfdrived.events import EventsSP
+from openpilot.tesla import plugins
 
 REPLAY = "REPLAY" in os.environ
 SIMULATION = "SIMULATION" in os.environ
@@ -98,6 +99,7 @@ class SelfdriveD:
     self.car_state_sock = messaging.sub_sock('carState', timeout=20)
 
     ignore = self.sensor_packets + self.gps_packets + ['alertDebug', 'lateralManeuverPlan'] + ['modelDataV2SP', 'longitudinalPlanSP']
+    ignore += plugins.services()  # xpilot plugin inputs never gate engagement
     self.dm_enabled = driver_monitoring_enabled(self.params)
     if not self.dm_enabled:
       # C3XL has no cabin camera and does not run visual driver monitoring.
@@ -113,7 +115,7 @@ class SelfdriveD:
                                    'managerState', 'vehicleParameters', 'radarState',
                                    'controlsState', 'carControl', 'driverAssistance', 'alertDebug', 'userBookmark',
                                    'lateralManeuverPlan', 'modelDataV2SP', 'longitudinalPlanSP'] + \
-                                   self.camera_packets + self.sensor_packets + self.gps_packets,
+                                   self.camera_packets + self.sensor_packets + self.gps_packets + plugins.services(),
                                   ignore_alive=ignore, ignore_avg_freq=ignore,
                                   ignore_valid=ignore, frequency=int(1/DT_CTRL))
 
@@ -177,6 +179,7 @@ class SelfdriveD:
 
     self.events_sp = EventsSP()
     self.events_sp_prev = []
+    self.plugin_alerts = plugins.alert_sources(self.CP, self.params)  # xpilot plugin alerts
 
     self.mads = ModularAssistiveDrivingSystem(self)
 
@@ -275,6 +278,7 @@ class SelfdriveD:
         self.dm_uncertain_alerted = True
     if not self.CP.notCar:
       self.events_sp.add_from_msg(self.sm['longitudinalPlanSP'].events)
+    plugins.update_alerts(self.plugin_alerts, self.sm, self.events_sp)  # xpilot plugin alerts (never disengage)
 
     # Add car events, ignore if CAN isn't valid
     if CS.canValid:

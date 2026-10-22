@@ -266,3 +266,6 @@ EVENTS_SP: dict[int, dict[str, Alert | AlertCallbackType]] = {
     ET.PERMANENT: big_model_ready_alert,
   },
 }
+
+from openpilot.tesla.alerts import EVENTS as XPILOT_PLUGIN_EVENTS  # noqa: E402  xpilot plugin alerts
+EVENTS_SP.update(XPILOT_PLUGIN_EVENTS)

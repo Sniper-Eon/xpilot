@@ -8,7 +8,18 @@ SP stays the main stack: SP files only call these hooks. Every hook has a do-not
 The host (plugins/__init__.py) builds only enabled plugins that win their claims, refuses unclaimed use,
 and drops a plugin at its first exception.
 """
+from dataclasses import dataclass
+
 from openpilot.tesla.manifest import Setting  # noqa: F401  (re-exported for settings code)
+
+
+@dataclass(frozen=True)
+class PluginAlert:
+  """One alert from alert_source(). severity: "info" (no sound), "warning" (prompt) or "critical" (warning sound).
+  Plugin alerts never disengage and rank below SP's own critical alerts; text is cut to tesla/alerts.py limits."""
+  severity: str
+  title: str
+  body: str = ""
 
 
 class Plugin:
@@ -22,7 +33,7 @@ class Plugin:
   CLAIMS: tuple[str, ...] = ()
   SETTINGS: tuple = ()
   MANIFEST = None
-  PLAN_SERVICES: tuple[str, ...] = ()  # extra services plannerd must subscribe for plan_filter()
+  SERVICES: tuple[str, ...] = ()  # extra services plannerd, selfdrived and controlsd subscribe for this plugin's hooks
 
   def __init__(self, CP, params):
     """card: once per car, after fingerprinting. Read Params here or in service_params()."""
@@ -51,6 +62,28 @@ class Plugin:
   def processes(cls) -> list:
     """Extra manager processes (ManagerProcess instances). Import manager code inside, not at module level."""
     return []
+
+  # ---- selfdrived (claim "alert") ----
+  @classmethod
+  def alert_source(cls, CP, params):
+    """None, or an object with update(sm) -> list[PluginAlert], called every selfdrived cycle (100 Hz)."""
+    return None
+
+  # ---- modeld (claim "role:lane_change.policy", exclusive) ----
+  @classmethod
+  def lane_change_policy(cls, params):
+    """None, or an object with allow(carstate, direction, default) -> bool: replaces only SP's "start without
+    steering nudge" decision (default) during preLaneChange. Blinker, minimum speed, blind spot and road edge stay
+    hard requirements in DesireHelper."""
+    return None
+
+  # ---- controlsd (claim "lat.correction") ----
+  @classmethod
+  def lat_correction(cls, CP, params):
+    """None, or an object with update(sm, v_ego, curvature) -> curvature or None, called every control cycle while
+    lateral is active. Corrections chain in plugin order; the host caps the total change at LAT_CORRECTION_ACCEL
+    (m/s^2 equivalent) and SP's clip_curvature (ISO jerk/accel) applies afterwards."""
+    return None
 
   # ---- plannerd ----
   @classmethod

@@ -7,6 +7,7 @@
   Plugins page) and dropped for the rest of the process; the other plugins and SP carry on.
 """
 import importlib
+import math
 import time
 
 from openpilot.common.swaglog import cloudlog
@@ -134,25 +135,41 @@ def processes() -> list:
   return procs
 
 
-def plan_services() -> list[str]:
-  return [svc for p in PLUGINS for svc in p.PLAN_SERVICES]
+def services() -> list[str]:
+  """Extra services plannerd, selfdrived and controlsd subscribe for plugin hooks (ignored for alive/valid checks)."""
+  return sorted({svc for p in PLUGINS for svc in p.SERVICES})
+
+
+def _collect(params, hook: str, claim: str, where: str, *args) -> list:
+  """Hook objects of the active plugins that return one; tagged with plugin_name. A plugin returning one without
+  the claim, or raising, is recorded and skipped."""
+  out = []
+  for cls in active(params):
+    try:
+      if (obj := getattr(cls, hook)(*args)) is not None:
+        if claim not in cls.CLAIMS:
+          raise PermissionError(f"{hook} without a {claim} claim")
+        obj.plugin_name = cls.NAME
+        out.append(obj)
+    except Exception as e:
+      record_fault(cls.NAME, f"{where}.{hook}", e)
+  return out
+
+
+def _call(objs: list, obj, method: str, where: str, *args):
+  """(True, result) or (False, None) after dropping obj from objs and recording the fault."""
+  try:
+    return True, getattr(obj, method)(*args)
+  except Exception as e:
+    if obj in objs:
+      objs.remove(obj)
+    record_fault(getattr(obj, "plugin_name", "?"), f"{where}.{method}", e)
+    return False, None
 
 
 def long_targets(CP, params) -> list:
-  """plannerd: one target object per enabled plugin that has one."""
-  if CP.brand != "tesla":
-    return []
-  targets = []
-  for cls in active(params):
-    try:
-      if (t := cls.long_target(CP, params)) is not None:
-        if "long.target" not in cls.CLAIMS:
-          raise PermissionError("long_target without a long.target claim")
-        t.plugin_name = cls.NAME
-        targets.append(t)
-    except Exception as e:
-      record_fault(cls.NAME, "plannerd.long_target", e)
-  return targets
+  """plannerd: one target object per active plugin that has one."""
+  return _collect(params, "long_target", "long.target", "plannerd", CP, params) if CP.brand == "tesla" else []
 
 
 def apply_long_targets(targets: list, sm, candidates: dict, v_ego: float, a_ego: float, v_cruise: float) -> dict:
@@ -165,13 +182,8 @@ def apply_long_targets(targets: list, sm, candidates: dict, v_ego: float, a_ego:
   source = custom.LongitudinalPlanSP.LongitudinalPlanSource
   lower, raises = [], []
   for t in list(targets):
-    try:
-      v = t.update(sm, v_ego, v_cruise)
-    except Exception as e:
-      targets.remove(t)
-      record_fault(getattr(t, "plugin_name", "?"), "plannerd.long_target.update", e)
-      continue
-    if v is not None and v == v:  # not None, not NaN
+    ok, v = _call(targets, t, "update", "plannerd.long_target", sm, v_ego, v_cruise)
+    if ok and v is not None and v == v:  # not None, not NaN
       (lower if v < v_cruise else raises).append(max(float(v), 0.0))
   if lower:
     candidates[source.xpilotPlugin] = (min(lower), a_ego)
@@ -182,19 +194,62 @@ def apply_long_targets(targets: list, sm, candidates: dict, v_ego: float, a_ego:
 
 
 def plan_filters(CP, params) -> list:
-  if CP.brand != "tesla":
-    return []
-  filters = []
-  for cls in active(params):
-    try:
-      if (f := cls.plan_filter(CP, params)) is not None:
-        if "plan.filter" not in cls.CLAIMS:
-          raise PermissionError("plan_filter without a plan.filter claim")
-        f.plugin_name = cls.NAME
-        filters.append(f)
-    except Exception as e:
-      record_fault(cls.NAME, "plannerd.plan_filter", e)
-  return filters
+  return _collect(params, "plan_filter", "plan.filter", "plannerd", CP, params) if CP.brand == "tesla" else []
+
+
+# ---- selfdrived: alerts ----
+def alert_sources(CP, params) -> list:
+  return _collect(params, "alert_source", "alert", "selfdrived", CP, params) if CP.brand == "tesla" else []
+
+
+def update_alerts(sources: list, sm, events_sp) -> None:
+  """First alert per severity in plugin order -> tesla.alerts.current, and its SP event into events_sp."""
+  from openpilot.tesla import alerts
+  shown: dict[str, tuple[str, str]] = {}
+  for src in list(sources):
+    ok, out = _call(sources, src, "update", "selfdrived.alert_source", sm)
+    for a in (out or []) if ok else []:
+      if a.severity in alerts.EVENT_NAMES and a.severity not in shown:
+        shown[a.severity] = (str(a.title)[:alerts.MAX_TITLE], str(a.body)[:alerts.MAX_BODY])
+  alerts.current = shown
+  for severity in shown:
+    events_sp.add(alerts.EVENT_NAMES[severity])
+
+
+# ---- modeld: lane change policy ----
+def lane_change_policies(params) -> list:
+  """The active lane change policy (role:lane_change.policy is exclusive, so at most one)."""
+  return _collect(params, "lane_change_policy", "role:lane_change.policy", "modeld", params)
+
+
+def lane_change_allowed(policies: list, carstate, direction, default: bool) -> bool:
+  """DesireHelper: the policy's decision, or SP's default when there is none or it raises."""
+  if not policies:
+    return default
+  ok, allowed = _call(policies, policies[0], "allow", "modeld.lane_change_policy", carstate, direction, default)
+  return bool(allowed) if ok else default
+
+
+# ---- controlsd: lateral correction ----
+LAT_CORRECTION_ACCEL = 0.5  # m/s^2: cap on the total curvature change all corrections may make
+LAT_CORRECTION_MIN_SPEED = 5.0  # m/s: below this the cap is computed at this speed
+
+
+def lat_corrections(CP, params) -> list:
+  return _collect(params, "lat_correction", "lat.correction", "controlsd", CP, params) if CP.brand == "tesla" else []
+
+
+def apply_lat_corrections(corrections: list, sm, v_ego: float, curvature: float, active: bool) -> float:
+  """controlsd, before clip_curvature: chain corrections, ignore non-finite results, cap the total change."""
+  if not active or not corrections:
+    return curvature
+  out = curvature
+  for c in list(corrections):
+    ok, res = _call(corrections, c, "update", "controlsd.lat_correction", sm, v_ego, out)
+    if ok and res is not None and math.isfinite(res):
+      out = float(res)
+  cap = LAT_CORRECTION_ACCEL / max(v_ego, LAT_CORRECTION_MIN_SPEED) ** 2
+  return min(max(out, curvature - cap), curvature + cap)
 
 
 class _GuardedSink:

@@ -3,6 +3,8 @@ from openpilot.common.constants import CV
 from openpilot.common.realtime import DT_MDL
 from openpilot.sunnypilot.selfdrive.controls.lib.auto_lane_change import AutoLaneChangeController, AutoLaneChangeMode
 from openpilot.sunnypilot.selfdrive.controls.lib.lane_turn_desire import LaneTurnController
+from openpilot.common.params import Params
+from openpilot.tesla import plugins
 
 LaneChangeState = log.LaneChangeState
 LaneChangeDirection = log.LaneChangeDirection
@@ -28,6 +30,7 @@ class DesireHelper:
     self.alc = AutoLaneChangeController(self)
     self.lane_turn_controller = LaneTurnController(self)
     self.lane_turn_direction = TurnDirection.none
+    self.lane_change_policy = plugins.lane_change_policies(Params())  # xpilot plugin lane change policy
 
   @staticmethod
   def get_lane_change_direction(CS):
@@ -68,6 +71,8 @@ class DesireHelper:
                               ((carstate.rightBlindspot or right_edge_detected) and self.lane_change_direction == LaneChangeDirection.right))
 
         self.alc.update_lane_change(blindspot_detected, carstate.brakePressed)
+        self.alc.auto_lane_change_allowed = plugins.lane_change_allowed(self.lane_change_policy, carstate, self.lane_change_direction,
+                                                                        self.alc.auto_lane_change_allowed)
 
         if not one_blinker or below_lane_change_speed:
           self.lane_change_state = LaneChangeState.off

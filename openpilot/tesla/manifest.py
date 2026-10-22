@@ -46,11 +46,13 @@ CLAIM_PATTERNS = (
   r"can\.tx:0x[0-9A-Fa-f]{1,8}:[0-7]",  # send this CAN address on this bus (needs a panda safety plugin)
   r"process:[a-z][a-z0-9_]*",           # run this manager process
   r"source:[a-z][a-z0-9_.]*",           # be the provider of this data, e.g. source:radar, source:lanes
-  r"role:[a-z][a-z0-9_.]*",             # own a replaceable stage, e.g. role:lateral.controller
+  r"role:[a-z][a-z0-9_.]*",             # own a replaceable stage, e.g. role:lane_change.policy
   r"long\.target",                      # long_target hook (shared, merged by the host)
   r"plan\.filter",                      # plan_filter hook (shared, chained in priority order)
+  r"alert",                             # alert_source hook (shared, first alert per severity in priority order)
+  r"lat\.correction",                   # lat_correction hook (shared, chained, total change capped by the host)
 )
-SHARED_CLAIMS = {"long.target", "plan.filter"}
+SHARED_CLAIMS = {"long.target", "plan.filter", "alert", "lat.correction"}
 _CLAIM_RE = re.compile("|".join(f"(?:{p})" for p in CLAIM_PATTERNS))
 
 

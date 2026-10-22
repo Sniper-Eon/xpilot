@@ -24,7 +24,7 @@ def main():
   cloudlog.info("plannerd got CarParamsSP")
 
   gps_location_service = get_gps_location_service(params)
-  plugin_services = plugins.plan_services()  # xpilot plugins: extra inputs for plan filters
+  plugin_services = plugins.services()  # xpilot plugins: extra inputs for their hooks
   ignore_services = ["liveMapDataSP", "carStateSP", "selfdriveStateSP", gps_location_service, *plugin_services]
 
   ldw = LaneDepartureWarning()

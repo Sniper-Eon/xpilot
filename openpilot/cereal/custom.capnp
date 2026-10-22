@@ -383,6 +383,9 @@ struct OnroadEventSP @0xda96579883444c35 {
     e2eChime @23;
     laneChangeRoadEdge @24;
     bigModelReady @25;
+    xpilotPluginInfo @26;      # xpilot plugin alerts (openpilot/tesla/alerts.py); never disengage
+    xpilotPluginWarning @27;
+    xpilotPluginCritical @28;
   }
 }
 

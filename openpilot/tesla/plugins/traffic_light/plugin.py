@@ -13,7 +13,7 @@ def _onroad(started, params, CP) -> bool:
 
 
 class TrafficLight(Plugin):
-  PLAN_SERVICES = ("trafficRadarState",)
+  SERVICES = ("trafficRadarState",)
 
   def __init__(self, CP, params):
     super().__init__(CP, params)
