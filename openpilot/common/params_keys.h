@@ -151,18 +151,10 @@ inline static std::unordered_map<std::string, ParamKeyAttributes> keys = {
     {"DriverMonitoringEnabled", {PERSISTENT | BACKUP, BOOL}},
     {"ActiveDriverMonitoringEnabled", {CLEAR_ON_MANAGER_START | CLEAR_ON_OFFROAD_TRANSITION, BOOL}},
     {"SPDriverMonitoringDefaultsMigrated", {PERSISTENT | BACKUP, BOOL}},
-    {"TeslaBlindspotAmbientEnabled", {PERSISTENT | BACKUP, BOOL, "0"}},
-    {"TeslaBlindspotAmbientBrightness", {PERSISTENT | BACKUP, INT, "30"}},
-    {"TeslaBlindspotAmbientDayBrightness", {PERSISTENT | BACKUP, INT, "100"}},
 
     // xpilot: device and plugin settings (plugins: openpilot/tesla/plugins, rules: XPILOT.md)
-    {"TeslaAutoSpeedLimit", {PERSISTENT | BACKUP, BOOL, "0"}},
     {"TeslaVideoWindow", {PERSISTENT | BACKUP, JSON}},
     {"MapProvider", {PERSISTENT | BACKUP, STRING, "osm"}},
-    {"TeslaAutoSpeedLimitOffset", {PERSISTENT | BACKUP, INT, "0"}},  // car display units
-    {"TeslaTrafficSignalControlEnabled", {PERSISTENT | BACKUP, BOOL, "0"}},
-    {"TeslaTrafficStopReference", {PERSISTENT | BACKUP, INT, "50"}},  // decimeters
-    {"TeslaTrafficControlMaxSpeed", {PERSISTENT | BACKUP, INT, "60"}},  // km/h
     {"XpilotPluginFaults", {CLEAR_ON_MANAGER_START, JSON}},  // plugin name -> where it failed; shown on the Plugins page
 
     // --- sunnypilot params --- //
@@ -319,4 +311,7 @@ inline static std::unordered_map<std::string, ParamKeyAttributes> keys = {
     {"TorqueParamsOverrideEnabled", {PERSISTENT | BACKUP, BOOL, "0"}},
     {"TorqueParamsOverrideFriction", {PERSISTENT | BACKUP, FLOAT, "0.1"}},
     {"TorqueParamsOverrideLatAccelFactor", {PERSISTENT | BACKUP, FLOAT, "2.5"}},
+
+    // xpilot plugin params: each plugin declares its own in openpilot/tesla/plugins/<name>/params.json
+#include "common/plugin_params.inc"
 };

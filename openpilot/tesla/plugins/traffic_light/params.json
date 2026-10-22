@@ -1,0 +1,16 @@
+{
+  "TeslaTrafficSignalControlEnabled": {
+    "type": "BOOL",
+    "default": "0"
+  },
+  "TeslaTrafficStopReference": {
+    "type": "INT",
+    "default": "50",
+    "note": "decimeters"
+  },
+  "TeslaTrafficControlMaxSpeed": {
+    "type": "INT",
+    "default": "60",
+    "note": "km/h"
+  }
+}

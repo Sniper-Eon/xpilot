@@ -1,0 +1,14 @@
+{
+  "TeslaBlindspotAmbientEnabled": {
+    "type": "BOOL",
+    "default": "0"
+  },
+  "TeslaBlindspotAmbientBrightness": {
+    "type": "INT",
+    "default": "30"
+  },
+  "TeslaBlindspotAmbientDayBrightness": {
+    "type": "INT",
+    "default": "100"
+  }
+}

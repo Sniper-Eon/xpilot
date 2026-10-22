@@ -1,0 +1,11 @@
+{
+  "TeslaAutoSpeedLimit": {
+    "type": "BOOL",
+    "default": "0"
+  },
+  "TeslaAutoSpeedLimitOffset": {
+    "type": "INT",
+    "default": "0",
+    "note": "car display units"
+  }
+}
