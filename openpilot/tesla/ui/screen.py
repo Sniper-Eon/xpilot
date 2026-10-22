@@ -1,9 +1,4 @@
-"""Big-screen host for C3/C3X/C3XL: the mici UI in a movable window, slots around it, alerts on top.
-
-Window: Params "TeslaVideoWindow" {"x", "y", "scale"} in screen px; default mici size (536x240) centered.
-Edit: hold a finger 1 s outside the window, then drag the window to move it or its bottom-right corner to
-resize it; tap outside to save. Slots: see grid.py for the format.
-"""
+"""Big-screen mici content with direct settings navigation in the side slots."""
 from contextlib import contextmanager
 import math
 import time
@@ -13,6 +8,9 @@ import pyray as rl
 from openpilot.cereal import messaging
 from openpilot.common.hardware import HARDWARE
 from openpilot.common.params import Params
+from openpilot.common.swaglog import cloudlog
+from openpilot.selfdrive.ui.mici.layouts.settings.settings import SettingsBigButton
+from openpilot.system.ui.lib.application import gui_app, FontWeight
 from openpilot.selfdrive.ui.mici.onroad.alert_renderer import AlertRenderer
 from openpilot.selfdrive.ui.ui_state import ui_state
 from openpilot.sunnypilot.hardware.profile import HardwareProfile, get_hardware_profile
@@ -23,9 +21,6 @@ from openpilot.tesla.ui.slot import Slot
 SCREEN = (2160, 1080)
 MICI = (536, 240)
 BANNER_SCALE = 2  # the mici alert layout at 2x: 1080x160 logical, full width and 320 px tall on screen
-HOLD_S = 1.0
-CORNER_PX = 90
-EDIT_COLOR = rl.Color(70, 160, 255, 255)
 
 
 def is_big_screen() -> bool:
@@ -56,32 +51,43 @@ class BigScreenHost:
 
   def __init__(self):
     self._params = Params()
-    w = self._params.get("TeslaVideoWindow") or {}
-    self._max_scale = min(SCREEN[0] / MICI[0], SCREEN[1] / MICI[1])
-    self._set_window(float(w.get("x", (SCREEN[0] - MICI[0]) / 2)), float(w.get("y", (SCREEN[1] - MICI[1]) / 2)), float(w.get("scale", 1.0)))
+    self._s = 3.0
+    self._x, self._y = (SCREEN[0] - MICI[0] * self._s) / 2, (SCREEN[1] - MICI[1] * self._s) / 2
     self._banner = AlertRenderer()
     self._tiles = [_Tile(name, s) for name, s in load(Slot)]  # core slots/ and each plugin's ui.py
     self._enabled = EnabledPlugins(self._params)
     services = sorted({svc for t in self._tiles for svc in t.slot.SPEC.services})
     self._sm = messaging.SubMaster(services) if services else None
     self._layout_key = None
-    self._editing, self._drag, self._hold_start = False, None, 0.0
+    self._menu = []
+    self._selected = 0
+    self._menu_pressed = None
 
-  def _set_window(self, x: float, y: float, s: float) -> None:
-    self._s = min(max(s, 1.0), self._max_scale)
-    self._x = min(max(x, 0.0), SCREEN[0] - MICI[0] * self._s)
-    self._y = min(max(y, 0.0), SCREEN[1] - MICI[1] * self._s)
+  def bind_settings(self, main, settings) -> None:
+    self._main = main
+    self._menu = [("Home", None)] + [(button.text, button._click_callback) for button in settings._scroller.items
+                                   if isinstance(button, SettingsBigButton)]
+
+  def open_settings(self) -> None:
+    self._select_menu(1)
+
+  def _select_menu(self, index: int) -> None:
+    gui_app.pop_widgets_to(self._main, instant=True)
+    self._selected = index
+    if index:
+      self._menu[index][1]()
 
   def viewport(self) -> rl.Rectangle:
     return rl.Rectangle(self._x, self._y, MICI[0] * self._s, MICI[1] * self._s)
 
   def to_logical(self, x: float, y: float) -> tuple[float, float]:
-    if self._editing:
-      return -1e6, -1e6  # the mici UI ignores touches while the window is being edited
     return (x - self._x) / self._s, (y - self._y) / self._s
 
   def render(self) -> None:
-    self._edit_input()
+    if not ui_state.started:
+      if not gui_app.widget_in_stack(self._main._onboarding_window):
+        self._draw_menu()
+      return
     enabled = self._enabled.get()
     key = (self._x, self._y, self._s, ui_state.started, frozenset(enabled))
     if key != self._layout_key:
@@ -91,10 +97,6 @@ class BigScreenHost:
       for t in self._tiles:
         t.rect = rects.get(t.slot.SPEC.id)
     self._draw_tiles()
-    if self._editing:
-      v = self.viewport()
-      rl.draw_rectangle_lines_ex(v, 6, EDIT_COLOR)
-      rl.draw_rectangle_rec(rl.Rectangle(v.x + v.width - CORNER_PX, v.y + v.height - CORNER_PX, CORNER_PX, CORNER_PX), EDIT_COLOR)
     # Alerts never shrink with the window: same renderer and timeout logic as mici, drawn across the top.
     with scaled(BANNER_SCALE):
       self._banner.render(rl.Rectangle(0, 0, SCREEN[0] / BANNER_SCALE, 160))
@@ -127,30 +129,21 @@ class BigScreenHost:
         rl.end_texture_mode()
       rl.draw_texture_pro(t.texture.texture, rl.Rectangle(0, 0, w, -h), rl.Rectangle(x, y, w, h), rl.Vector2(0, 0), 0.0, rl.WHITE)
 
-  def _edit_input(self) -> None:
-    down, pos, now = rl.is_mouse_button_down(0), rl.get_touch_position(0), time.monotonic()
-    inside = rl.check_collision_point_rec(pos, self.viewport())
-    if not self._editing:
-      if down and not inside:
-        self._hold_start = self._hold_start or now
-        if now - self._hold_start >= HOLD_S:
-          self._editing, self._drag = True, "wait_release"
-      else:
-        self._hold_start = 0.0
-      return
-    if not down:
-      if self._drag == "exit":
-        self._editing = False
-        self._params.put("TeslaVideoWindow", {"x": self._x, "y": self._y, "scale": self._s})
-      self._drag = None
-      return
-    if self._drag is None:
-      v = self.viewport()
-      corner = inside and pos.x > v.x + v.width - CORNER_PX and pos.y > v.y + v.height - CORNER_PX
-      self._drag = ("scale" if corner else "move", pos.x, pos.y, self._x, self._y, self._s) if inside else "exit"
-    elif isinstance(self._drag, tuple):
-      mode, px, py, x0, y0, s0 = self._drag
-      if mode == "move":
-        self._set_window(x0 + pos.x - px, y0 + pos.y - py, self._s)
-      else:
-        self._set_window(x0, y0, s0 + max(pos.x - px, (pos.y - py) * MICI[0] / MICI[1]) / MICI[0])
+  def _draw_menu(self) -> None:
+    if gui_app.get_active_widget() is self._main:
+      self._selected = 0
+    for index, (label, _) in enumerate(self._menu):
+      rect = rl.Rectangle(18 if index < 5 else SCREEN[0] - 258, 90 + (index % 5) * 180, 240, 144)
+      for event in gui_app.mouse_events:
+        pos = rl.Vector2(event.pos.x * self._s + self._x, event.pos.y * self._s + self._y)
+        inside = rl.check_collision_point_rec(pos, rect)
+        if event.left_pressed and inside:
+          self._menu_pressed = index
+        if event.left_released and self._menu_pressed == index:
+          self._menu_pressed = None
+          if inside:
+            self._select_menu(index)
+      rl.draw_rectangle_rounded(rect, 0.15, 8, rl.Color(36, 100, 180, 255) if index == self._selected else rl.Color(24, 24, 28, 255))
+      font = gui_app.font(FontWeight.BOLD)
+      width = rl.measure_text_ex(font, label, 36, 0).x
+      rl.draw_text_ex(font, label, rl.Vector2(rect.x + (rect.width - width) / 2, rect.y + 48), 36, 0, rl.WHITE)

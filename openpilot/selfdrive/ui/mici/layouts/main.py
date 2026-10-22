@@ -60,6 +60,8 @@ class MiciMainLayout(Scroller):
     self._onboarding_window = OnboardingWindow(lambda: gui_app.pop_widgets_to(self))
     if not self._onboarding_window.completed:
       gui_app.push_widget(self._onboarding_window)
+    if gui_app.host:
+      gui_app.host.bind_settings(self, self._settings_layout)
 
   @property
   def _onroad_layout(self) -> Widget:
@@ -69,7 +71,7 @@ class MiciMainLayout(Scroller):
   def _setup_callbacks(self):
     self._alerts_layout.set_enabled(lambda: self.enabled)
     self._home_layout.set_callbacks(
-      on_settings=lambda: gui_app.push_widget(self._settings_layout),
+      on_settings=lambda: gui_app.host.open_settings() if gui_app.host else gui_app.push_widget(self._settings_layout),
       on_alerts=lambda: self._scroll_to(self._alerts_layout),
       alert_count_callback=self._alerts_layout.active_alerts,
       alert_icon_callback=self._alerts_layout.highest_severity_icon,

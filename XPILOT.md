@@ -200,7 +200,7 @@ typedef struct {
 
 - **加插槽**：插件的插槽写在 `plugins/<名字>/ui.py`；不属于插件的在 `openpilot/tesla/ui/slots/` 新建文件，继承 `Slot` 并写好 `SPEC = SlotSpec(id, title, cells, services, show, hz, order)`，会被自动发现，在 12×6 网格中自动排布。
 - **只显示**：插槽不接收触摸。
-- **视频窗口**：在窗口外按住 1 秒进入编辑，可拖动和缩放；位置保存在 `TeslaVideoWindow`。
+- **大屏窗口**：居中 1608×720；停车时左右插槽直接选择 Home 和各设置分类，中间复用 mici 的具体设置页。行驶时插槽显示数据，顶部只显示行车告警。
 
 ## 10. 现有插件
 
