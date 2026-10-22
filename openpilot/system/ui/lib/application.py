@@ -297,15 +297,13 @@ class GuiApplication(GuiApplicationExt):
     self._window_close_requested = True
 
   def init_window(self, title: str, fps: int = _DEFAULT_FPS, host=None):
-    """host: big-screen host (openpilot/tesla/ui/screen.py). The mici UI then renders at 536x240 into a
+    """host: big-screen host class (openpilot/tesla/ui/screen.py). The mici UI then renders at 536x240 into a
     texture drawn at host.viewport(), and host.render() draws around it in screen pixels."""
     with self._startup_profile_context():
       if host is not None:
-        self._host = host
         self._width, self._height, self._scale = 536, 240, HOST_TEXTURE_SCALE
         self._scaled_width, self._scaled_height = 536 * HOST_TEXTURE_SCALE, 240 * HOST_TEXTURE_SCALE
         self._nav_stack_widgets_to_render = 2
-        self._mouse.to_logical = host.to_logical
       def _close(sig, frame):
         self.close()
         sys.exit(0)
@@ -365,6 +363,9 @@ class GuiApplication(GuiApplicationExt):
       self._load_fonts()
       self._patch_text_functions()
       self._patch_scissor_mode()
+      if host is not None:
+        self._host = host()
+        self._mouse.to_logical = self._host.to_logical
       if BURN_IN_MODE and self._burn_in_shader is None:
         self._burn_in_shader = rl.load_shader_from_memory(BURN_IN_VERTEX_SHADER, BURN_IN_FRAGMENT_SHADER)
 

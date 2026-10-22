@@ -16,7 +16,7 @@ def main():
   # above plannerd and radard
   config_realtime_process(0, Priority.CTRL_HIGH)
 
-  gui_app.init_window("UI", host=BigScreenHost() if is_big_screen() else None)
+  gui_app.init_window("UI", host=BigScreenHost if is_big_screen() else None)
   MiciMainLayout()
 
   pm = messaging.PubMaster(['uiDebug'])
