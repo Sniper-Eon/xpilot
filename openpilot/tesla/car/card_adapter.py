@@ -66,7 +66,7 @@ class TeslaCardAdapter:
     try:
       from opendbc.can import CANParser
       from opendbc.car import Bus
-      from opendbc.car.tesla.values import CANBUS, DBC
+      from opendbc.sunnypilot.car.tesla.xpilot.values import CANBUS, DBC
 
       fingerprint = self.car_interface.CP.carFingerprint
       return CANParser(DBC[fingerprint][Bus.adas], [(LIGHTING_MESSAGE, float("nan")), (DISPLAY_MESSAGE, float("nan"))], CANBUS.vehicle)

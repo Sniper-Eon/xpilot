@@ -8,7 +8,7 @@ See the LICENSE.md file in the root directory for more details.
 from openpilot.common.params import Params
 from opendbc.car import structs
 from opendbc.safety import ALTERNATIVE_EXPERIENCE
-from opendbc.sunnypilot.car.tesla.values import MadsScreenButtonType, TeslaFlagsSP
+from opendbc.sunnypilot.car.tesla.xpilot.values_sp import MadsScreenButtonType, TeslaFlagsSP
 
 
 MADS_NO_ACC_MAIN_BUTTON = ("tesla",)

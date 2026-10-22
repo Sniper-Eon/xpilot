@@ -9,7 +9,7 @@ must be filtered to preserve the mixed-control session.
 from dataclasses import dataclass, field
 from typing import Protocol
 
-from opendbc.sunnypilot.car.tesla.values import TeslaFlagsSP
+from opendbc.sunnypilot.car.tesla.xpilot.values_sp import TeslaFlagsSP
 from openpilot.cereal import log
 
 

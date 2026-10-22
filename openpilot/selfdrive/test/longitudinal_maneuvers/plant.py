@@ -47,8 +47,8 @@ class Plant:
     time.sleep(0.1)
     self.sm = messaging.SubMaster(['longitudinalPlan'])
 
-    from opendbc.car.tesla.values import CAR
-    from opendbc.car.tesla.interface import CarInterface
+    from opendbc.sunnypilot.car.tesla.xpilot.values import CAR
+    from opendbc.sunnypilot.car.tesla.xpilot.interface import CarInterface
 
     CP = CarInterface.get_non_essential_params(CAR.TESLA_MODEL_3)
     CP_SP = CarInterface.get_non_essential_params_sp(CP, CAR.TESLA_MODEL_3)

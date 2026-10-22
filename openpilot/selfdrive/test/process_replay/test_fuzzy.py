@@ -4,7 +4,7 @@ from openpilot.common.parameterized import parameterized
 from openpilot.common.fuzzy import capnp_random_dict, fuzzy_test
 
 from openpilot.cereal import log
-from opendbc.car.tesla.values import CAR as TESLA
+from opendbc.sunnypilot.car.tesla.xpilot.values import CAR as TESLA
 import openpilot.selfdrive.test.process_replay.process_replay as pr
 
 # These processes currently fail because of unrealistic data breaking assumptions

@@ -81,7 +81,7 @@ def _migrate_tesla_mads_screen_button(_params):
     if _resolve_brand(_params) != "tesla":
       return
 
-    from opendbc.sunnypilot.car.tesla.values import MadsScreenButtonType  # lazy: avoids heavy import at module level
+    from opendbc.sunnypilot.car.tesla.xpilot.values_sp import MadsScreenButtonType  # lazy: avoids heavy import at module level
     _params.put("TeslaMadsScreenButton", MadsScreenButtonType.THREE_FINGER, block=True)
     cloudlog.info("params_migration: seeded TeslaMadsScreenButton with 3-finger to preserve existing behavior")
   except Exception as e:
