@@ -6,22 +6,11 @@ Plugins whose manifest or code failed to load are listed at the top. Changes app
 from openpilot.selfdrive.ui.mici.widgets.button import BigButton, BigToggle
 from openpilot.selfdrive.ui.ui_state import ui_state
 from openpilot.system.ui.lib.application import gui_app
-from openpilot.tesla.manifest import CATEGORIES, conflicting
+from openpilot.tesla.manifest import CATEGORIES
 from openpilot.tesla.plugins import FAULTS_PARAM, LOAD_ERRORS, PLUGINS, is_enabled, resolve, view
+from openpilot.tesla.ui.offroad import plugin_status, switch_plugin
 from openpilot.tesla.ui.settings_page import SettingsList
 from openpilot.tesla.ui.store_page import StorePage
-
-
-def _items():
-  return [(c.NAME, c.PRIORITY, c.CLAIMS) for c in PLUGINS]
-
-
-def _status(plugin, faults, conflicts) -> str:
-  if plugin.NAME in faults:
-    return 'fault'
-  if plugin.NAME in conflicts:
-    return 'conflict'
-  return ''
 
 
 def _details(plugin) -> str:
@@ -48,17 +37,8 @@ class CategoryPage(SettingsList):
     self.show_event()
 
   def _switch(self, plugin, value) -> None:
-    params = view(ui_state.params)
-    if ui_state.is_offroad() and plugin.ENABLE_PARAM is not None:
-      if value:  # one owner per exclusive claim: switch the others off
-        by_name = {p.NAME: p for p in PLUGINS}
-        for name in conflicting(plugin.NAME, _items()):
-          if by_name[name].ENABLE_PARAM is not None:
-            params.put_bool(by_name[name].ENABLE_PARAM, False, block=True)
-      params.put_bool(plugin.ENABLE_PARAM, value, block=True)
-      faults = params.get(FAULTS_PARAM) or {}
-      if faults.pop(plugin.NAME, None) is not None:  # switching clears the fault mark
-        params.put(FAULTS_PARAM, faults, block=True)
+    if ui_state.is_offroad():
+      switch_plugin(plugin, value, view(ui_state.params))
     self.show_event()
 
   def show_event(self):
@@ -67,7 +47,7 @@ class CategoryPage(SettingsList):
     _, conflicts = resolve(ui_state.params)
     for plugin, toggle in getattr(self, 'rows', ()):
       toggle.set_checked(is_enabled(plugin, ui_state.params))
-      toggle.set_value(_status(plugin, faults, conflicts))
+      toggle.set_value(plugin_status(plugin, faults, conflicts))
 
 
 class PluginsPage(SettingsList):
