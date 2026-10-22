@@ -125,7 +125,7 @@ MY_BACKEND = BackendSpec(
 | `control_sends(CS, CC, now)` | 发送控制指令时 | 追加附件报文（氛围灯、自动限速滚轮） |
 | `service_params(params)` | 低频 | 读取参数 |
 
-所有新增的 CAN 发送报文都必须在 `opendbc_repo/opendbc/safety/modes/tesla.h` 的白名单里，并配好 safety 测试，否则 panda 会拦掉。
+所有新增的 CAN 发送报文都必须在 `opendbc_repo/opendbc/safety/modes/tesla_xpilot.h` 的白名单里，并在 `safety/tests/test_tesla_xpilot.py` 里配好测试，否则 panda 会拦掉。
 
 `car/control_runtime.py` 里的 `TeslaControlRuntime` 由 selfdrived 调用，负责在控制权交接期间过滤原车巡航事件。
 
@@ -156,10 +156,32 @@ Tesla 设置页是 `ui/settings_page.py`，元数据在 `ui/settings_meta.py`：
 
 ---
 
+## 8. opendbc 车型插件（车端实现）
+
+上游 sunnypilot 的 Tesla 车型代码（`opendbc/car/tesla/`、`opendbc/sunnypilot/car/tesla/` 下的原有文件、两个 DBC、`safety/modes/tesla.h`）保持原样，不编译、不使用。xpilot 的实现放在 `opendbc_repo/opendbc/sunnypilot/car/tesla/xpilot/`：
+
+| 文件 | 内容 |
+|---|---|
+| `interface.py` `carcontroller.py` `carstate.py` `teslacan.py` `radar_interface.py` `fingerprints.py` | 车端实现 |
+| `values.py` | 上游 values 加上 fork 的常量，DBC 指向 `*_xpilot.dbc` |
+| `values_sp.py` | 标志位（TeslaFlagsSP、TeslaSafetyFlagsSP） |
+| `setup.py` | 根据参数设置 CarParams/CarParamsSP |
+| `ars408/` | ARS408 外接雷达 |
+| `speed_limit_controller.py` | 自动限速 |
+
+注册点：
+- `opendbc/car/interfaces.py` 里的 `PORT_OVERRIDES`：车型 → 插件包。interface、values、fingerprints 都从插件包加载。
+- `safety/safety.h`：编译 `tesla_xpilot.h`，不编译上游的 `tesla.h`。
+- DBC：`dbc/tesla_model3_party_xpilot.dbc`、`dbc/tesla_model3_vehicle_xpilot.dbc`。
+
+想看 xpilot 和上游差在哪，直接 diff：例如 `opendbc/car/tesla/carcontroller.py` 对比 `xpilot/carcontroller.py`。
+
+本机测试：`python3 -m unittest opendbc.sunnypilot.car.tesla.xpilot.tests.test_tesla`（需要 numpy 和 pycapnp）。
+
 ## 尚未提供 / 限制
 
 - **横向目标接口**（让外部数据源提供目标曲率）还没做。不要直接用 `lateralManeuverPlan` 代替：controlsd 只检查 valid，不检查数据是否过期，发布方一挂就会一直沿用最后一帧曲率。
-- **opendbc 里的 Tesla 改动**仍然是原地修改，还没有拆成扩展钩子。改 safety 前必须在 Mac 或设备上编译 libsafety 并跑 safety 测试。
+- **safety**：`tesla_xpilot.h` 是 Tesla 模式的完整实现（由 fork 接管），上游的 `tesla.h` 修复不会自动生效，需要人工移植。改 safety 前必须在 Mac 或设备上编译 libsafety 并跑 safety 测试。
 - **外挂算力**：有线方案用上游已经支持的 chestnut（USB 外接 GPU，由 modeld 自动使用）；网络外挂盒子还没做网关。
 
 ## 本机可跑的检查
