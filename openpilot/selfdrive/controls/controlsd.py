@@ -58,7 +58,8 @@ class Controls(ControlsExt):
     self.LoC = LongControl(self.CP, self.CP_SP)
     self.VM = VehicleModel(self.CP)
     self.LaC: LatControl
-    self.LaC = LatControlAngle(self.CP, self.CP_SP, self.CI, DT_CTRL)  # Tesla steers by angle
+    self.LaC = plugins.lateral_controller(self.CP, self.CP_SP, self.CI, self.params,  # xpilot role:lateral.controller
+                                          LatControlAngle(self.CP, self.CP_SP, self.CI, DT_CTRL))  # Tesla steers by angle
     self.plugin_lat = plugins.lat_corrections(self.CP, self.params)  # xpilot plugin lateral corrections
 
   def update(self):

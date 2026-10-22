@@ -282,3 +282,76 @@ def plan_sink(filters, pm, sm):
       filters.remove(f)
       record_fault(getattr(f, "plugin_name", "?"), "plannerd.publisher", e)
   return sink
+
+
+# ---- controlsd: replaceable lateral controller ----
+class _GuardedLatControl:
+  """Steers with the plugin controller while SP's runs alongside; on a raise or non-finite output SP takes over for good."""
+
+  def __init__(self, plugin, sp):
+    self.plugin, self.sp, self._plugins = plugin, sp, [plugin]
+
+  def __getattr__(self, name):
+    return getattr(self.sp, name)
+
+  def update(self, *args):
+    sp_out = self.sp.update(*args)
+    if self._plugins:
+      ok, out = _call(self._plugins, self.plugin, "update", "controlsd.lat_controller", *args)
+      if ok:
+        try:
+          if all(math.isfinite(float(x)) for x in out[:2]):
+            return out
+          raise ValueError(f"non-finite lateral output {out[:2]}")
+        except Exception as e:
+          self._plugins.clear()
+          record_fault(getattr(self.plugin, "plugin_name", "?"), "controlsd.lat_controller.update", e)
+    return sp_out
+
+  def reset(self):
+    self.sp.reset()
+    if self._plugins:
+      _call(self._plugins, self.plugin, "reset", "controlsd.lat_controller")
+
+
+def lateral_controller(CP, CP_SP, CI, params, sp_controller):
+  """controlsd: SP's controller itself, or a guard around the active role:lateral.controller plugin."""
+  if CP.brand != "tesla":
+    return sp_controller
+  found = _collect(params, "lat_controller", "role:lateral.controller", "controlsd", CP, CP_SP, CI, params)
+  return _GuardedLatControl(found[0], sp_controller) if found else sp_controller
+
+
+# ---- plannerd: replaceable longitudinal planner ----
+def long_planners(CP, CP_SP, params) -> list:
+  return _collect(params, "long_planner", "role:long.planner", "plannerd", CP, CP_SP, params) if CP.brand == "tesla" else []
+
+
+def apply_long_planner(planners: list, planner, sm) -> None:
+  """SP LongitudinalPlanner.update, after its own output: let the active planner replace the plan (not FCW)."""
+  if not planners:
+    return
+  from types import SimpleNamespace
+  from opendbc.car.interfaces import ACCEL_MAX, ACCEL_MIN
+  sp = SimpleNamespace(speeds=list(planner.v_desired_trajectory), accels=list(planner.a_desired_trajectory),
+                       jerks=list(planner.j_desired_trajectory), a_target=float(planner.output_a_target),
+                       should_stop=bool(planner.output_should_stop))
+  ok, plan = _call(planners, planners[0], "update", "plannerd.long_planner", sm, sp)
+  if not ok or plan is None:
+    return
+  try:
+    speeds, accels, jerks = ([float(x) for x in getattr(plan, f)] for f in ("speeds", "accels", "jerks"))
+    a_target = float(plan.a_target)
+    n = len(sp.speeds)
+    if len(speeds) != n or len(accels) != n or len(jerks) != n:
+      raise ValueError("plan length differs from SP's")
+    if not all(math.isfinite(x) for x in (*speeds, *accels, *jerks, a_target)):
+      raise ValueError("non-finite plan")
+  except Exception as e:
+    record_fault(getattr(planners[0], "plugin_name", "?"), "plannerd.long_planner.result", e)
+    planners.clear()
+    return
+  import numpy as np  # SP publishes these with .tolist()
+  planner.v_desired_trajectory, planner.a_desired_trajectory, planner.j_desired_trajectory = (np.array(x) for x in (speeds, accels, jerks))
+  planner.output_a_target = min(max(a_target, ACCEL_MIN), ACCEL_MAX)
+  planner.output_should_stop = bool(plan.should_stop)

@@ -30,6 +30,7 @@ class LongitudinalPlannerSP:
     self.generation = int(model_bundle.generation) if (model_bundle := get_active_bundle()) else None
     self.source = LongitudinalPlanSource.cruise
     self.plugin_long_targets: list = []  # xpilot plugin speed targets, set by plannerd
+    self.plugin_long_planner: list = []  # xpilot replaceable planner (role:long.planner), set by plannerd
     self.e2e_alerts_helper = E2EAlertsHelper()
 
     self.output_v_target = 0.

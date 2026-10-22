@@ -85,6 +85,24 @@ class Plugin:
     (m/s^2 equivalent) and SP's clip_curvature (ISO jerk/accel) applies afterwards."""
     return None
 
+  # ---- controlsd (claim "role:lateral.controller", exclusive) ----
+  @classmethod
+  def lat_controller(cls, CP, CP_SP, CI, params):
+    """None, or a LatControl-compatible object: update(active, CS, VM, params, steer_limited_by_safety,
+    desired_curvature, calibrated_pose, curvature_limited, lat_delay) -> (steer, steering_angle_deg, lac_log) and
+    reset(). Its output is not limited against SP's; the car port's angle rate limits and panda still apply. SP's
+    controller keeps running alongside and takes over for good if this one raises or returns a non-finite output."""
+    return None
+
+  # ---- plannerd (claim "role:long.planner", exclusive) ----
+  @classmethod
+  def long_planner(cls, CP, CP_SP, params):
+    """None, or an object with update(sm, sp) -> plan or None, called every plan cycle after SP's planner. sp has
+    SP's speeds/accels/jerks (CONTROL_N points), a_target and should_stop. A plan (same fields) replaces SP's,
+    including lead following; a_target is clipped to ACCEL_MIN/MAX. SP's MPC still runs and still decides FCW.
+    None, wrong lengths or non-finite values keep SP's plan; raising drops the planner."""
+    return None
+
   # ---- plannerd ----
   @classmethod
   def long_target(cls, CP, params):
