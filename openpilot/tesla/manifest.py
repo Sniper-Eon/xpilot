@@ -11,12 +11,16 @@ plugin.json:
   settings     [{"key", "label", "range": [min, max, step, unit, divisor]} | {"key", "label", "choices": [[label, value]]}
                 | {"key", "label"} (toggle)]
   params       {"Key": {"type", "default", "flags", "note"}} rendered into common/plugin_params.inc by gen_params.py
+  platform     null (pure Python) or {"machine": "aarch64", "python": "cpython-312"} for plugins with prebuilt binaries;
+               such a plugin installs and loads only where host_platform() matches
 """
 from dataclasses import dataclass, field
 import json
 import os
 from pathlib import Path
+import platform as _platform
 import re
+import sys
 
 API_VERSION = 1
 PLUGINS_DIR = Path(__file__).resolve().parent / "plugins"  # built-in plugins (in git)
@@ -83,6 +87,7 @@ class Manifest:
   claims: tuple[str, ...] = ()
   settings: tuple[Setting, ...] = ()
   params: dict = field(default_factory=dict)
+  platform: dict | None = None
 
 
 def _setting(d: dict) -> Setting:
@@ -107,6 +112,9 @@ def parse(path: Path) -> Manifest:
     raise ValueError(f"unknown category {d.get('category')!r}")
   if not isinstance(d.get("entry"), str) or not re.fullmatch(r"[a-z_][a-z0-9_]*:[A-Za-z_]\w*", d["entry"]):
     raise ValueError(f"bad entry {d.get('entry')!r}")
+  plat = d.get("platform")
+  if plat is not None and not (isinstance(plat, dict) and isinstance(plat.get("machine"), str) and isinstance(plat.get("python"), str)):
+    raise ValueError(f"bad platform {plat!r}")
   claims = d.get("claims", [])
   if not isinstance(claims, list) or not all(isinstance(c, str) and _CLAIM_RE.fullmatch(c) for c in claims):
     raise ValueError(f"bad claims {claims!r}")
@@ -114,7 +122,8 @@ def parse(path: Path) -> Manifest:
     return Manifest(id=d["id"], name=str(d.get("name") or d["id"]), version=str(d.get("version", "0")), api=d["api"],
                     category=d["category"], entry=d["entry"], description=str(d.get("description", "")),
                     author=str(d.get("author", "")), priority=int(d.get("priority", 100)), enable_param=d.get("enable_param"),
-                    claims=tuple(claims), settings=tuple(_setting(s) for s in d.get("settings", [])), params=dict(d.get("params", {})))
+                    claims=tuple(claims), settings=tuple(_setting(s) for s in d.get("settings", [])), params=dict(d.get("params", {})),
+                    platform=plat)
   except (KeyError, TypeError, ValueError) as e:
     raise ValueError(f"bad field: {e!r}") from None
 
@@ -161,3 +170,13 @@ def compiled_param_keys() -> set[str]:
   """Keys the compiled Params knows: core params_keys.h plus built-in plugins (plugin_params.inc)."""
   text = "".join((_COMMON / f).read_text() for f in ("params_keys.h", "plugin_params.inc") if (_COMMON / f).exists())
   return set(re.findall(r'\{"(\w+)", \{', text))
+
+
+def host_platform() -> dict[str, str]:
+  """What prebuilt binaries must match: CPU architecture and Python ABI tag."""
+  return {"machine": _platform.machine(), "python": sys.implementation.cache_tag}
+
+
+def platform_ok(plat: dict | None) -> bool:
+  host = host_platform()
+  return plat is None or all(plat.get(k) == v for k, v in host.items())

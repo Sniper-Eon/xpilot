@@ -41,7 +41,8 @@ class IndexEntry:
   description: str
   url: str
   sha256: str
-  installable: bool = False  # api matches this host and the id is not a built-in plugin
+  platform: dict | None = None  # None: pure Python; else must equal manifest.host_platform()
+  installable: bool = False  # api and platform match this host and the id is not a built-in plugin
 
 
 def _get(url: str, limit: int) -> bytes:
@@ -65,10 +66,12 @@ def fetch_index(url: str = INDEX_URL) -> tuple[list[IndexEntry], str | None]:
   entries, builtin = [], builtin_ids()
   for raw in doc.get("plugins", []) if isinstance(doc, dict) else []:
     try:
-      e = IndexEntry(**{f: raw[f] for f in ("id", "name", "version", "api", "category", "author", "description", "url", "sha256")})
+      e = IndexEntry(**{f: raw[f] for f in ("id", "name", "version", "api", "category", "author", "description", "url", "sha256")},
+                     platform=raw.get("platform"))
     except (KeyError, TypeError):
       continue
-    entries.append(IndexEntry(**{**e.__dict__, "installable": e.api == mf.API_VERSION and e.id not in builtin}))
+    ok = e.api == mf.API_VERSION and e.id not in builtin and mf.platform_ok(e.platform)
+    entries.append(IndexEntry(**{**e.__dict__, "installable": ok}))
   return entries, None
 
 
@@ -100,6 +103,8 @@ def _validate(staged: Path, entry: IndexEntry) -> None:
     raise ValueError(f"manifest id {m.id!r} != index id {entry.id!r}")
   if m.id in builtin_ids():
     raise ValueError("id used by a built-in plugin")
+  if not mf.platform_ok(m.platform):
+    raise ValueError(f"built for {m.platform}, this device is {mf.host_platform()}")
   module = m.entry.split(":")[0]
   for f in ("__init__.py", f"{module}.py"):
     if not (staged / f).is_file():
@@ -115,7 +120,7 @@ def _validate(staged: Path, entry: IndexEntry) -> None:
 def install(entry: IndexEntry) -> str | None:
   """None on success, else the reason. The previous version stays in place on any failure."""
   if not entry.installable:
-    return f"not installable (api {entry.api}, host {mf.API_VERSION}, or a built-in id)"
+    return f"not installable (api {entry.api} vs {mf.API_VERSION}, platform {entry.platform}, or a built-in id)"
   mf.INSTALL_DIR.mkdir(parents=True, exist_ok=True)
   staging = Path(tempfile.mkdtemp(prefix=f".staging-{entry.id}-", dir=mf.INSTALL_DIR))
   try:

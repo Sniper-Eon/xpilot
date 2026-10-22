@@ -14,6 +14,9 @@ Failure cases listed before implementation:
 - S10 an index entry for another api version is offered as installable
 - S11 an unreachable index or a malformed entry crashes instead of returning an error
 - S12 an update keeps no copy until the new version is fully in place (half-written plugin directory)
+- S13 a plugin built for another platform (machine / Python ABI) is offered as installable or installed
+- S14 an installed plugin whose platform no longer matches (e.g. after a Python upgrade) is loaded instead of skipped
+- S15 a plugin for this platform is refused
 """
 import hashlib
 import http.server
@@ -102,10 +105,11 @@ def main() -> int:
   site.mkdir()
   entries = []
 
-  def publish(pid, data: bytes, version="1.0.0", sha=None, api=mf.API_VERSION):
+  def publish(pid, data: bytes, version="1.0.0", sha=None, api=mf.API_VERSION, platform=None):
     (site / f"{pid}-{version}.tar.gz").write_bytes(data)
     entries.append({"id": pid, "name": pid, "version": version, "api": api, "category": "tools", "author": "t",
-                    "description": "d", "url": f"{base}/{pid}-{version}.tar.gz", "sha256": sha or hashlib.sha256(data).hexdigest()})
+                    "description": "d", "url": f"{base}/{pid}-{version}.tar.gz", "sha256": sha or hashlib.sha256(data).hexdigest(),
+                    "platform": platform})
 
   handler = lambda *a, **k: http.server.SimpleHTTPRequestHandler(*a, directory=str(site), **k)  # noqa: E731
   http.server.SimpleHTTPRequestHandler.log_message = lambda *a: None
@@ -124,6 +128,9 @@ def main() -> int:
   publish("auto_speed", archive("auto_speed", good_files("auto_speed")))
   publish("ext_dup", archive("ext_dup", good_files("ext_dup", params={"TeslaAutoSpeedLimit": {"type": "BOOL"}})))
   publish("ext_api", archive("ext_api", good_files("ext_api")), api=mf.API_VERSION + 1)
+  here, other = mf.host_platform(), {"machine": "sparc", "python": "cpython-27"}
+  publish("ext_here", archive("ext_here", good_files("ext_here", platform=here)), platform=here)
+  publish("ext_other", archive("ext_other", good_files("ext_other", platform=other)), platform=other)
   (site / "index.json").write_text(json.dumps({"api": mf.API_VERSION, "plugins": entries + [{"id": "broken"}]}))
 
   try:
@@ -149,6 +156,10 @@ def main() -> int:
     except Exception as e:
       return f"raised {e!r}"
 
+  if by_id.get("ext_other") and by_id["ext_other"].installable:
+    errors.append("S13 other platform offered as installable")
+  if not by_id.get("ext_here") or not by_id["ext_here"].installable or install("ext_here") is not None:
+    errors.append("S15 this platform refused")
   if (r := install("ext_ok")) is not None:
     errors.append(f"S6 install ext_ok failed: {r}")
   for pid, code in (("ext_hash", "S1"), ("ext_trav", "S2"), ("ext_link", "S2"), ("auto_speed", "S4"), ("ext_dup", "S5")):
@@ -168,9 +179,14 @@ def main() -> int:
   if json.loads((TMP / "installed" / "ext_ok" / "plugin.json").read_text())["version"] != "1.0.0":
     errors.append("S3 broken update damaged the installed version")
 
+  # S14: the installed ext_here manifest now claims another platform (as after a Python upgrade)
+  here_json = TMP / "installed" / "ext_here" / "plugin.json"
+  here_json.write_text(json.dumps({**json.loads(here_json.read_text()), "platform": other}))
   import importlib
   from openpilot.tesla import plugins
   plugins = importlib.reload(plugins)
+  if any(c.NAME == "ext_here" for c in plugins.PLUGINS) or "ext_here" not in plugins.LOAD_ERRORS:
+    errors.append("S14 installed plugin for another platform loaded")
   names = [c.NAME for c in plugins.PLUGINS]
   ext = next((c for c in plugins.PLUGINS if c.NAME == "ext_ok"), None)
   if ext is None:

@@ -54,6 +54,9 @@ def _discover() -> tuple[tuple, dict[str, str], dict[str, dict]]:
     if clash:
       errors[m.id] = f"installed plugin clashes with an existing id or param: {clash}"
       continue
+    if not mf.platform_ok(m.platform):
+      errors[m.id] = f"built for {m.platform}, this device is {mf.host_platform()}"
+      continue
     manifests.append(m)
     specs.update(m.params)
   order = list(mf.CATEGORIES)
