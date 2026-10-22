@@ -305,6 +305,7 @@ struct LongitudinalPlanSP @0xf35cc4560bbf6ec2 {
     sccVision @1;
     sccMap @2;
     speedLimitAssist @3;
+    xpilotPlugin @4;  # an xpilot plugin speed target (openpilot/tesla/plugin.py long_target)
   }
 
   struct E2eAlerts {

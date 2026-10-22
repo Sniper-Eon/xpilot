@@ -12,7 +12,7 @@ from dataclasses import dataclass
 @dataclass(frozen=True)
 class Setting:
   """One row on the plugin's settings page. No range/choices: toggle. range=(min, max, step, unit, divisor).
-  choices=((label, value), ...). The key must be declared in common/params_keys.h."""
+  choices=((label, value), ...). The key must be declared in the plugin's params.json."""
   key: str
   label: str
   range: tuple[int, int, int, str, int] | None = None
@@ -23,7 +23,7 @@ class Plugin:
   NAME = ""                        # package directory name
   TITLE = ""                       # shown on the Plugins page
   DESCRIPTION = ""
-  ENABLE_PARAM: str | None = None  # BOOL param; off means not built, no process, no plan filter (next drive)
+  ENABLE_PARAM: str | None = None  # BOOL param in params.json; off: not built, no process, no plan filter/target
   SETTINGS: tuple[Setting, ...] = ()
   PLAN_SERVICES: tuple[str, ...] = ()  # extra services plannerd must subscribe for plan_filter()
 
@@ -56,6 +56,13 @@ class Plugin:
     return []
 
   # ---- plannerd ----
+  @classmethod
+  def long_target(cls, CP, params):
+    """None, or an object with update(sm, v_ego, v_cruise) -> target speed m/s or None, called every plan cycle.
+    Lower than v_cruise: tightens, like SP's own limiters. Higher: replaces only the driver set speed, and only
+    while engaged without gas/brake/override, capped at V_CRUISE_MAX. MPC (leads), model and SP limiters still apply."""
+    return None
+
   @classmethod
   def plan_filter(cls, CP, params):
     """None, or an object with publisher(pm, sm) returning a pm-like sink that may only tighten the plan."""

@@ -86,6 +86,49 @@ def plan_services() -> list[str]:
   return [svc for p in PLUGINS for svc in p.PLAN_SERVICES]
 
 
+def long_targets(CP, params) -> list:
+  """plannerd: one target object per enabled plugin that has one."""
+  if CP.brand != "tesla":
+    return []
+  targets = []
+  for cls in PLUGINS:
+    if not is_enabled(cls, params):
+      continue
+    try:
+      if (t := cls.long_target(CP, params)) is not None:
+        t.plugin_name = cls.NAME
+        targets.append(t)
+    except Exception as e:
+      record_fault(cls.NAME, "plannerd.long_target", e)
+  return targets
+
+
+def apply_long_targets(targets: list, sm, candidates: dict, v_ego: float, a_ego: float, v_cruise: float) -> dict:
+  """SP update_targets: add plugin speed targets to SP's {source: (v, a)} candidates, from which SP takes the min.
+  Lower targets join as xpilotPlugin. Higher ones may only replace the cruise (driver set speed) candidate while
+  engaged with no gas, brake or override; the lowest raise wins and is capped at V_CRUISE_MAX."""
+  from openpilot.cereal import custom
+  from openpilot.common.constants import CV
+  from openpilot.selfdrive.car.cruise import V_CRUISE_MAX
+  source = custom.LongitudinalPlanSP.LongitudinalPlanSource
+  lower, raises = [], []
+  for t in list(targets):
+    try:
+      v = t.update(sm, v_ego, v_cruise)
+    except Exception as e:
+      targets.remove(t)
+      record_fault(getattr(t, "plugin_name", "?"), "plannerd.long_target.update", e)
+      continue
+    if v is not None and v == v:  # not None, not NaN
+      (lower if v < v_cruise else raises).append(max(float(v), 0.0))
+  if lower:
+    candidates[source.xpilotPlugin] = (min(lower), a_ego)
+  cc, cs = sm['carControl'], sm['carState']
+  if raises and cc.enabled and not cc.cruiseControl.override and not cs.gasPressed and not cs.brakePressed:
+    candidates[source.cruise] = (min(min(raises), V_CRUISE_MAX * CV.KPH_TO_MS), a_ego)
+  return candidates
+
+
 def plan_filters(CP, params) -> list:
   if CP.brand != "tesla":
     return []

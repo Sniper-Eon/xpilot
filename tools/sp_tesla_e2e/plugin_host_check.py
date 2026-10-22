@@ -13,6 +13,16 @@ Failure cases listed before implementation:
 - P9 a real plugin lacks TITLE/ENABLE_PARAM, or names a setting key not declared in params_keys.h,
        or two settings share a key, or ENABLE_PARAM is not a BOOL key
 - P10 a plugin ui.py does not parse, or the plugin page is missing a plugin
+- P11 common/plugin_params.inc is out of date with the plugins' params.json (device would miss a key)
+- P12 a key is declared both in params_keys.h and a plugin params.json, or in two plugins
+- P13 a lower plugin speed target does not win over cruise (cannot tighten)
+- P14 a higher plugin target does not raise the cruise target while engaged (cannot accelerate)
+- P15 a raise applies while disengaged, during gas override, or while pressing the brake
+- P16 a raise goes above V_CRUISE_MAX
+- P17 a raise overrides SP's other limiters (speed limit assist, SCC) instead of only the driver set speed
+- P18 two raising plugins: the higher one wins (should be the lower, more conservative one)
+- P19 a long target that raises takes plannerd down or keeps running; None changes nothing
+- P20 a disabled plugin still contributes a long target
 
 Run from the repo root with the openpilot python env. Native-only modules (Params) are stubbed if missing.
 """
@@ -36,7 +46,11 @@ except Exception:
 from openpilot.tesla import plugins  # noqa: E402
 from openpilot.tesla.plugin import Plugin  # noqa: E402
 
-KEYS = dict(re.findall(r'\{"(\w+)", \{[^,]+, (\w+)', (ROOT / "openpilot/common/params_keys.h").read_text()))
+KEY_RE = r'\{"(\w+)", \{[^,]+, (\w+)'
+CORE_KEYS = dict(re.findall(KEY_RE, (ROOT / "openpilot/common/params_keys.h").read_text()))
+INC = ROOT / "openpilot/common/plugin_params.inc"
+PLUGIN_KEYS = dict(re.findall(KEY_RE, INC.read_text())) if INC.exists() else {}
+KEYS = {**CORE_KEYS, **PLUGIN_KEYS}
 
 
 class FakeParams:
@@ -200,8 +214,88 @@ def main() -> int:
   if not page.exists() or "PLUGINS" not in page.read_text():
     errors.append("P10 plugin page missing or not driven by PLUGINS")
 
+  import subprocess
+  gen = subprocess.run([sys.executable, str(ROOT / "openpilot/tesla/plugins/gen_params.py"), "--check"], capture_output=True, text=True)
+  if gen.returncode != 0:
+    errors.append(f"P11 {gen.stdout.strip() or gen.stderr.strip()[-200:]}")
+  if not INC.exists() or '#include "common/plugin_params.inc"' not in (ROOT / "openpilot/common/params_keys.h").read_text():
+    errors.append("P11 params_keys.h does not include common/plugin_params.inc")
+  errors += [f"P12 {k} in params_keys.h and a plugin params.json" for k in CORE_KEYS.keys() & PLUGIN_KEYS.keys()]
+  owners = {}
+  for f in sorted((ROOT / "openpilot/tesla/plugins").glob("*/params.json")):
+    for k in json.loads(f.read_text()):
+      if k in owners:
+        errors.append(f"P12 {k} in {owners[k]} and {f.parent.name}")
+      owners[k] = f.parent.name
+  errors += long_target_checks(plugins_mod)
+
   print(json.dumps({"plugins": [c.NAME for c in real], "errors": errors}, indent=1))
   return 1 if errors else 0
+
+
+def long_target_checks(plugins) -> list[str]:
+  from openpilot.cereal import custom
+  from openpilot.common.constants import CV
+  from openpilot.selfdrive.car.cruise import V_CRUISE_MAX
+  Source = custom.LongitudinalPlanSP.LongitudinalPlanSource
+  errors = []
+
+  def sm(enabled=True, override=False, gas=False, brake=False):
+    cc = types.SimpleNamespace(enabled=enabled, cruiseControl=types.SimpleNamespace(override=override))
+    return {"carControl": cc, "carState": types.SimpleNamespace(gasPressed=gas, brakePressed=brake)}
+
+  class T:
+    def __init__(self, v, fail=False):
+      self.v, self.fail, self.calls = v, fail, 0
+
+    def update(self, sm, v_ego, v_cruise):
+      self.calls += 1
+      if self.fail:
+        raise RuntimeError("target")
+      return self.v
+
+  def run(targets, s, cruise=20.0, sla=40.0):
+    base = {Source.cruise: (cruise, 0.0), Source.speedLimitAssist: (sla, 0.0)}
+    out = plugins.apply_long_targets(targets, s, dict(base), 0.0, 0.0, cruise)
+    return min(out.values(), key=lambda t: t[0])[0], out
+
+  if run([T(15.0)], sm())[0] != 15.0:
+    errors.append("P13 lower plugin target ignored")
+  if run([T(25.0)], sm())[0] != 25.0:
+    errors.append("P14 raise ignored while engaged")
+  for label, s in (("disengaged", sm(enabled=False)), ("override", sm(override=True)), ("gas", sm(gas=True)), ("brake", sm(brake=True))):
+    if run([T(25.0)], s)[0] != 20.0:
+      errors.append(f"P15 raise applied while {label}")
+  if run([T(500.0)], sm(), sla=1000.0)[0] > V_CRUISE_MAX * CV.KPH_TO_MS + 1e-6:
+    errors.append("P16 raise above V_CRUISE_MAX")
+  if run([T(50.0)], sm(), sla=30.0)[0] != 30.0:
+    errors.append("P17 raise beat speed limit assist")
+  if run([T(25.0), T(28.0)], sm())[0] != 25.0:
+    errors.append("P18 higher of two raises won")
+  bad = T(25.0, fail=True)
+  faults = []
+  plugins.record_fault = lambda name, where, exc: faults.append(where)
+  targets = [bad, T(None)]
+  try:
+    for _ in range(2):
+      v, _ = run(targets, sm())
+      if v != 20.0:
+        errors.append(f"P19 failing/None target changed speed to {v}")
+  except Exception as e:
+    errors.append(f"P19 apply_long_targets raised {e!r}")
+  if bad.calls != 1 or not faults:
+    errors.append(f"P19 failing target called {bad.calls}x, faults {faults}")
+
+  class Off(Plugin):
+    NAME, ENABLE_PARAM = "off", "OffKey"
+
+    @classmethod
+    def long_target(cls, CP, params):
+      return T(1.0)
+  plugins.PLUGINS = (Off,)
+  if plugins.long_targets(CP, FakeParams()):
+    errors.append("P20 disabled plugin contributes a long target")
+  return errors
 
 
 if __name__ == "__main__":
