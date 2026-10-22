@@ -1,13 +1,30 @@
 """xpilot plugin interface. Rules for writing a plugin: XPILOT.md at the repo root.
 
-One feature = one package openpilot/tesla/plugins/<name>/ whose plugin.py defines a Plugin subclass,
-listed in openpilot/tesla/plugins/__init__.py. SP stays the main stack: SP files only call these hooks.
-Every hook has a do-nothing default, so a plugin overrides only what it needs.
+One feature = one package openpilot/tesla/plugins/<name>/ (name == NAME):
+  plugin.py  a Plugin subclass, listed in openpilot/tesla/plugins/__init__.py
+  ui.py      optional: Slot subclasses (big-screen tiles) and HudOverlay subclasses (onroad HUD), found by the UI
+SP stays the main stack: SP files only call these hooks. Every hook has a do-nothing default.
+The host (plugins/__init__.py) builds only enabled plugins and drops a plugin at its first exception.
 """
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class Setting:
+  """One row on the plugin's settings page. No range/choices: toggle. range=(min, max, step, unit, divisor).
+  choices=((label, value), ...). The key must be declared in common/params_keys.h."""
+  key: str
+  label: str
+  range: tuple[int, int, int, str, int] | None = None
+  choices: tuple[tuple[str, int], ...] | None = None
 
 
 class Plugin:
-  NAME = ""
+  NAME = ""                        # package directory name
+  TITLE = ""                       # shown on the Plugins page
+  DESCRIPTION = ""
+  ENABLE_PARAM: str | None = None  # BOOL param; off means not built, no process, no plan filter (next drive)
+  SETTINGS: tuple[Setting, ...] = ()
   PLAN_SERVICES: tuple[str, ...] = ()  # extra services plannerd must subscribe for plan_filter()
 
   def __init__(self, CP, params):

@@ -3,7 +3,7 @@ trafficcontrold, and lets plannerd stop for red lights through the final plan ar
 Params: TeslaTrafficSignalControlEnabled, TeslaTrafficStopReference, TeslaTrafficControlMaxSpeed."""
 import time
 
-from openpilot.tesla.plugin import Plugin
+from openpilot.tesla.plugin import Plugin, Setting
 from openpilot.tesla.plugins.traffic_light.final_plan_arbitrator import create_final_plan_arbitrator
 from openpilot.tesla.plugins.traffic_light.tesla_observer import TeslaTrafficControlObserver, publish_tesla_traffic_control
 
@@ -14,6 +14,11 @@ def _onroad(started, params, CP) -> bool:
 
 class TrafficLight(Plugin):
   NAME = "traffic_light"
+  TITLE = "Traffic Light Control (Experimental)"
+  DESCRIPTION = "Stops for red lights seen by the car's own traffic-control perception. Only ever slows down."
+  ENABLE_PARAM = "TeslaTrafficSignalControlEnabled"
+  SETTINGS = (Setting("TeslaTrafficStopReference", "Stop Reference", range=(20, 120, 5, "m", 10)),
+              Setting("TeslaTrafficControlMaxSpeed", "Max Speed", range=(20, 120, 5, "km/h", 1)))
   PLAN_SERVICES = ("trafficRadarState",)
 
   def __init__(self, CP, params):
