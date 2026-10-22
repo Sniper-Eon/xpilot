@@ -75,6 +75,9 @@ def render():
         active = gui_app.get_active_widget()
         check(active is main if index == 0 else active is not main and active is not main._settings_layout,
               f'menu {index} does not show concrete settings')
+        if index:
+          first = active._scroller.items[0]
+          check(getattr(first, 'text', '') != 'Back', f'menu {index} starts with redundant Back card')
         screenshot(f'menu-{index}')
         cases.append({'name':host._menu[index][0], 'active':type(active).__name__})
   original_render()

@@ -10,6 +10,7 @@ from openpilot.common.hardware import HARDWARE
 from openpilot.common.params import Params
 from openpilot.common.swaglog import cloudlog
 from openpilot.selfdrive.ui.mici.layouts.settings.settings import SettingsBigButton
+from openpilot.selfdrive.ui.mici.widgets.button import BigButton
 from openpilot.system.ui.lib.application import gui_app, FontWeight
 from openpilot.selfdrive.ui.mici.onroad.alert_renderer import AlertRenderer
 from openpilot.selfdrive.ui.ui_state import ui_state
@@ -65,7 +66,7 @@ class BigScreenHost:
 
   def bind_settings(self, main, settings) -> None:
     self._main = main
-    self._menu = [("Home", None)] + [(button.text, button._click_callback) for button in settings._scroller.items
+    self._menu = [("Home", None)] + [(button.text.title(), button._click_callback) for button in settings._scroller.items
                                    if isinstance(button, SettingsBigButton)]
 
   def open_settings(self) -> None:
@@ -76,6 +77,9 @@ class BigScreenHost:
     self._selected = index
     if index:
       self._menu[index][1]()
+      items = gui_app.get_active_widget()._scroller.items
+      if isinstance(items[0], BigButton) and items[0].text == "Back":
+        items.pop(0)
 
   def viewport(self) -> rl.Rectangle:
     return rl.Rectangle(self._x, self._y, MICI[0] * self._s, MICI[1] * self._s)
