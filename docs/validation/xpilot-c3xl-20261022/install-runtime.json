@@ -1,0 +1,1968 @@
+{
+  "head": "73c29355a852b3e22d08bacabb90ee8cfc22f426",
+  "active_path": "/data/xpilot-install-20261022/candidate",
+  "alive": {
+    "deviceState": true,
+    "pandaStates": true,
+    "managerState": true,
+    "peripheralState": true,
+    "uiDebug": true
+  },
+  "valid": {
+    "deviceState": true,
+    "pandaStates": true,
+    "managerState": true,
+    "peripheralState": true,
+    "uiDebug": true
+  },
+  "started": false,
+  "processes": [
+    {
+      "name": "loggerd",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "encoderd",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "logmessaged",
+      "running": true,
+      "pid": 54778,
+      "exitCode": 0
+    },
+    {
+      "name": "camerad",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "webcamerad",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "proclogd",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "journald",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "micd",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "timed",
+      "running": true,
+      "pid": 54783,
+      "exitCode": 0
+    },
+    {
+      "name": "modeld",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "dmonitoringmodeld",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "sensord",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "ui",
+      "running": true,
+      "pid": 54784,
+      "exitCode": 0
+    },
+    {
+      "name": "soundd",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "locationd",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "_pandad",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "calibrationd",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "controlsd",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "joystickd",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "selfdrived",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "card",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "deleter",
+      "running": true,
+      "pid": 54790,
+      "exitCode": 0
+    },
+    {
+      "name": "dmonitoringd",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "qcomgpsd",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "pandad",
+      "running": true,
+      "pid": 54793,
+      "exitCode": 0
+    },
+    {
+      "name": "paramsd",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "lagd",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "ubloxd",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "pigeond",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "plannerd",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "maneuversd",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "lateral_maneuversd",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "radard",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "hardwared",
+      "running": true,
+      "pid": 54794,
+      "exitCode": 0
+    },
+    {
+      "name": "modem",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "tombstoned",
+      "running": true,
+      "pid": 54798,
+      "exitCode": 0
+    },
+    {
+      "name": "updated",
+      "running": true,
+      "pid": 54799,
+      "exitCode": 0
+    },
+    {
+      "name": "joystick",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "models_manager",
+      "running": true,
+      "pid": 54803,
+      "exitCode": 0
+    },
+    {
+      "name": "modeld_tinygrad",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "modeld_warmup",
+      "running": true,
+      "pid": 54805,
+      "exitCode": 0
+    },
+    {
+      "name": "mapd",
+      "running": true,
+      "pid": 54806,
+      "exitCode": 0
+    },
+    {
+      "name": "mapd_manager",
+      "running": true,
+      "pid": 54808,
+      "exitCode": 0
+    },
+    {
+      "name": "map_osm",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "locationd_llk",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "copyparty-sfx",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "alert_output",
+      "running": true,
+      "pid": 54814,
+      "exitCode": 0
+    },
+    {
+      "name": "trafficcontrold",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "externald",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    }
+  ],
+  "panda_samples": [
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    },
+    {
+      "faults": [
+        "none"
+      ],
+      "controls_allowed": [
+        false
+      ],
+      "types": [
+        "tres"
+      ]
+    }
+  ],
+  "passed": true
+}

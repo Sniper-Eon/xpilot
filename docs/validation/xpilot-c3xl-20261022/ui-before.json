@@ -1,0 +1,23 @@
+{
+  "passed": false,
+  "head": "73c29355a852b3e22d08bacabb90ee8cfc22f426",
+  "scope": "real GPU, production widgets and mapped touch events; no setting changes or CAN transmission",
+  "cases": [
+    {
+      "name": "offroad",
+      "viewport": [
+        812.0,
+        420.0,
+        536.0,
+        240.0
+      ],
+      "banner_calls": 19
+    }
+  ],
+  "errors": [
+    "central viewport is too small",
+    "offroad renders stale onroad alert banner",
+    "side settings menu missing",
+    "not all nine menu entries were exercised"
+  ]
+}

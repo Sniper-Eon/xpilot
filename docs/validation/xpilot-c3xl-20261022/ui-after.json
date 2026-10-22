@@ -1,0 +1,54 @@
+{
+  "passed": true,
+  "head": "3d03575f90802e457db07bb99ba36c002e19c1b8",
+  "scope": "real GPU, production widgets and mapped touch events; no setting changes or CAN transmission",
+  "cases": [
+    {
+      "name": "offroad",
+      "viewport": [
+        276.0,
+        180.0,
+        1608.0,
+        720.0
+      ],
+      "banner_calls": 0
+    },
+    {
+      "name": "Home",
+      "active": "MiciMainLayout"
+    },
+    {
+      "name": "Toggles",
+      "active": "TogglesLayoutMici"
+    },
+    {
+      "name": "Models",
+      "active": "ModelsLayoutMici"
+    },
+    {
+      "name": "Plugins",
+      "active": "PluginsPage"
+    },
+    {
+      "name": "Tesla",
+      "active": "TeslaSettingsMici"
+    },
+    {
+      "name": "Network",
+      "active": "NetworkLayoutMici"
+    },
+    {
+      "name": "Device",
+      "active": "DeviceLayoutMici"
+    },
+    {
+      "name": "Software",
+      "active": "SoftwareLayoutMici"
+    },
+    {
+      "name": "Developer",
+      "active": "DeveloperLayoutMici"
+    }
+  ],
+  "errors": []
+}
