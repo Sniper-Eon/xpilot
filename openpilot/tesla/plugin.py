@@ -1,30 +1,27 @@
 """xpilot plugin interface. Rules for writing a plugin: XPILOT.md at the repo root.
 
-One feature = one package openpilot/tesla/plugins/<name>/ (name == NAME):
-  plugin.py  a Plugin subclass, listed in openpilot/tesla/plugins/__init__.py
-  ui.py      optional: Slot subclasses (big-screen tiles) and HudOverlay subclasses (onroad HUD), found by the UI
+One feature = one package openpilot/tesla/plugins/<id>/, found automatically:
+  plugin.json  manifest: id, category, priority, claims, enable switch, settings, params (openpilot/tesla/manifest.py)
+  plugin.py    the Plugin subclass named by the manifest's "entry"
+  ui.py        optional: Slot subclasses (big-screen tiles) and HudOverlay subclasses (onroad HUD), found by the UI
 SP stays the main stack: SP files only call these hooks. Every hook has a do-nothing default.
-The host (plugins/__init__.py) builds only enabled plugins and drops a plugin at its first exception.
+The host (plugins/__init__.py) builds only enabled plugins that win their claims, refuses unclaimed use,
+and drops a plugin at its first exception.
 """
-from dataclasses import dataclass
-
-
-@dataclass(frozen=True)
-class Setting:
-  """One row on the plugin's settings page. No range/choices: toggle. range=(min, max, step, unit, divisor).
-  choices=((label, value), ...). The key must be declared in the plugin's params.json."""
-  key: str
-  label: str
-  range: tuple[int, int, int, str, int] | None = None
-  choices: tuple[tuple[str, int], ...] | None = None
+from openpilot.tesla.manifest import Setting  # noqa: F401  (re-exported for settings code)
 
 
 class Plugin:
-  NAME = ""                        # package directory name
-  TITLE = ""                       # shown on the Plugins page
+  # Filled from plugin.json by the host; do not set them in code.
+  NAME = ""
+  TITLE = ""
   DESCRIPTION = ""
-  ENABLE_PARAM: str | None = None  # BOOL param in params.json; off: not built, no process, no plan filter/target
-  SETTINGS: tuple[Setting, ...] = ()
+  CATEGORY = "tools"
+  PRIORITY = 100
+  ENABLE_PARAM: str | None = None
+  CLAIMS: tuple[str, ...] = ()
+  SETTINGS: tuple = ()
+  MANIFEST = None
   PLAN_SERVICES: tuple[str, ...] = ()  # extra services plannerd must subscribe for plan_filter()
 
   def __init__(self, CP, params):

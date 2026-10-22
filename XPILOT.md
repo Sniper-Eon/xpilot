@@ -18,7 +18,7 @@
 3. **插件不能绕过 SP 和 panda 的任何检查。** 纵向只有 `long_target` 可以加速，而且只能替换驾驶员设定车速（条件见第 4 节），跟车、模型和 SP 限速仍然取最小；其他纵向入口（`plan_filter`）只能收紧。外接算力的数据只做建议。
 4. **每个 CAN 发送地址都必须有 panda safety 插件**（`opendbc/safety/plugins/`），在插件里自己校验内容、频率、时效和 `controls_allowed`。没有 safety 插件，panda 会直接拦掉。
 5. **插件出错不能拖垮进程**：输入过期就当周期什么都不发。宿主兜底：插件在任何钩子里抛异常，就被记进 `XpilotPluginFaults`、本次进程内停用，其他插件和 SP 照常运行；plan filter 出错时计划照常发布。UI 插槽和 HUD 叠加层连续出错 3 次会停止绘制。
-6. **Params**：插件的 key 写在 `plugins/<名字>/params.json`，然后运行 `python3 openpilot/tesla/plugins/gen_params.py` 生成 `common/plugin_params.inc` 并一起提交；不属于插件的 key 才写进 `params_keys.h`。每个插件有一个 BOOL 总开关 `ENABLE_PARAM`，默认关闭；设置项写在插件自己的 `SETTINGS` 里。
+6. **Params**：插件的 key 写在自己 `plugin.json` 的 `params` 里，然后运行 `python3 openpilot/tesla/plugins/gen_params.py` 生成 `common/plugin_params.inc` 并一起提交；不属于插件的 key 才写进 `params_keys.h`。每个插件有一个 BOOL 总开关 `enable_param`，默认关闭；设置项写在 `plugin.json` 的 `settings` 里。
 7. **cereal**：只追加字段，不改已有字段的序号和类型。新消息用 `custom.capnp` 里的 `customReserved*` 槽位。
 8. **验证**（沿用 `AGENTS.md`）：
    - 先列出失败模式，再写检查。
@@ -26,18 +26,22 @@
    - 不准把静态检查说成编译、safety 测试或上车已通过。
    - 本地 commit 和设备上实际运行的 commit 分开报告。
 9. **提交**：在 `xpilot` 分支上，一个连贯改动一个提交，只包含这次改动的文件。只有在用户要求时才推送。
-10. **按插件拆分**：加功能就是加插件目录，删功能就是删目录、再从注册表里去掉那一行。
+10. **按插件拆分**：加功能就是加一个带 `plugin.json` 的插件目录，删功能就是删目录（然后重新运行 `gen_params.py`）。插件自动被发现，没有手写的注册表。
+11. **只用声明过的资源**：插件只能使用 `plugin.json` 里 `claims` 声明过的资源；宿主会拒绝未声明的 CAN 发送、钩子和进程。
 
 ## 3. 目录
 
 ```
 openpilot/tesla/
   plugin.py                 Python 插件接口（Plugin 基类，所有钩子都有默认空实现）
-  plugins/__init__.py       插件注册表 PLUGINS，以及 card/plannerd/manager 用的调用宿主（总开关、出错隔离）
-  plugins/<名字>/plugin.py  插件本体和元数据；plugins/<名字>/ui.py 可选，放插槽和 HUD 叠加层
+  manifest.py               插件清单格式、类别、资源声明、冲突裁决（只用标准库）
+  plugins/__init__.py       自动发现插件（PLUGINS），以及 card/plannerd/manager 用的调用宿主（总开关、冲突、资源检查、出错隔离）
+  plugins/<id>/plugin.json  插件清单；plugins/<id>/plugin.py 插件代码；plugins/<id>/ui.py 可选，放插槽和 HUD 叠加层
+  plugins/gen_params.py     把各插件清单里的 params 生成到 common/plugin_params.inc
   plugins/auto_speed/       自动设定速度
   plugins/traffic_light/    红绿灯停车
   plugins/ambient_light/    盲区氛围灯
+  plugins/external_compute/ 外接算力桥接
   ui/screen.py ui/grid.py ui/slot.py ui/slots/   大屏宿主、插槽格式、插槽
   ui/plugin_ui.py           UI 侧插件加载：找到插槽和 HudOverlay，插件关闭时隐藏
   ui/plugins_page.py        设置里的"Plugins"页：统一管理所有插件（开关、设置、出错标记）
@@ -48,12 +52,56 @@ opendbc_repo/opendbc/safety/plugins/
 
 ## 4. Python 插件接口（`openpilot/tesla/plugin.py`）
 
-| 元数据 | 用途 |
+### 4.1 插件清单 `plugin.json`
+
+```json
+{
+  "id": "my_feature", "name": "My Feature", "version": "1.0.0", "api": 1,
+  "category": "longitudinal_planning", "entry": "plugin:MyFeature",
+  "author": "someone", "description": "What it does and what it needs.",
+  "priority": 100, "enable_param": "XpMyFeature",
+  "claims": ["long.target", "can.tx:0x3C2:1"],
+  "settings": [{"key": "XpMyFeatureLevel", "label": "Level", "range": [0, 10, 1, "", 1]}],
+  "params": {"XpMyFeature": {"type": "BOOL", "default": "0"}, "XpMyFeatureLevel": {"type": "INT", "default": "5"}}
+}
+```
+
+| 字段 | 含义 |
 |---|---|
-| `NAME` | 插件目录名 |
-| `TITLE`、`DESCRIPTION` | Plugins 页上显示的名字和说明（长按看说明） |
-| `ENABLE_PARAM` | BOOL 总开关。关闭时 card 不创建插件、进程不启动、plan filter 不加载、UI 不显示。车端在下一次行程生效，UI 1 秒内生效 |
-| `SETTINGS` | `Setting(key, label)` 是开关；加 `range=(最小, 最大, 步长, 单位, 除数)` 或 `choices=((标签, 值), ...)` 是选择项 |
+| `id` | 必须和目录名一致 |
+| `api` | 插件面向的宿主接口版本，必须等于 `manifest.API_VERSION`（现在是 1），否则不加载 |
+| `category` | 类别，见下表 |
+| `entry` | 插件包内的 `模块:类名` |
+| `priority` | 数字越小越优先：争同一个独占资源时它赢；同类插件的执行顺序也按它，数字相同按 id |
+| `enable_param` | BOOL 总开关；`null` 表示一直开启。关闭时 card 不创建插件、进程不启动、plan filter/目标车速不加载、UI 不显示。车端下一次行程生效，UI 1 秒内生效 |
+| `claims` | 要用的资源，见下表；没声明的一律被拒绝 |
+| `settings` | 设置项：只有 key 和 label 是开关；带 `range: [最小, 最大, 步长, 单位, 除数]` 或 `choices: [[标签, 值], ...]` 是选择项 |
+| `params` | 参数声明，格式见 `gen_params.py`；改完运行 `python3 openpilot/tesla/plugins/gen_params.py` |
+
+清单有错（id 不对、类别未知、api 不匹配、资源格式错、JSON 坏了）或代码导入失败的插件会被跳过，在 Plugins 页顶部显示 "Failed: <id>"，不影响其他插件。
+
+### 4.2 类别（`manifest.CATEGORIES`，按控制链路顺序）
+
+控制链路：`perception_model` 感知模型、`object_fusion` 前车和目标融合、`vehicle_params` 标定和车辆参数、`engagement` 接管状态机、`driver_monitoring` 驾驶员监控、`lateral_planning` 横向规划、`longitudinal_planning` 纵向规划、`lane_change` 变道、`navigation` 导航驾驶、`controller` 控制器、`actuation` 执行和车端报文、`safety_fallback` 安全兜底和 Autopilot 交接。
+
+其他：`data_source` 数据源和外接算力、`alerts` 报警、`body_comfort` 车身和舒适、`ui` 界面、`tools` 工具和诊断。
+
+### 4.3 资源声明（claims）和冲突
+
+| 资源 | 含义 | 独占 |
+|---|---|---|
+| `can.tx:0x<地址>:<总线>` | 发送这个 CAN 地址（还需要 panda safety 插件） | 是 |
+| `process:<名字>` | 运行这个 manager 进程 | 是 |
+| `source:<数据>` | 提供某类数据，如 `source:radar`、`source:lanes` | 是 |
+| `role:<环节>` | 占用一个可替换的环节，如 `role:lateral.controller` | 是 |
+| `long.target` | 使用 `long_target` 钩子 | 否，宿主按固定规则合并 |
+| `plan.filter` | 使用 `plan_filter` 钩子 | 否，按优先级串联 |
+
+- **冲突裁决**：两个已开启的插件声明了同一个独占资源时，`priority` 小的生效（相同则按 id），另一个整体不生效，Plugins 页显示 "conflict"。在 Plugins 页打开一个插件，会自动关掉和它冲突的插件。
+- **合并规则由宿主固定**：插件改不了。目标车速的规则见下面 `long_target`。
+- **底线**：不管优先级多高，都越不过 SP 的限制和 panda safety。
+
+### 4.4 钩子
 
 | 钩子 | 调用方 / 时机 | 用途 |
 |---|---|---|
@@ -72,27 +120,21 @@ SP 里的调用位置：`selfdrive/car/card.py`（`CarPlugins`）、`selfdrive/c
 
 ## 5. 写一个新插件
 
-1. 新建 `openpilot/tesla/plugins/<名字>/__init__.py`（空文件）和 `plugin.py`：
+1. 新建 `openpilot/tesla/plugins/<id>/`，放空的 `__init__.py`、`plugin.json`（见 4.1）和 `plugin.py`：
 
 ```python
-from openpilot.tesla.plugin import Plugin, Setting
+from openpilot.tesla.plugin import Plugin
 
-class MyFeature(Plugin):
-  NAME = "my_feature"
-  TITLE = "My Feature"
-  DESCRIPTION = "What it does and what it needs."
-  ENABLE_PARAM = "TeslaMyFeature"
-  SETTINGS = (Setting("TeslaMyFeatureLevel", "Level", range=(0, 10, 1, "", 1)),)
-
+class MyFeature(Plugin):   # 名字、开关、设置都来自 plugin.json，代码里不要写
   def control_sends(self, CS, CC, now_ns):
-    return []   # 有 CAN 发送时，必须同时提供 panda safety 插件
+    return []   # 发送的地址必须在 claims 里，并且有 panda safety 插件
 ```
 
-2. 在 `plugins/__init__.py` 的 `PLUGINS` 里加上这个类。设置里的 Plugins 页会自动出现它的开关和设置。
-3. 在 `plugins/<名字>/params.json` 声明 `ENABLE_PARAM`（BOOL，默认 "0"）和 `SETTINGS` 里的每个 key，格式见 `gen_params.py`，再运行 `gen_params.py`。
+2. 不用注册：插件会被自动发现，Plugins 页按类别显示它的开关和设置。
+3. 运行 `python3 openpilot/tesla/plugins/gen_params.py`，把 `params` 生成到 `common/plugin_params.inc`，一起提交。
 4. 有 CAN 发送的：写 `opendbc/safety/plugins/<名字>.h` 并加进 `registry.h`。`safetyParam` 位要和 Python 侧一致（auto_speed 用的是 `0x4000`）。
 5. 有 UI 的：写 `plugins/<名字>/ui.py`，里面的 `Slot` 子类（大屏插槽，格式见 `ui/grid.py`）和 `HudOverlay` 子类（行车画面叠加层，无参构造）会被自动加载；插件关闭时自动隐藏。不属于任何插件的插槽放 `openpilot/tesla/ui/slots/`。
-6. 先写失败模式和检查，再写实现；能在本机跑的就跑（`tools/sp_tesla_e2e/plugin_host_check.py` 会检查元数据和参数声明）。
+6. 先写失败模式和检查，再写实现；能在本机跑的就跑（`plugin_host_check.py` 和 `manifest_check.py` 会检查清单、资源声明和参数）。
 
 ## 6. panda safety 插件接口（`opendbc/safety/plugins/`）
 
@@ -157,6 +199,7 @@ python3 tools/sp_tesla_e2e/static_imports.py --baseline <基线 json>   # 有没
 python3 tools/sp_tesla_e2e/slot_layout_check.py                       # 插槽排布
 python3 tools/sp_tesla_e2e/plugin_host_check.py                       # 插件宿主：出错隔离、总开关、元数据、参数、目标车速
 python3 tools/sp_tesla_e2e/external_bridge_check.py                   # 外接算力 TCP 桥接（本机真实 socket）
+python3 tools/sp_tesla_e2e/manifest_check.py                          # 插件清单、资源声明、冲突裁决
 python3 tools/dev_sp_release/upstream_watch.py                        # 列出值得 cherry-pick 的上游提交
 ```
 

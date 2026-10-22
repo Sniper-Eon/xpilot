@@ -7,7 +7,7 @@ from opendbc.can import CANParser
 from opendbc.car import Bus
 from opendbc.car.tesla.values import CANBUS, DBC
 from opendbc.sunnypilot.car.tesla.values import TeslaFlagsSP
-from openpilot.tesla.plugin import Plugin, Setting
+from openpilot.tesla.plugin import Plugin
 from openpilot.tesla.plugins.auto_speed.controller import AutoSpeedController
 
 SAFETY_PARAM_SP = 0x4000  # must match XPILOT_PARAM_SP_AUTO_SPEED in opendbc/safety/plugins/auto_speed.h
@@ -17,11 +17,6 @@ KPH_TO_MS, MPH_TO_MS = 1 / 3.6, 0.44704
 
 
 class AutoSpeed(Plugin):
-  NAME = "auto_speed"
-  TITLE = "Auto Speed Limit"
-  DESCRIPTION = "Sets cruise speed to the car's speed limit plus an offset. Needs openpilot longitudinal and the vehicle bus."
-  ENABLE_PARAM = "TeslaAutoSpeedLimit"
-  SETTINGS = (Setting("TeslaAutoSpeedLimitOffset", "Speed Limit Offset", range=(-10, 20, 1, "km/h|mph", 1)),)
 
   def __init__(self, CP, params):
     super().__init__(CP, params)

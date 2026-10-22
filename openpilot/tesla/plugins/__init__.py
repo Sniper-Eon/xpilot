@@ -1,22 +1,56 @@
-"""Registered xpilot plugins and the small hosts that SP processes call. Add a plugin to PLUGINS.
+"""xpilot plugins, found from each openpilot/tesla/plugins/<id>/plugin.json, and the small hosts SP processes call.
 
-Fault isolation: a plugin that raises in any hook is logged, recorded in Params XpilotPluginFaults
-(shown on the Plugins page) and dropped for the rest of the process; the other plugins and SP carry on.
+- Active plugins: enabled (ENABLE_PARAM) and winning every exclusive claim (manifest.resolve: lower priority, then id).
+- Claims are enforced: CAN sends outside the plugin's can.tx claims, or long_target / plan_filter / processes without
+  their claim, drop the plugin (recorded like a fault).
+- Fault isolation: a plugin that raises in any hook is logged, recorded in Params XpilotPluginFaults (shown on the
+  Plugins page) and dropped for the rest of the process; the other plugins and SP carry on.
 """
+import importlib
 import time
 
 from openpilot.common.swaglog import cloudlog
-from openpilot.tesla.plugins.ambient_light.plugin import AmbientLight
-from openpilot.tesla.plugins.auto_speed.plugin import AutoSpeed
-from openpilot.tesla.plugins.external_compute.plugin import ExternalCompute
-from openpilot.tesla.plugins.traffic_light.plugin import TrafficLight
+from openpilot.tesla import manifest as mf
+from openpilot.tesla.plugin import Plugin
 
-PLUGINS = (AutoSpeed, TrafficLight, AmbientLight, ExternalCompute)
 FAULTS_PARAM = "XpilotPluginFaults"
+
+
+def _discover() -> tuple[tuple, dict[str, str]]:
+  manifests, errors = mf.load_all()
+  classes = []
+  for m in manifests:
+    module, name = m.entry.split(":")
+    try:
+      cls = getattr(importlib.import_module(f"{__name__}.{m.id}.{module}"), name)
+      if not (isinstance(cls, type) and issubclass(cls, Plugin)):
+        raise TypeError(f"{m.entry} is not a Plugin subclass")
+    except Exception as e:
+      cloudlog.exception(f"xpilot plugin {m.id} failed to import")
+      errors[m.id] = f"import: {e!r}"[:200]
+      continue
+    cls.NAME, cls.TITLE, cls.DESCRIPTION, cls.CATEGORY = m.id, m.name, m.description, m.category
+    cls.PRIORITY, cls.ENABLE_PARAM, cls.CLAIMS, cls.SETTINGS, cls.MANIFEST = m.priority, m.enable_param, m.claims, m.settings, m
+    classes.append(cls)
+  return tuple(classes), errors
+
+
+PLUGINS, LOAD_ERRORS = _discover()  # PLUGINS in (category, priority, id) order
 
 
 def is_enabled(cls, params) -> bool:
   return cls.ENABLE_PARAM is None or params.get_bool(cls.ENABLE_PARAM)
+
+
+def active(params) -> list:
+  """Enabled plugins that win their exclusive claims, in PLUGINS order."""
+  names, _ = resolve(params)
+  return [cls for cls in PLUGINS if cls.NAME in names]
+
+
+def resolve(params) -> tuple[set[str], dict[str, str]]:
+  """(active names, {losing name: winning name}) for the current enable switches."""
+  return mf.resolve([(c.NAME, c.PRIORITY, c.CLAIMS) for c in PLUGINS], {c.NAME for c in PLUGINS if is_enabled(c, params)})
 
 
 def record_fault(name: str, where: str, exc: Exception) -> None:
@@ -38,9 +72,7 @@ class CarPlugins:
     self.plugins = []
     if CP.brand != "tesla":
       return
-    for cls in PLUGINS:
-      if not is_enabled(cls, params):
-        continue
+    for cls in active(params):
       try:
         self.plugins.append(cls(CP, params))
       except Exception as e:
@@ -59,26 +91,45 @@ class CarPlugins:
   def setup(self, CP_SP) -> None:
     self._each("setup", CP_SP)
 
+  def _sends(self, hook: str, *args) -> list:
+    """Like _each, but every CanData must match one of the plugin's can.tx claims, else the plugin is dropped."""
+    out = []
+    for p in list(self.plugins):
+      try:
+        sends = list(getattr(p, hook)(*args))
+        allowed = mf.can_tx(p.CLAIMS)
+        if bad := [s for s in sends if (s[0], s[2]) not in allowed]:
+          raise PermissionError(f"unclaimed CAN send 0x{bad[0][0]:X} bus {bad[0][2]}")
+      except Exception as e:
+        self.plugins.remove(p)
+        record_fault(p.NAME, f"card.{hook}", e)
+        continue
+      out += sends
+    return out
+
   def observe_can(self, can_list) -> list:
-    return [s for sends in self._each("observe_can", can_list, time.monotonic_ns()) for s in sends]
+    return self._sends("observe_can", can_list, time.monotonic_ns())
 
   def publish_state(self, CS_SP) -> None:
     self._each("publish_state", CS_SP)
 
   def control_sends(self, CS, CC, now_ns: int) -> list:
-    return [s for sends in self._each("control_sends", CS, CC, now_ns) for s in sends]
+    return self._sends("control_sends", CS, CC, now_ns)
 
   def service_params(self, params) -> None:
     self._each("service_params", params)
 
 
 def processes() -> list:
+  """manager: each plugin process runs only while its plugin is active, and only if the plugin claims it."""
   procs = []
   for cls in PLUGINS:
     for proc in cls.processes():
-      if cls.ENABLE_PARAM is not None:
-        should_run = proc.should_run
-        proc.should_run = lambda started, params, CP, run=should_run, key=cls.ENABLE_PARAM: params.get_bool(key) and run(started, params, CP)
+      if f"process:{proc.name}" not in cls.CLAIMS:
+        cloudlog.error(f"xpilot plugin {cls.NAME}: process {proc.name} not claimed, not started")
+        continue
+      should_run = proc.should_run
+      proc.should_run = lambda started, params, CP, run=should_run, name=cls.NAME: name in resolve(params)[0] and run(started, params, CP)
       procs.append(proc)
   return procs
 
@@ -92,11 +143,11 @@ def long_targets(CP, params) -> list:
   if CP.brand != "tesla":
     return []
   targets = []
-  for cls in PLUGINS:
-    if not is_enabled(cls, params):
-      continue
+  for cls in active(params):
     try:
       if (t := cls.long_target(CP, params)) is not None:
+        if "long.target" not in cls.CLAIMS:
+          raise PermissionError("long_target without a long.target claim")
         t.plugin_name = cls.NAME
         targets.append(t)
     except Exception as e:
@@ -134,11 +185,11 @@ def plan_filters(CP, params) -> list:
   if CP.brand != "tesla":
     return []
   filters = []
-  for cls in PLUGINS:
-    if not is_enabled(cls, params):
-      continue
+  for cls in active(params):
     try:
       if (f := cls.plan_filter(CP, params)) is not None:
+        if "plan.filter" not in cls.CLAIMS:
+          raise PermissionError("plan_filter without a plan.filter claim")
         f.plugin_name = cls.NAME
         filters.append(f)
     except Exception as e:

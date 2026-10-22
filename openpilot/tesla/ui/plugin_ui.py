@@ -8,7 +8,7 @@ import time
 
 from openpilot.common.swaglog import cloudlog
 from openpilot.system.ui.widgets import Widget
-from openpilot.tesla.plugins import PLUGINS, is_enabled
+from openpilot.tesla.plugins import PLUGINS, resolve
 
 MAX_FAILURES = 3  # a widget that raises this many times in a row is not drawn again
 
@@ -52,7 +52,7 @@ def load(base) -> list[tuple[str | None, Widget]]:
 
 
 class EnabledPlugins:
-  """Names of switched-on plugins, re-read from Params at most once a second."""
+  """Names of active plugins (switched on and winning their claims), re-read from Params at most once a second."""
 
   def __init__(self, params):
     self._params, self._names, self._t = params, set(), -1.0
@@ -61,7 +61,7 @@ class EnabledPlugins:
     now = time.monotonic()
     if now - self._t >= 1.0:
       self._t = now
-      self._names = {p.NAME for p in PLUGINS if is_enabled(p, self._params)}
+      self._names = resolve(self._params)[0]
     return self._names
 
   def shows(self, name: str | None) -> bool:

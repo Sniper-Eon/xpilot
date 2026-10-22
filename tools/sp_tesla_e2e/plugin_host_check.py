@@ -13,8 +13,8 @@ Failure cases listed before implementation:
 - P9 a real plugin lacks TITLE/ENABLE_PARAM, or names a setting key not declared in params_keys.h,
        or two settings share a key, or ENABLE_PARAM is not a BOOL key
 - P10 a plugin ui.py does not parse, or the plugin page is missing a plugin
-- P11 common/plugin_params.inc is out of date with the plugins' params.json (device would miss a key)
-- P12 a key is declared both in params_keys.h and a plugin params.json, or in two plugins
+- P11 common/plugin_params.inc is out of date with the plugins' plugin.json params (device would miss a key)
+- P12 a key is declared both in params_keys.h and a plugin.json, or in two plugins
 - P13 a lower plugin speed target does not win over cruise (cannot tighten)
 - P14 a higher plugin target does not raise the cruise target while engaged (cannot accelerate)
 - P15 a raise applies while disengaged, during gas override, or while pressing the brake
@@ -71,9 +71,15 @@ class CP:
 calls = []
 
 
+made = []
+
+
 def make(name, fail_in=None, enable=None):
+  made.append(name)
+  addr = 0x100 + len(made)  # each fake owns its own exclusive CAN claim
   class P(Plugin):
     NAME, TITLE, ENABLE_PARAM = name, name, enable
+    CLAIMS = (f"can.tx:0x{addr:X}:0", "plan.filter", f"process:{name}d")
 
     def __init__(self, CP, params):
       super().__init__(CP, params)
@@ -84,13 +90,13 @@ def make(name, fail_in=None, enable=None):
       calls.append((name, "observe_can"))
       if fail_in == "observe_can":
         raise RuntimeError("observe")
-      return [f"{name}-now"]
+      return [(addr, f"{name}-now".encode(), 0)]
 
     def control_sends(self, CS, CC, now_ns):
       calls.append((name, "control_sends"))
       if fail_in == "control_sends":
         raise RuntimeError("control")
-      return [f"{name}-ctl"]
+      return [(addr, f"{name}-ctl".encode(), 0)]
 
     @classmethod
     def processes(cls):
@@ -147,11 +153,11 @@ def main() -> int:
   except Exception as e:
     errors.append(f"P1 host raised {e!r}")
     out1 = out2 = []
-  if "good-now" not in out1 or "good-now" not in out2:
+  if b"good-now" not in [s[1] for s in out1] or b"good-now" not in [s[1] for s in out2]:
     errors.append("P1 good plugin output lost after a fault")
   if any(c == ("bad_obs", "observe_can") for c in calls[2:]):
     errors.append("P2 faulted plugin still called")
-  if "bad_obs-ctl" in host.control_sends(None, None, 0):
+  if b"bad_obs-ctl" in [s[1] for s in host.control_sends(None, None, 0)]:
     errors.append("P2 faulted plugin still sends")
   if ("bad_obs", "card.observe_can") not in faults or ("bad_init", "card.__init__") not in faults:
     errors.append(f"P4 faults not recorded: {faults}")
@@ -220,10 +226,10 @@ def main() -> int:
     errors.append(f"P11 {gen.stdout.strip() or gen.stderr.strip()[-200:]}")
   if not INC.exists() or '#include "common/plugin_params.inc"' not in (ROOT / "openpilot/common/params_keys.h").read_text():
     errors.append("P11 params_keys.h does not include common/plugin_params.inc")
-  errors += [f"P12 {k} in params_keys.h and a plugin params.json" for k in CORE_KEYS.keys() & PLUGIN_KEYS.keys()]
+  errors += [f"P12 {k} in params_keys.h and a plugin.json" for k in CORE_KEYS.keys() & PLUGIN_KEYS.keys()]
   owners = {}
-  for f in sorted((ROOT / "openpilot/tesla/plugins").glob("*/params.json")):
-    for k in json.loads(f.read_text()):
+  for f in sorted((ROOT / "openpilot/tesla/plugins").glob("*/plugin.json")):
+    for k in json.loads(f.read_text()).get("params", {}):
       if k in owners:
         errors.append(f"P12 {k} in {owners[k]} and {f.parent.name}")
       owners[k] = f.parent.name
@@ -287,7 +293,7 @@ def long_target_checks(plugins) -> list[str]:
     errors.append(f"P19 failing target called {bad.calls}x, faults {faults}")
 
   class Off(Plugin):
-    NAME, ENABLE_PARAM = "off", "OffKey"
+    NAME, ENABLE_PARAM, CLAIMS = "off", "OffKey", ("long.target",)
 
     @classmethod
     def long_target(cls, CP, params):

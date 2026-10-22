@@ -3,7 +3,7 @@ Panda side: opendbc_repo/opendbc/safety/plugins/ambient_light.h. Params: TeslaBl
 from opendbc.can import CANParser
 from opendbc.car import Bus
 from opendbc.car.tesla.values import CANBUS, DBC
-from openpilot.tesla.plugin import Plugin, Setting
+from openpilot.tesla.plugin import Plugin
 from openpilot.tesla.plugins.ambient_light.controller import AmbientLightingController
 
 LIGHTING_STALE_NS = 2_000_000_000
@@ -12,12 +12,6 @@ DISPLAY_MESSAGE = "UI_status2"
 
 
 class AmbientLight(Plugin):
-  NAME = "ambient_light"
-  TITLE = "Blindspot Ambient Lights"
-  DESCRIPTION = "Turns the cabin ambient lights red while a car is in the blind spot."
-  ENABLE_PARAM = "TeslaBlindspotAmbientEnabled"
-  SETTINGS = (Setting("TeslaBlindspotAmbientDayBrightness", "Day Brightness", range=(0, 100, 1, "%", 1)),
-              Setting("TeslaBlindspotAmbientBrightness", "Night Brightness", range=(0, 100, 1, "%", 1)))
 
   def __init__(self, CP, params):
     super().__init__(CP, params)

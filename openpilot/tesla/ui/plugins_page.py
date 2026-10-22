@@ -1,20 +1,41 @@
-"""Plugins page (mici): the one place to switch plugins on/off and open their settings, driven by PLUGINS.
-A plugin that faulted this boot (Params XpilotPluginFaults) shows "fault"; long-press a row for its description.
-Switching applies on the next drive (card/plannerd build plugins at start); UI slots and overlays follow within 1 s."""
+"""Plugins page (mici): the one place to manage plugins, grouped by manifest category.
+Category page: one switch per plugin (long-press for description, author, version and claims) and its settings.
+Switching a plugin on switches off every plugin it conflicts with (shared exclusive claim). Row values:
+"fault" = dropped this boot (Params XpilotPluginFaults), "conflict" = switched on but lost a claim.
+Plugins whose manifest or code failed to load are listed at the top. Changes apply on the next drive; UI follows in 1 s."""
 from openpilot.selfdrive.ui.mici.widgets.button import BigButton, BigToggle
 from openpilot.selfdrive.ui.ui_state import ui_state
 from openpilot.system.ui.lib.application import gui_app
-from openpilot.tesla.plugins import FAULTS_PARAM, PLUGINS, is_enabled
+from openpilot.tesla.manifest import CATEGORIES, conflicting
+from openpilot.tesla.plugins import FAULTS_PARAM, LOAD_ERRORS, PLUGINS, is_enabled, resolve
 from openpilot.tesla.ui.settings_page import SettingsList
 
 
-class PluginsPage(SettingsList):
-  def __init__(self):
+def _items():
+  return [(c.NAME, c.PRIORITY, c.CLAIMS) for c in PLUGINS]
+
+
+def _status(plugin, faults, conflicts) -> str:
+  if plugin.NAME in faults:
+    return 'fault'
+  if plugin.NAME in conflicts:
+    return 'conflict'
+  return ''
+
+
+def _details(plugin) -> str:
+  m = plugin.MANIFEST
+  claims = ', '.join(plugin.CLAIMS) or 'none'
+  return f'{plugin.DESCRIPTION}\n\n{m.author or "unknown"} - v{m.version} - priority {plugin.PRIORITY}\nclaims: {claims}'
+
+
+class CategoryPage(SettingsList):
+  def __init__(self, plugins):
     super().__init__()
     self.rows = []
-    for plugin in PLUGINS:
+    for plugin in plugins:
       toggle = BigToggle(plugin.TITLE, initial_state=is_enabled(plugin, ui_state.params),
-                         toggle_callback=lambda value, p=plugin: self._switch(p, value), description=plugin.DESCRIPTION)
+                         toggle_callback=lambda value, p=plugin: self._switch(p, value), description=_details(plugin))
       toggle.set_enabled(lambda p=plugin: ui_state.is_offroad() and p.ENABLE_PARAM is not None)
       self._scroller.add_widget(toggle)
       self.rows.append((plugin, toggle))
@@ -26,16 +47,50 @@ class PluginsPage(SettingsList):
     self.show_event()
 
   def _switch(self, plugin, value) -> None:
+    params = ui_state.params
     if ui_state.is_offroad() and plugin.ENABLE_PARAM is not None:
-      ui_state.params.put_bool(plugin.ENABLE_PARAM, value, block=True)
-      faults = ui_state.params.get(FAULTS_PARAM) or {}
+      if value:  # one owner per exclusive claim: switch the others off
+        by_name = {p.NAME: p for p in PLUGINS}
+        for name in conflicting(plugin.NAME, _items()):
+          if by_name[name].ENABLE_PARAM is not None:
+            params.put_bool(by_name[name].ENABLE_PARAM, False, block=True)
+      params.put_bool(plugin.ENABLE_PARAM, value, block=True)
+      faults = params.get(FAULTS_PARAM) or {}
       if faults.pop(plugin.NAME, None) is not None:  # switching clears the fault mark
-        ui_state.params.put(FAULTS_PARAM, faults, block=True)
+        params.put(FAULTS_PARAM, faults, block=True)
     self.show_event()
 
   def show_event(self):
     super().show_event()
     faults = ui_state.params.get(FAULTS_PARAM) or {}
+    _, conflicts = resolve(ui_state.params)
     for plugin, toggle in getattr(self, 'rows', ()):
       toggle.set_checked(is_enabled(plugin, ui_state.params))
-      toggle.set_value('fault' if plugin.NAME in faults else '')
+      toggle.set_value(_status(plugin, faults, conflicts))
+
+
+class PluginsPage(SettingsList):
+  def __init__(self):
+    super().__init__()
+    for name, error in LOAD_ERRORS.items():
+      broken = BigButton(f'Failed: {name}', description=error)
+      broken.set_enabled(False)
+      self._scroller.add_widget(broken)
+    self.categories = []
+    for category, title in CATEGORIES.items():
+      plugins = [p for p in PLUGINS if p.CATEGORY == category]
+      if not plugins:
+        continue
+      page = CategoryPage(plugins)
+      button = BigButton(title)
+      button.set_click_callback(lambda pg=page: (pg.show_event(), gui_app.push_widget(pg)))
+      self._scroller.add_widget(button)
+      self.categories.append((plugins, button))
+    self.show_event()
+
+  def show_event(self):
+    super().show_event()
+    params = ui_state.params
+    for plugins, button in getattr(self, 'categories', ()):
+      on = sum(is_enabled(p, params) for p in plugins)
+      button.set_value(f'{on}/{len(plugins)} on')
