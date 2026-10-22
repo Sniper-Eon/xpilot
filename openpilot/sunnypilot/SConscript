@@ -1,3 +1,2 @@
 SConscript(['common/transformations/SConscript'])
 SConscript(['selfdrive/locationd/SConscript'])
-SConscript(['../tesla/long/legacy_mpc/SConscript'])  # Tesla extension: legacy MPC backend
