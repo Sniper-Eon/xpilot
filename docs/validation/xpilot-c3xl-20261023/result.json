@@ -1,0 +1,104 @@
+{
+  "passed": true,
+  "head": "891de5f5c7253bcb1682c3f4a75741f60c2876ab",
+  "scope": "real GPU, production widgets and mapped touch events; no setting changes or CAN transmission",
+  "cases": [
+    {
+      "name": "offroad",
+      "viewport": [
+        456.0,
+        180.0,
+        1608.0,
+        720.0
+      ]
+    },
+    {
+      "name": "Home",
+      "active": "MiciMainLayout",
+      "stack": 1
+    },
+    {
+      "name": "Toggles",
+      "active": "TogglesLayoutMici",
+      "stack": 2
+    },
+    {
+      "name": "Models",
+      "active": "ModelsLayoutMici",
+      "stack": 2
+    },
+    {
+      "name": "Plugins",
+      "active": "PluginsPage",
+      "stack": 2
+    },
+    {
+      "name": "Tesla",
+      "active": "TeslaSettingsMici",
+      "stack": 2
+    },
+    {
+      "name": "Network",
+      "active": "NetworkLayoutMici",
+      "stack": 2
+    },
+    {
+      "name": "Device",
+      "active": "DeviceLayoutMici",
+      "stack": 2
+    },
+    {
+      "name": "Software",
+      "active": "SoftwareLayoutMici",
+      "stack": 2
+    },
+    {
+      "name": "Developer",
+      "active": "DeveloperLayoutMici",
+      "stack": 2
+    },
+    {
+      "name": "onroad",
+      "viewport": [
+        360.0,
+        218.0,
+        1440.0,
+        644.0
+      ],
+      "cards": {
+        "car": [
+          372,
+          874,
+          336,
+          194
+        ],
+        "map": [
+          732,
+          874,
+          696,
+          194
+        ],
+        "lead_card": [
+          1812,
+          282,
+          336,
+          246
+        ],
+        "speed_card": [
+          12,
+          12,
+          336,
+          516
+        ],
+        "speed_limit_card": [
+          1812,
+          12,
+          336,
+          246
+        ]
+      },
+      "overlays": 1
+    }
+  ],
+  "errors": []
+}

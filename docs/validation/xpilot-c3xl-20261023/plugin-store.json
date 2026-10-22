@@ -1,0 +1,16 @@
+{
+  "passed": true,
+  "head": "891de5f5c7253bcb1682c3f4a75741f60c2876ab",
+  "scope": "production Plugins and Plugin Store callbacks, proxied index refresh, real GPU capture; no install or setting changes",
+  "page": "StorePage",
+  "status": "1 plugins",
+  "entries": [
+    {
+      "id": "overspeed_warning",
+      "name": "Overspeed Warning",
+      "version": "1.0.0",
+      "installable": true
+    }
+  ],
+  "errors": []
+}
