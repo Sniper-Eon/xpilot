@@ -4,6 +4,7 @@ from openpilot.selfdrive.ui.mici.widgets.button import BigButton, BigToggle
 from openpilot.selfdrive.ui.ui_state import ui_state
 from openpilot.system.ui.lib.application import gui_app
 from openpilot.system.ui.widgets.scroller import NavScroller
+from openpilot.tesla.plugins import view
 from openpilot.tesla.ui.settings_meta import VEHICLE_SETTINGS, setting_choices, setting_label
 from openpilot.sunnypilot.hardware.driver_monitoring import driver_monitoring_configured
 from openpilot.sunnypilot.hardware.profile import has_driver_camera
@@ -17,9 +18,14 @@ def _page() -> NavScroller:
   return page
 
 
+def _params():
+  """ui_state.params with downloaded plugins' keys routed to their store."""
+  return view(ui_state.params)
+
+
 def _set_param(key, value) -> None:
   if ui_state.is_offroad():
-    ui_state.params.put(key, value, block=True)
+    _params().put(key, value, block=True)
 
 
 class SettingsList(NavScroller):
@@ -37,7 +43,7 @@ class SettingsList(NavScroller):
   def add_settings(self, settings) -> None:
     for setting in settings:
       if setting.range is None and setting.choices is None:
-        toggle = BigToggle(setting.label, initial_state=bool(ui_state.params.get(setting.key, return_default=True)),
+        toggle = BigToggle(setting.label, initial_state=bool(_params().get(setting.key, return_default=True)),
                            toggle_callback=lambda value, k=setting.key: (_set_param(k, value), self.show_event()))
         toggle.set_enabled(ui_state.is_offroad)
         self.toggles.append((setting.key, toggle))
@@ -61,9 +67,9 @@ class SettingsList(NavScroller):
   def show_event(self):
     super().show_event()
     for key, toggle in self.toggles:
-      toggle.set_checked(bool(ui_state.params.get(key, return_default=True)))
+      toggle.set_checked(bool(_params().get(key, return_default=True)))
     for setting, button in self.choice_buttons:
-      button.set_value(setting_label(setting, ui_state.params.get(setting.key, return_default=True)))
+      button.set_value(setting_label(setting, _params().get(setting.key, return_default=True)))
 
 
 class TeslaSettingsMici(SettingsList):

@@ -7,8 +7,9 @@ from openpilot.selfdrive.ui.mici.widgets.button import BigButton, BigToggle
 from openpilot.selfdrive.ui.ui_state import ui_state
 from openpilot.system.ui.lib.application import gui_app
 from openpilot.tesla.manifest import CATEGORIES, conflicting
-from openpilot.tesla.plugins import FAULTS_PARAM, LOAD_ERRORS, PLUGINS, is_enabled, resolve
+from openpilot.tesla.plugins import FAULTS_PARAM, LOAD_ERRORS, PLUGINS, is_enabled, resolve, view
 from openpilot.tesla.ui.settings_page import SettingsList
+from openpilot.tesla.ui.store_page import StorePage
 
 
 def _items():
@@ -47,7 +48,7 @@ class CategoryPage(SettingsList):
     self.show_event()
 
   def _switch(self, plugin, value) -> None:
-    params = ui_state.params
+    params = view(ui_state.params)
     if ui_state.is_offroad() and plugin.ENABLE_PARAM is not None:
       if value:  # one owner per exclusive claim: switch the others off
         by_name = {p.NAME: p for p in PLUGINS}
@@ -72,6 +73,10 @@ class CategoryPage(SettingsList):
 class PluginsPage(SettingsList):
   def __init__(self):
     super().__init__()
+    store_page = StorePage()
+    store_btn = BigButton('Plugin Store', description='Install third-party plugins (reviewed, not signed). Restart to apply.')
+    store_btn.set_click_callback(lambda: gui_app.push_widget(store_page))
+    self._scroller.add_widget(store_btn)
     for name, error in LOAD_ERRORS.items():
       broken = BigButton(f'Failed: {name}', description=error)
       broken.set_enabled(False)
@@ -90,7 +95,7 @@ class PluginsPage(SettingsList):
 
   def show_event(self):
     super().show_event()
-    params = ui_state.params
+    params = view(ui_state.params)
     for plugins, button in getattr(self, 'categories', ()):
       on = sum(is_enabled(p, params) for p in plugins)
       button.set_value(f'{on}/{len(plugins)} on')

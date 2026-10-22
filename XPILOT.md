@@ -187,6 +187,15 @@ typedef struct {
 - **provider 接口**（`provider.py`）：`poll(timeout)`、`send(msg)`、`close()`。现有 `tcp.py`：外部设备通过网线、USB 网卡或 WiFi 连到设备端口（默认 8770），按行发 JSON，第一行必须是 `{"hello": "<令牌>", "name": "..."}`。令牌在设备的 `/data/params/d/XpilotExternalToken`，首次启动自动生成。明文 TCP，只在可信网络上用。
 - **新增 provider**（例如调用大模型 HTTP API）：写一个 `Provider` 子类，加进 `externald.py` 的 provider 列表。
 
+## 8c. 插件商店（`openpilot/tesla/store.py`）
+
+- **仓库**：`github.com/onemiless/xpilot-plugins`。`plugins/<id>/` 是源码，`tools/build_index.py` 生成可复现的 `dist/<id>-<版本>.tar.gz` 和 `index.json`（每个插件的 url 和 sha256）。第三方提 PR，维护者审核后合并。**暂不签名**：sha256 只防下载损坏或被替换，可信度来自审核过的仓库。
+- **设备端**：设置 → Plugins → Plugin Store → Refresh。只能停车时安装、更新、删除，重启后生效。
+- **安装位置**：`/data/xpilot_plugins/<id>/`（可用环境变量 `XPILOT_PLUGINS_DIR` 改），系统更新不会动它。安装过程：限制大小下载 → 校验 sha256 → 只解出普通文件（拒绝 `../`、绝对路径、链接）→ 校验清单（id、api、入口模块、不能和内置插件同 id、参数名不能重复）→ 用改名的方式整体替换。任何一步失败，原来装的版本保持不变。
+- **下载插件的代码**：作为包 `xpilot_ext.<id>` 导入，插件内部要用相对导入（`from .controller import X`）。
+- **下载插件的参数**：不编译进 Params，而是存在 `/data/xpilot_plugins/.params/<key>`，支持 BOOL、INT、FLOAT、STRING、JSON。宿主把交给插件、开关判断和设置页的 params 都包了一层（`plugin_params.ParamsView`），插件照常用 `params.get/get_bool/put`。删除插件时参数值保留，重装后设置还在。
+- **不能下载的**：需要编译的原生代码（例如 acados 求解器）和 panda safety 插件，只能内置。
+
 ## 9. UI 插槽（大屏）
 
 - **加插槽**：插件的插槽写在 `plugins/<名字>/ui.py`；不属于插件的在 `openpilot/tesla/ui/slots/` 新建文件，继承 `Slot` 并写好 `SPEC = SlotSpec(id, title, cells, services, show, hz, order)`，会被自动发现，在 12×6 网格中自动排布。
@@ -212,6 +221,7 @@ python3 tools/sp_tesla_e2e/external_bridge_check.py                   # 外接�
 python3 tools/sp_tesla_e2e/manifest_check.py                          # 插件清单、资源声明、冲突裁决
 python3 tools/sp_tesla_e2e/phase2_check.py                            # 插件报警、变道策略、横向修正
 python3 tools/sp_tesla_e2e/phase3_check.py                            # 可替换的横向控制器和纵向规划
+python3 tools/sp_tesla_e2e/store_check.py                             # 插件商店：下载、校验、安装、参数（本机 HTTP 服务）
 python3 tools/dev_sp_release/upstream_watch.py                        # 列出值得 cherry-pick 的上游提交
 ```
 

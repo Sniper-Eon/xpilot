@@ -1,4 +1,9 @@
-"""xpilot plugins, found from each openpilot/tesla/plugins/<id>/plugin.json, and the small hosts SP processes call.
+"""xpilot plugins, found from each plugin.json, and the small hosts SP processes call.
+
+- Built-in plugins: openpilot/tesla/plugins/<id>/. Downloaded plugins (store.py): manifest.INSTALL_DIR/<id>/, imported
+  as package xpilot_ext.<id> (use relative imports inside it); one whose id or param keys clash is skipped.
+- Params handed to plugins, enable checks and settings go through plugin_params.ParamsView, so downloaded plugins'
+  keys (not compiled into Params) work with the usual API.
 
 - Active plugins: enabled (ENABLE_PARAM) and winning every exclusive claim (manifest.resolve: lower priority, then id).
 - Claims are enforced: CAN sends outside the plugin's can.tx claims, or long_target / plan_filter / processes without
@@ -7,23 +12,60 @@
   Plugins page) and dropped for the rest of the process; the other plugins and SP carry on.
 """
 import importlib
+import importlib.util
 import math
+import sys
 import time
+import types
 
 from openpilot.common.swaglog import cloudlog
 from openpilot.tesla import manifest as mf
 from openpilot.tesla.plugin import Plugin
+from openpilot.tesla.plugin_params import ParamsView
 
 FAULTS_PARAM = "XpilotPluginFaults"
 
 
-def _discover() -> tuple[tuple, dict[str, str]]:
-  manifests, errors = mf.load_all()
+def _import_installed(m, module: str):
+  """Import INSTALL_DIR/<id> as package xpilot_ext.<id> and return its entry module."""
+  pkg = f"xpilot_ext.{m.id}"
+  if "xpilot_ext" not in sys.modules:
+    ns = types.ModuleType("xpilot_ext")
+    ns.__path__ = []
+    sys.modules["xpilot_ext"] = ns
+  for stale in [k for k in sys.modules if k == pkg or k.startswith(pkg + ".")]:
+    del sys.modules[stale]
+  path = mf.INSTALL_DIR / m.id
+  spec = importlib.util.spec_from_file_location(pkg, path / "__init__.py", submodule_search_locations=[str(path)])
+  mod = importlib.util.module_from_spec(spec)
+  sys.modules[pkg] = mod
+  spec.loader.exec_module(mod)
+  return importlib.import_module(f"{pkg}.{module}")
+
+
+def _discover() -> tuple[tuple, dict[str, str], dict[str, dict]]:
+  builtin, errors = mf.load_all()
+  installed, installed_errors = mf.load_all(mf.INSTALL_DIR)
+  errors.update(installed_errors)
+  taken_ids, taken_keys = {m.id for m in builtin}, mf.compiled_param_keys()
+  manifests, specs = list(builtin), {}
+  for m in installed:
+    clash = m.id in taken_ids or (set(m.params) & (taken_keys | set(specs)))
+    if clash:
+      errors[m.id] = f"installed plugin clashes with an existing id or param: {clash}"
+      continue
+    manifests.append(m)
+    specs.update(m.params)
+  order = list(mf.CATEGORIES)
+  manifests.sort(key=lambda m: (order.index(m.category), m.priority, m.id))
+  installed_ids = {m.id for m in installed}
   classes = []
   for m in manifests:
     module, name = m.entry.split(":")
     try:
-      cls = getattr(importlib.import_module(f"{__name__}.{m.id}.{module}"), name)
+      mod = _import_installed(m, module) if m.id in installed_ids and m not in builtin else \
+            importlib.import_module(f"{__name__}.{m.id}.{module}")
+      cls = getattr(mod, name)
       if not (isinstance(cls, type) and issubclass(cls, Plugin)):
         raise TypeError(f"{m.entry} is not a Plugin subclass")
     except Exception as e:
@@ -33,14 +75,19 @@ def _discover() -> tuple[tuple, dict[str, str]]:
     cls.NAME, cls.TITLE, cls.DESCRIPTION, cls.CATEGORY = m.id, m.name, m.description, m.category
     cls.PRIORITY, cls.ENABLE_PARAM, cls.CLAIMS, cls.SETTINGS, cls.MANIFEST = m.priority, m.enable_param, m.claims, m.settings, m
     classes.append(cls)
-  return tuple(classes), errors
+  return tuple(classes), errors, specs
 
 
-PLUGINS, LOAD_ERRORS = _discover()  # PLUGINS in (category, priority, id) order
+PLUGINS, LOAD_ERRORS, INSTALLED_SPECS = _discover()  # PLUGINS in (category, priority, id) order
+
+
+def view(params):
+  """params with downloaded plugins' keys routed to their store (idempotent)."""
+  return params if isinstance(params, ParamsView) or params is None else ParamsView(params, INSTALLED_SPECS)
 
 
 def is_enabled(cls, params) -> bool:
-  return cls.ENABLE_PARAM is None or params.get_bool(cls.ENABLE_PARAM)
+  return cls.ENABLE_PARAM is None or view(params).get_bool(cls.ENABLE_PARAM)
 
 
 def active(params) -> list:
@@ -73,6 +120,7 @@ class CarPlugins:
     self.plugins = []
     if CP.brand != "tesla":
       return
+    params = view(params)
     for cls in active(params):
       try:
         self.plugins.append(cls(CP, params))
@@ -118,7 +166,7 @@ class CarPlugins:
     return self._sends("control_sends", CS, CC, now_ns)
 
   def service_params(self, params) -> None:
-    self._each("service_params", params)
+    self._each("service_params", view(params))
 
 
 def processes() -> list:
@@ -143,7 +191,8 @@ def services() -> list[str]:
 def _collect(params, hook: str, claim: str, where: str, *args) -> list:
   """Hook objects of the active plugins that return one; tagged with plugin_name. A plugin returning one without
   the claim, or raising, is recorded and skipped."""
-  out = []
+  out, wrapped = [], view(params)
+  args = tuple(wrapped if a is params else a for a in args)
   for cls in active(params):
     try:
       if (obj := getattr(cls, hook)(*args)) is not None:

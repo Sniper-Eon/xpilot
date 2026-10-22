@@ -14,11 +14,14 @@ plugin.json:
 """
 from dataclasses import dataclass, field
 import json
+import os
 from pathlib import Path
 import re
 
 API_VERSION = 1
-PLUGINS_DIR = Path(__file__).resolve().parent / "plugins"
+PLUGINS_DIR = Path(__file__).resolve().parent / "plugins"  # built-in plugins (in git)
+INSTALL_DIR = Path(os.environ.get("XPILOT_PLUGINS_DIR", "/data/xpilot_plugins"))  # downloaded plugins (store.py)
+_COMMON = Path(__file__).resolve().parents[1] / "common"
 
 # id -> title, in pipeline order. The first 12 sit on the control path.
 CATEGORIES = {
@@ -152,3 +155,9 @@ def conflicting(name: str, items) -> list[str]:
 def can_tx(claims) -> set[tuple[int, int]]:
   """(address, bus) pairs from can.tx claims."""
   return {(int(a, 16), int(b)) for c in claims if c.startswith("can.tx:") for a, b in [c[7:].split(":")]}
+
+
+def compiled_param_keys() -> set[str]:
+  """Keys the compiled Params knows: core params_keys.h plus built-in plugins (plugin_params.inc)."""
+  text = "".join((_COMMON / f).read_text() for f in ("params_keys.h", "plugin_params.inc") if (_COMMON / f).exists())
+  return set(re.findall(r'\{"(\w+)", \{', text))
