@@ -18,7 +18,7 @@
 3. **插件不能绕过车端和 panda 的检查。** 纵向：`long_target` 加速只能替换驾驶员设定车速（条件见第 4 节）；`plan_filter` 只能收紧；`role:long.planner` 可以整体替换纵向计划、包括跟车（用户 2026-10-22 决定），但加速度限制、FCW、踩刹车退出、原车 AEB 和 panda 限制不变。横向：`role:lateral.controller` 的输出不额外限制，靠车端转角速率限制和 panda 兜底。外接算力的数据只做建议。
 4. **每个 CAN 发送地址都必须有 panda safety 插件**（`opendbc/safety/plugins/`），在插件里自己校验内容、频率、时效和 `controls_allowed`。没有 safety 插件，panda 会直接拦掉。
 5. **插件出错不能拖垮进程**：输入过期就当周期什么都不发。宿主兜底：插件在任何钩子里抛异常，就被记进 `XpilotPluginFaults`、本次进程内停用，其他插件和 SP 照常运行；plan filter 出错时计划照常发布。UI 插槽和 HUD 叠加层连续出错 3 次会停止绘制。
-6. **Params**：插件的 key 写在自己 `plugin.json` 的 `params` 里，然后运行 `python3 openpilot/tesla/plugins/gen_params.py` 生成 `common/plugin_params.inc` 并一起提交；不属于插件的 key 才写进 `params_keys.h`。每个插件有一个 BOOL 总开关 `enable_param`，默认关闭；设置项写在 `plugin.json` 的 `settings` 里。
+6. **Params**：插件的 key 写在自己 `plugin.json` 的 `params` 里，然后运行 `python3 openpilot/tesla/plugins/gen_params.py` 生成 `common/plugin_params.inc` 并一起提交；不属于插件的 key 才写进 `params_keys.h`。每个插件有一个 BOOL 总开关 `enable_param`，默认关闭；例外：只做显示、`claims` 为空的 `ui` 类插件（如 `speed_card`）可以默认开启。设置项写在 `plugin.json` 的 `settings` 里。
 7. **cereal**：只追加字段，不改已有字段的序号和类型。新消息用 `custom.capnp` 里的 `customReserved*` 槽位。
 8. **验证**（沿用 `AGENTS.md`）：
    - 先列出失败模式，再写检查。
@@ -42,6 +42,7 @@ openpilot/tesla/
   plugins/traffic_light/    红绿灯停车
   plugins/ambient_light/    盲区氛围灯
   plugins/external_compute/ 外接算力桥接
+  plugins/speed_card/ lead_card/ speed_limit_card/ blindspot_edges/   大屏卡片和盲区边框（只显示）
   ui/screen.py ui/grid.py ui/slot.py ui/slots/   大屏宿主、插槽格式、插槽
   ui/plugin_ui.py           UI 侧插件加载：找到插槽、HudOverlay 和 ScreenOverlay，插件关闭时隐藏
   ui/plugins_page.py        设置里的"Plugins"页：统一管理所有插件（开关、设置、出错标记）
@@ -204,7 +205,7 @@ typedef struct {
   - 按 (`order`, `id`) 依次放；放不下的卡片不显示；卡片四周留 12 px。`show="offroad"` 的卡片不显示（停车时没有卡片区）。
   - 外观用 `Slot.draw_value(rect, value, unit, sub)`（标题、大数字、单位、灰色副行）或 `draw_lines(rect, lines)`，保持统一。
   - 卡片只显示，不接收触摸。连续出错 3 次停止绘制。
-- **整屏叠加层**：`ScreenOverlay`（`update(sm)`、`draw(zones)`，`zones` 是 left/right/top/bottom/view 的屏幕矩形），行驶时在卡片之后绘制；出错隔离同上，插件关闭时隐藏。
+- **整屏叠加层**：`ScreenOverlay`（`update(sm)`、`draw(zones)`，`zones` 是 left/right/top/bottom/view 的屏幕矩形），行驶时在卡片之后绘制；出错隔离同上，插件关闭时隐藏。例：`blindspot_edges`。
 - **停车时**：左列导航（xpilot、Home、Toggles、Models、Plugins、Tesla、Network、Device、Software、Developer），选中的行有蓝色左边条；右边上方是页面标题，中间是 mici 内容（456,180,1608,720，3 倍），下方是版本信息。导航直接构造各设置页（`ui/screen.py` 的 `PAGES`），选择时先回到主界面再打开，导航栈不增长。
 - 布局检查：`tools/sp_tesla_e2e/slot_layout_check.py`（本机）；渲染和触摸：`tools/sp_tesla_e2e/big_screen_e2e.py`（只能在设备上跑）。
 
@@ -216,6 +217,10 @@ typedef struct {
 | `traffic_light` | 读取 Tesla 自身的红绿灯感知（APP_trafficControl），由 trafficcontrold 和计划仲裁器在红灯前停车（只收紧） | `TeslaTrafficSignalControlEnabled`、`TeslaTrafficStopReference`、`TeslaTrafficControlMaxSpeed` | 无发送 |
 | `ambient_light` | 盲区有车时把氛围灯点成红色；区分昼夜亮度 | `TeslaBlindspotAmbient*` | `ambient_light.h`（0x679） |
 | `external_compute` | 外接算力桥接（见 8b），本身不控制车辆 | `XpilotExternal*` | 无发送 |
+| `speed_card` | 大屏左列：车速（仪表车速）和 SET 设定车速；默认开启 | `XpilotSpeedCard` | 无发送 |
+| `lead_card` | 大屏右列：前车距离和相对速度（radarState.leadOne）；默认开启 | `XpilotLeadCard` | 无发送 |
+| `speed_limit_card` | 大屏右列：SP 解析出的限速（longitudinalPlanSP）；默认开启 | `XpilotSpeedLimitCard` | 无发送 |
+| `blindspot_edges` | 大屏：盲区有车时左/右列显示红色渐变边框（ScreenOverlay）；默认开启 | `XpilotBlindspotEdges` | 无发送 |
 
 ## 11. 本机可以跑的检查
 
