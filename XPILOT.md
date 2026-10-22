@@ -15,10 +15,10 @@
 
 1. **不改 SP 主体逻辑。** SP 文件里最多只能加一行插件调用。功能逻辑全部写在 `openpilot/tesla/plugins/<功能名>/`。
 2. **不改上游 Tesla 车端代码。** `opendbc_repo/opendbc/car/tesla/*`、`opendbc_repo/opendbc/sunnypilot/car/tesla/*`、`opendbc/dbc/tesla_model3_*.dbc`、`opendbc/safety/modes/tesla.h` 保持上游原样。需要车端数据，就在插件里用自己的 `CANParser` 读。
-3. **插件只能收紧，不能放松。** 纵向只能更慢或停车，不能绕过 SP 和 panda 的任何检查。
+3. **插件不能绕过 SP 和 panda 的任何检查。** 纵向只有 `long_target` 可以加速，而且只能替换驾驶员设定车速（条件见第 4 节），跟车、模型和 SP 限速仍然取最小；其他纵向入口（`plan_filter`）只能收紧。外接算力的数据只做建议。
 4. **每个 CAN 发送地址都必须有 panda safety 插件**（`opendbc/safety/plugins/`），在插件里自己校验内容、频率、时效和 `controls_allowed`。没有 safety 插件，panda 会直接拦掉。
 5. **插件出错不能拖垮进程**：输入过期就当周期什么都不发。宿主兜底：插件在任何钩子里抛异常，就被记进 `XpilotPluginFaults`、本次进程内停用，其他插件和 SP 照常运行；plan filter 出错时计划照常发布。UI 插槽和 HUD 叠加层连续出错 3 次会停止绘制。
-6. **Params**：新 key 先在 `openpilot/common/params_keys.h` 声明。每个插件有一个 BOOL 总开关 `ENABLE_PARAM`，默认关闭；设置项写在插件自己的 `SETTINGS` 里。
+6. **Params**：插件的 key 写在 `plugins/<名字>/params.json`，然后运行 `python3 openpilot/tesla/plugins/gen_params.py` 生成 `common/plugin_params.inc` 并一起提交；不属于插件的 key 才写进 `params_keys.h`。每个插件有一个 BOOL 总开关 `ENABLE_PARAM`，默认关闭；设置项写在插件自己的 `SETTINGS` 里。
 7. **cereal**：只追加字段，不改已有字段的序号和类型。新消息用 `custom.capnp` 里的 `customReserved*` 槽位。
 8. **验证**（沿用 `AGENTS.md`）：
    - 先列出失败模式，再写检查。
@@ -64,6 +64,7 @@ opendbc_repo/opendbc/safety/plugins/
 | `control_sends(CS, CC, now_ns)` | card，每个控制周期 | 返回要追加发送的 `CanData` |
 | `service_params(params)` | card，约 10 Hz | 重新读取实时设置 |
 | `processes()`（类方法） | manager | 额外进程。manager 相关的 import 写在方法内部 |
+| `long_target(CP, params)`（类方法） | plannerd，每个计划周期 | 返回带 `update(sm, v_ego, v_cruise)` 的对象，给出目标车速（m/s）或 None。低于巡航车速：和 SP 自己的限速一样取最小；高于巡航车速：只替换驾驶员设定车速，且只在已接管、没踩油门/刹车、没 override 时生效，多个插件取最低，上限 `V_CRUISE_MAX`。MPC 跟车、模型和 SP 的限速功能仍然取最小，所以加速不会越过它们 |
 | `plan_filter(CP, params)`（类方法） | plannerd | 返回带 `publisher(pm, sm)` 的对象，用来收紧纵向计划；不需要就返回 None |
 | `PLAN_SERVICES` | plannerd | `plan_filter` 需要额外订阅的服务 |
 
@@ -88,7 +89,7 @@ class MyFeature(Plugin):
 ```
 
 2. 在 `plugins/__init__.py` 的 `PLUGINS` 里加上这个类。设置里的 Plugins 页会自动出现它的开关和设置。
-3. 在 `params_keys.h` 声明 `ENABLE_PARAM`（BOOL，默认 "0"）和 `SETTINGS` 里的每个 key。
+3. 在 `plugins/<名字>/params.json` 声明 `ENABLE_PARAM`（BOOL，默认 "0"）和 `SETTINGS` 里的每个 key，格式见 `gen_params.py`，再运行 `gen_params.py`。
 4. 有 CAN 发送的：写 `opendbc/safety/plugins/<名字>.h` 并加进 `registry.h`。`safetyParam` 位要和 Python 侧一致（auto_speed 用的是 `0x4000`）。
 5. 有 UI 的：写 `plugins/<名字>/ui.py`，里面的 `Slot` 子类（大屏插槽，格式见 `ui/grid.py`）和 `HudOverlay` 子类（行车画面叠加层，无参构造）会被自动加载；插件关闭时自动隐藏。不属于任何插件的插槽放 `openpilot/tesla/ui/slots/`。
 6. 先写失败模式和检查，再写实现；能在本机跑的就跑（`tools/sp_tesla_e2e/plugin_host_check.py` 会检查元数据和参数声明）。
@@ -126,6 +127,14 @@ typedef struct {
 - **新增数据源**：继承 `sunnypilot/mapd/live_map_data/base_map_data.py`，并在 `process_config.py` 里按 `MapProvider` 的取值注册进程。
 - **导航**：发布 `navInstruction`，再把 256×256 地图图像发到 VisionIPC 的 `mapsd` 流。
 
+## 8b. 外接算力接口（`plugins/external_compute/`）
+
+- **消息**：`externalIn`（外部 → 设备）和 `externalOut`（设备 → 外部），类型 `ExternalData`：`source`、`kind`（如 `llm.reply`、`vision.lanes`）、`seq`、`payload`（JSON 文本）、`validForMs`（0 表示不过期）。
+- **只做建议**：外部数据不能直接控制车辆。要用它的插件订阅 `externalIn`，用 `provider.is_fresh()` 检查时效，再通过自己的钩子（如 `long_target`）和限制生效。
+- **桥接进程** `externald`：插件开启时运行，把所有 provider 收到的消息发到 `externalIn`，把 `externalOut` 转给 provider。
+- **provider 接口**（`provider.py`）：`poll(timeout)`、`send(msg)`、`close()`。现有 `tcp.py`：外部设备通过网线、USB 网卡或 WiFi 连到设备端口（默认 8770），按行发 JSON，第一行必须是 `{"hello": "<令牌>", "name": "..."}`。令牌在设备的 `/data/params/d/XpilotExternalToken`，首次启动自动生成。明文 TCP，只在可信网络上用。
+- **新增 provider**（例如调用大模型 HTTP API）：写一个 `Provider` 子类，加进 `externald.py` 的 provider 列表。
+
 ## 9. UI 插槽（大屏）
 
 - **加插槽**：插件的插槽写在 `plugins/<名字>/ui.py`；不属于插件的在 `openpilot/tesla/ui/slots/` 新建文件，继承 `Slot` 并写好 `SPEC = SlotSpec(id, title, cells, services, show, hz, order)`，会被自动发现，在 12×6 网格中自动排布。
@@ -139,13 +148,15 @@ typedef struct {
 | `auto_speed` | 按车辆限速（DAS_fusedSpeedLimit）加偏移，用右滚轮单格报文调整巡航设定速度；手动拨滚轮后暂停，反方向拨两下恢复 | `TeslaAutoSpeedLimit`、`TeslaAutoSpeedLimitOffset` | `auto_speed.h`（0x3C2，需要 vehicle bus 和 openpilot 纵向） |
 | `traffic_light` | 读取 Tesla 自身的红绿灯感知（APP_trafficControl），由 trafficcontrold 和计划仲裁器在红灯前停车（只收紧） | `TeslaTrafficSignalControlEnabled`、`TeslaTrafficStopReference`、`TeslaTrafficControlMaxSpeed` | 无发送 |
 | `ambient_light` | 盲区有车时把氛围灯点成红色；区分昼夜亮度 | `TeslaBlindspotAmbient*` | `ambient_light.h`（0x679） |
+| `external_compute` | 外接算力桥接（见 8b），本身不控制车辆 | `XpilotExternal*` | 无发送 |
 
 ## 11. 本机可以跑的检查
 
 ```
 python3 tools/sp_tesla_e2e/static_imports.py --baseline <基线 json>   # 有没有断掉的 import
 python3 tools/sp_tesla_e2e/slot_layout_check.py                       # 插槽排布
-python3 tools/sp_tesla_e2e/plugin_host_check.py                       # 插件宿主：出错隔离、总开关、元数据
+python3 tools/sp_tesla_e2e/plugin_host_check.py                       # 插件宿主：出错隔离、总开关、元数据、参数、目标车速
+python3 tools/sp_tesla_e2e/external_bridge_check.py                   # 外接算力 TCP 桥接（本机真实 socket）
 python3 tools/dev_sp_release/upstream_watch.py                        # 列出值得 cherry-pick 的上游提交
 ```
 

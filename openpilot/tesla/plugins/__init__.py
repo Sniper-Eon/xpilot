@@ -8,9 +8,10 @@ import time
 from openpilot.common.swaglog import cloudlog
 from openpilot.tesla.plugins.ambient_light.plugin import AmbientLight
 from openpilot.tesla.plugins.auto_speed.plugin import AutoSpeed
+from openpilot.tesla.plugins.external_compute.plugin import ExternalCompute
 from openpilot.tesla.plugins.traffic_light.plugin import TrafficLight
 
-PLUGINS = (AutoSpeed, TrafficLight, AmbientLight)
+PLUGINS = (AutoSpeed, TrafficLight, AmbientLight, ExternalCompute)
 FAULTS_PARAM = "XpilotPluginFaults"
 
 

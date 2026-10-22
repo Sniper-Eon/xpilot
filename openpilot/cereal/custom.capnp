@@ -616,7 +616,14 @@ struct TrafficRadarState @0xcb9fd56c7057593a {
   stopSafetyAllowed @32 :Bool;  # All STOP gates except raw CAN freshness.
 }
 
-struct CustomReserved11 @0xc2243c65e0340384 {
+struct ExternalData @0xc2243c65e0340384 {
+  # One message to (externalOut) or from (externalIn) external compute: a laptop, an LLM server, an accelerator.
+  # Advisory only: it reaches control solely through a plugin's own checked hooks (openpilot/tesla/plugins/external_compute).
+  source @0 :Text;        # peer or provider name
+  kind @1 :Text;          # payload type, e.g. "llm.reply", "vision.lanes"
+  seq @2 :UInt32;
+  payload @3 :Text;       # JSON
+  validForMs @4 :UInt32;  # consumers drop it this long after logMonoTime; 0 = no expiry
 }
 
 struct CustomReserved12 @0x9ccdc8676701b412 {

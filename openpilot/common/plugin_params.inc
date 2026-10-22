@@ -6,6 +6,10 @@
 // auto_speed
     {"TeslaAutoSpeedLimit", {PERSISTENT | BACKUP, BOOL, "0"}},
     {"TeslaAutoSpeedLimitOffset", {PERSISTENT | BACKUP, INT, "0"}},
+// external_compute
+    {"XpilotExternalEnabled", {PERSISTENT | BACKUP, BOOL, "0"}},
+    {"XpilotExternalPort", {PERSISTENT | BACKUP, INT, "8770"}},
+    {"XpilotExternalToken", {PERSISTENT | DONT_LOG, STRING}},
 // traffic_light
     {"TeslaTrafficSignalControlEnabled", {PERSISTENT | BACKUP, BOOL, "0"}},
     {"TeslaTrafficStopReference", {PERSISTENT | BACKUP, INT, "50"}},
