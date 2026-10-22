@@ -19,7 +19,7 @@ def run(output):
   from openpilot.sunnypilot.hardware.profile import HardwareProfile, infer_hardware_profile
   from openpilot.system.manager.process_config import managed_processes
   from opendbc.car import structs
-  from openpilot.tesla.car.ambient_lighting import AmbientLightingController
+  from openpilot.tesla.plugins.ambient_light.controller import AmbientLightingController
 
   evidence = []
   with tempfile.TemporaryDirectory() as directory:

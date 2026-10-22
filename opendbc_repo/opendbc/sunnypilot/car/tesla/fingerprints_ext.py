@@ -1,5 +1,5 @@
 from opendbc.car.structs import CarParams
-from opendbc.sunnypilot.car.tesla.xpilot.values import CAR
+from opendbc.car.tesla.values import CAR
 
 Ecu = CarParams.Ecu
 

@@ -402,17 +402,6 @@ class CarControllerBase(ABC):
     pass
 
 
-# Port plugins: a brand listed here is served by another package with the same module names
-# (interface, values, fingerprints, ...) instead of opendbc/car/<brand>. The upstream port stays untouched.
-PORT_OVERRIDES = {
-  "tesla": "opendbc.sunnypilot.car.tesla.xpilot",
-}
-
-
-def port_package(brand: str) -> str:
-  return PORT_OVERRIDES.get(brand, f"opendbc.car.{brand}")
-
-
 INTERFACE_ATTR_FILE = {
   "FINGERPRINTS": "fingerprints",
   "FW_VERSIONS": "fingerprints",
@@ -429,7 +418,7 @@ def get_interface_attr(attr: str, combine_brands: bool = False, ignore_none: boo
   for car_folder in sorted([x[0] for x in os.walk(BASEDIR)]):
     try:
       brand_name = car_folder.split('/')[-1]
-      brand_values = __import__(f'{port_package(brand_name)}.{INTERFACE_ATTR_FILE.get(attr, "values")}', fromlist=[attr])
+      brand_values = __import__(f'opendbc.car.{brand_name}.{INTERFACE_ATTR_FILE.get(attr, "values")}', fromlist=[attr])
       if hasattr(brand_values, attr) or not ignore_none:
         attr_data = getattr(brand_values, attr, None)
       else:

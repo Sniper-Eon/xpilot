@@ -8,8 +8,7 @@
 
 // all the safety modes
 #include "opendbc/safety/modes/defaults.h"
-// xpilot Tesla safety mode (SAFETY_TESLA). Upstream modes/tesla.h stays untouched and is not compiled.
-#include "opendbc/safety/modes/tesla_xpilot.h"
+#include "opendbc/safety/modes/tesla.h"
 #include "opendbc/safety/modes/elm327.h"
 
 uint32_t GET_BYTES_LE(const CANPacket_t *msg, int start, int len) {
@@ -186,10 +185,6 @@ bool safety_rx_hook(const CANPacket_t *msg) {
   bool whitelisted = get_addr_check_index(msg, current_safety_config.rx_checks, current_safety_config.rx_checks_len) != -1;
   if (valid && whitelisted) {
     current_hooks->rx(msg);
-  }
-
-  if (valid && (current_hooks->rx_observer != NULL)) {
-    current_hooks->rx_observer(msg);
   }
 
   // Handles gas, brake, and regen paddle

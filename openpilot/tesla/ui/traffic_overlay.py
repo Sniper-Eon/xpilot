@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import pyray as rl
 
 from openpilot.selfdrive.ui.ui_state import ui_state
-from openpilot.tesla.traffic.controller import TrafficControlPhase
+from openpilot.tesla.plugins.traffic_light.controller import TrafficControlPhase
 from openpilot.system.ui.lib.application import gui_app
 from openpilot.system.ui.widgets import Widget
 

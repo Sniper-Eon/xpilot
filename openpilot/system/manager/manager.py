@@ -15,7 +15,6 @@ from openpilot.common.hardware import HARDWARE, PC
 from openpilot.system.manager.helpers import unblock_stdout, save_bootlog
 from openpilot.system.manager.process import ensure_running
 from openpilot.sunnypilot.hardware.driver_monitoring import latch_driver_monitoring
-from openpilot.tesla.long.session import end_longitudinal_session
 from openpilot.system.manager.process_config import managed_processes
 from openpilot.common.swaglog import cloudlog, add_file_handler
 from openpilot.common.version import get_build_metadata
@@ -142,7 +141,6 @@ def manager_thread() -> None:
       params.clear_all(ParamKeyFlag.CLEAR_ON_ONROAD_TRANSITION)
       latch_driver_monitoring(params)
     elif not started and started_prev:
-      end_longitudinal_session(params, (managed_processes[name] for name in ("plannerd", "controlsd")))
       params.clear_all(ParamKeyFlag.CLEAR_ON_OFFROAD_TRANSITION)
 
     ignition = any(ps.ignitionLine or ps.ignitionCan for ps in sm['pandaStates'] if ps.pandaType != log.PandaState.PandaType.unknown)

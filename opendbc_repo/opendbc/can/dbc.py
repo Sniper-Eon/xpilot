@@ -7,7 +7,7 @@ from functools import cache
 from opendbc import DBC_PATH, get_generated_dbcs
 
 # TODO: these should just be passed in along with the DBC file
-from opendbc.sunnypilot.car.tesla.xpilot.teslacan import tesla_checksum
+from opendbc.car.tesla.teslacan import tesla_checksum
 
 
 class SignalType:

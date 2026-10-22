@@ -155,36 +155,7 @@ inline static std::unordered_map<std::string, ParamKeyAttributes> keys = {
     {"TeslaBlindspotAmbientBrightness", {PERSISTENT | BACKUP, INT, "30"}},
     {"TeslaBlindspotAmbientDayBrightness", {PERSISTENT | BACKUP, INT, "100"}},
 
-    {"MpcTuningProfile", {PERSISTENT | BACKUP, INT, "0"}},
-    {"MpcXObstacleCost", {PERSISTENT | BACKUP, INT, "300"}},
-    {"MpcJerkCost", {PERSISTENT | BACKUP, INT, "500"}},
-    {"MpcAccelChangeCost", {PERSISTENT | BACKUP, INT, "20000"}},
-    {"MpcDangerZoneCost", {PERSISTENT | BACKUP, INT, "10000"}},
-    {"MpcLeadDangerFactor", {PERSISTENT | BACKUP, INT, "75"}},
-    {"MpcComfortBrake", {PERSISTENT | BACKUP, INT, "250"}},
-    {"MpcStopDistance", {PERSISTENT | BACKUP, INT, "600"}},
-    {"MpcJerkFactorStandard", {PERSISTENT | BACKUP, INT, "100"}},
-    {"MpcTFollowRelaxed", {PERSISTENT | BACKUP, INT, "175"}},
-    {"MpcTFollowStandard", {PERSISTENT | BACKUP, INT, "145"}},
-    {"MpcTFollowAggressive", {PERSISTENT | BACKUP, INT, "125"}},
-
-
-    // Retained Tesla and longitudinal extensions.
-    {"TeslaARS408Radar", {PERSISTENT | BACKUP, INT, "0"}},
-    {"TeslaTouchLongitudinalSwitch", {PERSISTENT | BACKUP, BOOL, "0"}},
-    {"TeslaApHybrid", {PERSISTENT | BACKUP, BOOL, "0"}},
-    {"TeslaDynamicApLongitudinal", {PERSISTENT | BACKUP, BOOL, "0"}},
-    // Active Tesla control configuration.
-    {"DynamicAutoStock", {PERSISTENT | BACKUP, BOOL, "0"}},
-    {"DynamicAutoStockBlinkerToSP", {PERSISTENT | BACKUP, BOOL, "0"}},
-    {"DynamicAutoStockCurveToSP", {PERSISTENT | BACKUP, BOOL, "0"}},
-    {"DynamicAutoStockSpeedKph", {PERSISTENT | BACKUP, INT, "80"}},
-    {"DynamicAutoStockSpeedLowKph", {PERSISTENT | BACKUP, INT, "70"}},
-    {"LongitudinalPlannerMode", {PERSISTENT | BACKUP, INT, "0"}},
-    {"ActiveLongitudinalBackend", {CLEAR_ON_MANAGER_START | CLEAR_ON_OFFROAD_TRANSITION, INT}},
-    {"LongitudinalTuningConfig", {PERSISTENT | BACKUP, JSON}},
-    {"AccelPersonalityEnabled", {PERSISTENT | BACKUP, BOOL, "0"}},
-    {"AccelPersonality", {PERSISTENT | BACKUP, INT, "1"}},
+    // xpilot: device and plugin settings (plugins: openpilot/tesla/plugins, rules: XPILOT.md)
     {"TeslaAutoSpeedLimit", {PERSISTENT | BACKUP, BOOL, "0"}},
     {"TeslaVideoWindow", {PERSISTENT | BACKUP, JSON}},
     {"MapProvider", {PERSISTENT | BACKUP, STRING, "osm"}},

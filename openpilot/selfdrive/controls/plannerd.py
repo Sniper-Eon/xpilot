@@ -6,11 +6,9 @@ from openpilot.common.params import Params
 from openpilot.common.realtime import Priority, config_realtime_process
 from openpilot.common.swaglog import cloudlog
 from openpilot.selfdrive.controls.lib.ldw import LaneDepartureWarning
-from openpilot.tesla.long import create_longitudinal_planner
-from openpilot.tesla.traffic.final_plan_arbitrator import (
-  create_final_plan_arbitrator,
-)
+from openpilot.selfdrive.controls.lib.longitudinal_planner import LongitudinalPlanner
 import openpilot.cereal.messaging as messaging
+from openpilot.tesla import plugins
 
 
 def main():
@@ -26,14 +24,15 @@ def main():
   cloudlog.info("plannerd got CarParamsSP")
 
   gps_location_service = get_gps_location_service(params)
-  ignore_services = ["liveMapDataSP", "carStateSP", "selfdriveStateSP", "trafficRadarState", gps_location_service]
+  plugin_services = plugins.plan_services()  # xpilot plugins: extra inputs for plan filters
+  ignore_services = ["liveMapDataSP", "carStateSP", "selfdriveStateSP", gps_location_service, *plugin_services]
 
   ldw = LaneDepartureWarning()
-  longitudinal_planner = create_longitudinal_planner(CP, CP_SP, params=params)
-  traffic_arbitrator = create_final_plan_arbitrator(CP, params)
+  longitudinal_planner = LongitudinalPlanner(CP, CP_SP)
+  plan_filters = plugins.plan_filters(CP, params)  # xpilot plugins may only tighten the published plan
   pm = messaging.PubMaster(['longitudinalPlan', 'driverAssistance', 'longitudinalPlanSP'])
   sm = messaging.SubMaster(['carControl', 'carState', 'controlsState', 'radarState', 'modelV2', 'selfdriveState',
-                            'liveMapDataSP', 'carStateSP', 'selfdriveStateSP', 'trafficRadarState', gps_location_service],
+                            'liveMapDataSP', 'carStateSP', 'selfdriveStateSP', gps_location_service, *plugin_services],
                            poll='modelV2', ignore_alive=ignore_services, ignore_avg_freq=ignore_services, ignore_valid=ignore_services)
 
   while True:
@@ -41,10 +40,7 @@ def main():
     longitudinal_planner.sla.update_buttons(sm['selfdriveStateSP'].buttonsReleaseToggle)
     if sm.updated['modelV2']:
       longitudinal_planner.update(sm)
-      # Disabled sessions retain the exact original publish path. Enabled
-      # sessions constrain only the emitted plan; no planner or MPC is wrapped.
-      publish_sink = pm if traffic_arbitrator is None else traffic_arbitrator.publisher(pm, sm)
-      longitudinal_planner.publish(sm, publish_sink)
+      longitudinal_planner.publish(sm, plugins.plan_sink(plan_filters, pm, sm))
 
       ldw.update(sm.frame, sm['modelV2'], sm['carState'], sm['carControl'])
       msg = messaging.new_message('driverAssistance')

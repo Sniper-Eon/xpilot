@@ -1,7 +1,7 @@
 from openpilot.common.test import OpenpilotTestCase
 import openpilot.cereal.messaging as messaging
 
-from opendbc.sunnypilot.car.tesla.xpilot.values import CAR as TESLA
+from opendbc.car.tesla.values import CAR as TESLA
 from openpilot.selfdrive.test.process_replay import replay_process_with_name
 
 

@@ -22,10 +22,10 @@ from openpilot.selfdrive.pandad import can_capnp_to_list, can_list_to_can_capnp
 from openpilot.selfdrive.car.cruise import VCruiseHelper
 from openpilot.selfdrive.car.helpers import convert_carControlSP, convert_to_capnp
 
-
 from openpilot.sunnypilot.mads.helpers import set_alternative_experience, set_car_specific_params
 from openpilot.sunnypilot.selfdrive.car import interfaces as sunnypilot_interfaces
-from openpilot.tesla.car.card_adapter import CONTEXT_SERVICES, TeslaCardAdapter
+from openpilot.tesla.plugins import CarPlugins
+from opendbc.car.car_helpers import get_radar_interface
 
 REPLAY = "REPLAY" in os.environ
 
@@ -73,8 +73,7 @@ class Car:
 
   def __init__(self, CI=None, RI=None) -> None:
     self.can_sock = messaging.sub_sock('can', timeout=20)
-    self.sm = messaging.SubMaster(['pandaStates', 'carControl', 'onroadEvents'] +
-                                  ['carControlSP', 'longitudinalPlanSP', *CONTEXT_SERVICES])
+    self.sm = messaging.SubMaster(['pandaStates', 'carControl', 'onroadEvents'] + ['carControlSP', 'longitudinalPlanSP'])
     self.pm = messaging.PubMaster(['sendcan', 'carState', 'carParams', 'carOutput', 'radarTracks'] + ['carParamsSP', 'carStateSP'])
 
     self.can_rcv_cum_timeout_counter = 0
@@ -115,7 +114,7 @@ class Car:
       self.CI = get_car(*self.can_callbacks, obd_callback(self.params), alpha_long_allowed, is_release, cached_params,
                         fixed_fingerprint, init_params_list_sp, is_release_sp)
       sunnypilot_interfaces.setup_interfaces(self.CI, self.params)
-      self.RI = interfaces[self.CI.CP.carFingerprint].RadarInterface(self.CI.CP, self.CI.CP_SP)
+      self.RI = get_radar_interface(self.CI.CP, self.CI.CP_SP)  # radar plugins: opendbc car_helpers.RADAR_PLUGINS
       self.CP = self.CI.CP
       self.CP_SP = self.CI.CP_SP
 
@@ -125,7 +124,8 @@ class Car:
       self.CI, self.CP, self.CP_SP = CI, CI.CP, CI.CP_SP
       self.RI = RI
 
-    self.tesla_adapter = TeslaCardAdapter(self.CP.brand, self.CI, self.sm, self.params)
+    self.plugins = CarPlugins(self.CP, self.params)  # xpilot feature plugins (openpilot/tesla/plugins)
+    self.plugins.setup(self.CP_SP)
 
     self.CP.alternativeExperience = 0
     # mads
@@ -172,20 +172,18 @@ class Car:
 
     can_strs = messaging.drain_sock_raw(self.can_sock, wait_for_one=True)
     can_list = can_capnp_to_list(can_strs)
-    urgent_sends = self.tesla_adapter.observe_can(can_list)
-    if urgent_sends:
-      self.can_callbacks[1](urgent_sends)
+    if plugin_sends := self.plugins.observe_can(can_list):
+      self.can_callbacks[1](plugin_sends)
 
     # Update carState from CAN
     CS, CS_SP = self.CI.update(can_list)
     CS_SP = convert_to_capnp(CS_SP)
-    self.tesla_adapter.publish_state(CS_SP)
+    self.plugins.publish_state(CS_SP)
 
     # Update radar tracks from CAN
     RD: structs.RadarDataT | None = self.RI.update(can_list)
 
     self.sm.update(0)
-    self.tesla_adapter.update_context()
 
     can_rcv_valid = len(can_strs) > 0
 
@@ -224,13 +222,6 @@ class Car:
     co_send.carOutput.actuatorsOutput = self.last_actuators_output
     self.pm.send('carOutput', co_send)
 
-    # carState wakes selfdrived. Publish its companion state first so consumers
-    # can atomically resolve Tesla split-control ownership for this cycle.
-    cs_sp_send = messaging.new_message('carStateSP')
-    cs_sp_send.valid = CS.canValid
-    cs_sp_send.carStateSP = CS_SP
-    self.pm.send('carStateSP', cs_sp_send)
-
     # kick off controlsd step while we actuate the latest carControl packet
     cs_send = messaging.new_message('carState')
     cs_send.valid = CS.canValid
@@ -252,6 +243,11 @@ class Car:
       cp_sp_send.carParamsSP = self.CP_SP_capnp
       self.pm.send('carParamsSP', cp_sp_send)
 
+    cs_sp_send = messaging.new_message('carStateSP')
+    cs_sp_send.valid = CS.canValid
+    cs_sp_send.carStateSP = CS_SP
+    self.pm.send('carStateSP', cs_sp_send)
+
   def controls_update(self, CS: car.CarState, CC: car.CarControl, CC_SP: custom.CarControlSP):
     """control update loop, driven by carControl"""
 
@@ -266,7 +262,7 @@ class Car:
       # send car controls over can
       now_nanos = self.can_log_mono_time if REPLAY else int(time.monotonic() * 1e9)
       self.last_actuators_output, can_sends = self.CI.apply(CC, convert_carControlSP(CC_SP), now_nanos)
-      can_sends.extend(self.tesla_adapter.control_sends(CS, CC, now_nanos))
+      can_sends.extend(self.plugins.control_sends(CS, CC, now_nanos))
       self.pm.send('sendcan', can_list_to_can_capnp(can_sends, msgtype='sendcan', valid=CS.canValid))
 
       self.CC_prev = CC
@@ -292,7 +288,7 @@ class Car:
 
       # sunnypilot
       self.v_cruise_helper.read_custom_set_speed_params()
-      self.tesla_adapter.service_params(self.params)
+      self.plugins.service_params(self.params)
 
       time.sleep(0.1)
 

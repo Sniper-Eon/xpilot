@@ -12,7 +12,7 @@ from openpilot.common.parameterized import parameterized
 from openpilot.cereal import custom
 from opendbc.car.car_helpers import interfaces
 from opendbc.car.structs import car
-from opendbc.sunnypilot.car.tesla.xpilot.values import CAR as TESLA
+from opendbc.car.tesla.values import CAR as TESLA
 from openpilot.common.constants import CV
 from openpilot.common.params import Params
 from openpilot.common.realtime import DT_MDL

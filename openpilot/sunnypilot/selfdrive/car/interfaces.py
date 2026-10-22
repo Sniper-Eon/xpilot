@@ -11,7 +11,6 @@ from opendbc.car.interfaces import CarInterfaceBase
 from openpilot.common.params import Params
 from openpilot.common.swaglog import cloudlog
 from openpilot.sunnypilot.selfdrive.controls.lib.speed_limit.helpers import set_speed_limit_assist_availability
-from openpilot.tesla.car.control_profile import initialization_snapshot as tesla_initialization_snapshot
 
 
 
@@ -35,5 +34,6 @@ def setup_interfaces(CI: CarInterfaceBase, params: Params | None = None) -> None
 
 
 def initialize_params(params) -> list[dict[str, Any]]:
-  # Tesla is the only car: its complete initialization contract crosses one Seam.
-  return tesla_initialization_snapshot(params)
+  # upstream sunnypilot Tesla options; xpilot plugins read their own Params in card
+  keys = ["TeslaCoopSteering", "TeslaMadsScreenButton"]
+  return [{k: params.get(k, return_default=True)} for k in keys]

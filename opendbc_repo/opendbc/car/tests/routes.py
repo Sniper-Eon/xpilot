@@ -1,7 +1,7 @@
 from typing import NamedTuple
 
 from opendbc.car.mock.values import CAR as MOCK
-from opendbc.sunnypilot.car.tesla.xpilot.values import CAR as TESLA
+from opendbc.car.tesla.values import CAR as TESLA
 from opendbc.car.values import Platform
 
 # TODO: add test routes

@@ -1,6 +1,6 @@
 from typing import get_args
 from opendbc.car.mock.values import CAR as MOCK
-from opendbc.sunnypilot.car.tesla.xpilot.values import CAR as TESLA
+from opendbc.car.tesla.values import CAR as TESLA
 
 Platform = MOCK | TESLA
 BRANDS = get_args(Platform)
