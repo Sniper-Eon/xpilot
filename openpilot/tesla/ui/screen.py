@@ -1,8 +1,11 @@
 """Big-screen host (C3/C3X/C3XL, 2160x1080) around the mici UI.
 Onroad: the mici view in grid.VIEW, plugin cards in the zones around it (grid.py), then plugin ScreenOverlays.
 Alerts are drawn once, by mici inside the view.
-Offroad: a nav column (Home and the settings pages), the page title above the mici content at 3x, a status footer.
-The nav and the cards sit outside the mici viewport, so their touches map outside every mici widget and are ignored by mici."""
+Offroad (UI v3): a nav column, a title band and native list pages (tesla/ui/pages/) drawn here in screen pixels. The mici
+texture is not drawn (viewport() -> None) except during onboarding and for mici pages pushed above main (Models, training
+guide, terms, regulatory, cabin camera), which show at 3x in the content area. Without a viewport every touch maps far
+outside the mici screen, so the mici widgets running underneath never react. tici dialogs (ConfirmDialog, Keyboard) the
+native pages push onto the nav stack are hidden in the mici pass and drawn full-screen here."""
 from contextlib import contextmanager
 import math
 import time
@@ -13,29 +16,30 @@ from openpilot.cereal import messaging
 from openpilot.common.hardware import HARDWARE
 from openpilot.common.params import Params
 from openpilot.common.swaglog import cloudlog
-from openpilot.common.version import get_build_metadata
-from openpilot.selfdrive.ui.mici.layouts.settings.developer import DeveloperLayoutMici
-from openpilot.selfdrive.ui.mici.layouts.settings.device.device_layout import DeviceLayoutMici
-from openpilot.selfdrive.ui.mici.layouts.settings.network.network_layout import NetworkLayoutMici
-from openpilot.selfdrive.ui.mici.layouts.settings.software import SoftwareLayoutMici
-from openpilot.selfdrive.ui.mici.layouts.settings.toggles import TogglesLayoutMici
-from openpilot.selfdrive.ui.mici.widgets.button import BigButton
 from openpilot.selfdrive.ui.sunnypilot.mici.layouts.models import ModelsLayoutMici
 from openpilot.selfdrive.ui.ui_state import ui_state
 from openpilot.sunnypilot.hardware.profile import HardwareProfile, get_hardware_profile
-from openpilot.system.ui.lib.application import gui_app, FontWeight
+from openpilot.system.ui.lib.application import MousePos, gui_app, FontWeight
+from openpilot.tesla.ui import offroad
 from openpilot.tesla.ui.grid import SCREEN, VIEW, ZONES, place
+from openpilot.tesla.ui.offroad import NAV, NAV_W, TITLE_H
+from openpilot.tesla.ui.pages.developer import DeveloperPage
+from openpilot.tesla.ui.pages.device import DevicePage
+from openpilot.tesla.ui.pages.home import HomePage
+from openpilot.tesla.ui.pages.network import NetworkPage
+from openpilot.tesla.ui.pages.plugins import PluginsPage
+from openpilot.tesla.ui.pages.software import SoftwarePage
+from openpilot.tesla.ui.pages.tesla import TeslaPage
+from openpilot.tesla.ui.pages.toggles import TogglesPage
 from openpilot.tesla.ui.plugin_ui import MAX_FAILURES, EnabledPlugins, ScreenOverlay, load
-from openpilot.tesla.ui.plugins_page import PluginsPage
-from openpilot.tesla.ui.settings_page import TeslaSettingsMici
 from openpilot.tesla.ui.slot import DIM, Slot
 
-MICI = (536, 240)
-OFFROAD_VIEW = (456, 180, 1608, 720)  # mici at 3x in the main area right of the nav column
-NAV_W, NAV_TOP, ROW_H = 360, 180, 96
-# Nav entries: (label, page class); pages are built on first use. Home is the mici main layout.
-PAGES = (("Home", None), ("Toggles", TogglesLayoutMici), ("Models", ModelsLayoutMici), ("Plugins", PluginsPage), ("Tesla", TeslaSettingsMici),
-         ("Network", NetworkLayoutMici), ("Device", DeviceLayoutMici), ("Software", SoftwareLayoutMici), ("Developer", DeveloperLayoutMici))
+NAV_TOP, ROW_H = 180, 96
+# Native page per nav label, built on first use. Models has none: it shows the mici page (FALLBACK_VIEW).
+NATIVE = {"Home": HomePage, "Toggles": TogglesPage, "Plugins": PluginsPage, "Tesla": TeslaPage, "Network": NetworkPage,
+          "Device": DevicePage, "Software": SoftwarePage, "Developer": DeveloperPage}
+FALLBACK_TITLES = {"ReviewTrainingGuide": "Training guide", "CabinCameraDialog": "Cabin camera", "ReviewTermsPage": "Terms",
+                   "MiciFccModal": "Regulatory"}
 NAV_BG = rl.Color(14, 15, 19, 255)
 NAV_SEL = rl.Color(34, 38, 48, 255)
 NAV_PRESSED = rl.Color(26, 28, 36, 255)
@@ -60,14 +64,6 @@ def scaled(s: float):
     rl.begin_scissor_mode = prev
 
 
-def _hide_back(page) -> None:
-  """Pages opened from the nav need no Back card: the nav stays visible. The tesla pages (SettingsList) start with one;
-  hide it. This is the host's only reach into a page's internals (NavScroller._scroller)."""
-  items = page._scroller.items
-  if items and isinstance(items[0], BigButton) and items[0].text == "Back":
-    items[0].set_visible(False)
-
-
 class _Tile:
   def __init__(self, plugin: str | None, slot: Slot):
     self.plugin, self.slot, self.rect, self.texture, self.last, self.failures = plugin, slot, None, None, 0.0, 0
@@ -86,13 +82,15 @@ class BigScreenHost:
     self._zones = {**{k: rl.Rectangle(*z) for k, z in ZONES.items()}, "view": rl.Rectangle(*VIEW)}
     self._layout_key = None
     self._main = None
-    self._pages: dict[int, object] = {}
+    self._pages: dict[str, object] = {}
+    self._models = None
     self._selected = 0
+    self._sub: tuple[str, object] | None = None  # (title, page) opened by the selected page
+    self._shown = None  # the native page that last got show_event
     self._pressed = None
-    try:
-      self._status = get_build_metadata().ui_description
-    except Exception:
-      self._status = ""
+    self._view: tuple | None = None  # set each frame by viewport(); to_logical runs on the touch thread
+    self._mode = "native"
+    self._host_pass = False
 
   def bind_settings(self, main, _settings) -> None:
     self._main = main
@@ -102,30 +100,53 @@ class BigScreenHost:
 
   def _select(self, index: int) -> None:
     gui_app.pop_widgets_to(self._main, instant=True)  # never grow the nav stack
-    self._selected = index
-    if index:
-      if index not in self._pages:
-        self._pages[index] = PAGES[index][1]()
-        _hide_back(self._pages[index])
-      gui_app.push_widget(self._pages[index])
+    self._selected, self._sub = index, None
+    if NAV[index] not in NATIVE:
+      self._models = self._models or ModelsLayoutMici()
+      gui_app.push_widget(self._models)
 
-  def _view(self) -> tuple[float, float, float, float]:
-    return VIEW if ui_state.started else OFFROAD_VIEW
+  def _page(self):
+    """The native page in the content area: the open sub-page, else the selected nav page (None for Models)."""
+    if self._sub is not None:
+      return self._sub[1]
+    label = NAV[self._selected]
+    if label not in NATIVE:
+      return None
+    if label not in self._pages:
+      page = self._pages[label] = NATIVE[label]()
+      page.open = lambda title, sub: self._open(title, sub)
+      if isinstance(page, DevicePage):
+        page.main = self._main
+    return self._pages[label]
 
-  def viewport(self) -> rl.Rectangle:
-    return rl.Rectangle(*self._view())
+  def _open(self, title, page) -> None:
+    self._sub = None if page is None else (title, page)
+
+  @staticmethod
+  def _is_modal(widget) -> bool:
+    """tici dialogs (system/ui/widgets: ConfirmDialog, alert_dialog, Keyboard) pushed by the native pages."""
+    return type(widget).__module__.startswith("openpilot.system.ui.widgets")
+
+  def _hook_modal(self) -> None:
+    top = gui_app.get_active_widget()
+    if top is not self._main and self._is_modal(top):
+      top.set_visible(lambda: self._host_pass)  # hidden in the mici texture pass, drawn by _draw_offroad
+
+  def viewport(self) -> rl.Rectangle | None:
+    if ui_state.started:
+      self._mode, self._view = "onroad", VIEW
+    else:
+      onboarding = self._main is None or gui_app.widget_in_stack(self._main._onboarding_window)
+      top = gui_app.get_active_widget()
+      self._mode, self._view = offroad.view_mode(onboarding, top is self._main, self._is_modal(top))
+    return rl.Rectangle(*self._view) if self._view is not None else None
 
   def to_logical(self, x: float, y: float) -> tuple[float, float]:
-    vx, vy, vw, vh = self._view()
-    return (x - vx) * MICI[0] / vw, (y - vy) * MICI[1] / vh
-
-  def _to_screen(self, pos) -> rl.Vector2:
-    vx, vy, vw, vh = self._view()
-    return rl.Vector2(vx + pos.x * vw / MICI[0], vy + pos.y * vh / MICI[1])
+    return offroad.to_logical(self._view, x, y)
 
   def render(self) -> None:
-    if not ui_state.started:
-      if not gui_app.widget_in_stack(self._main._onboarding_window):
+    if self._mode != "onroad":
+      if self._mode != "onboarding":
         self._draw_offroad()
       return
     enabled = self._enabled.get()
@@ -179,29 +200,84 @@ class BigScreenHost:
         entry[2] += 1  # same isolation as slots
         cloudlog.exception(f"screen overlay {type(overlay).__name__} failed")
 
+  @contextmanager
+  def _native(self, events):
+    """Run tici widgets in screen pixels: screen-space touches, full-screen gui_app size, unscaled scissor."""
+    saved = gui_app._mouse_events, gui_app._width, gui_app._height
+    gui_app._mouse_events, (gui_app._width, gui_app._height) = events, SCREEN
+    self._host_pass = True
+    try:
+      with scaled(1):
+        yield
+    finally:
+      self._host_pass = False
+      gui_app._mouse_events, gui_app._width, gui_app._height = saved
+
+  def _tapped(self, key, rect: rl.Rectangle, events) -> bool:
+    tapped = False
+    for event in events:
+      inside = rl.check_collision_point_rec(event.pos, rect)
+      if event.left_pressed and inside:
+        self._pressed = key
+      if event.left_released and self._pressed == key:
+        self._pressed = None
+        tapped = inside
+    return tapped
+
   def _draw_offroad(self) -> None:
-    if gui_app.get_active_widget() is self._main:
-      self._selected = 0
+    events = [e._replace(pos=MousePos(*offroad.to_screen(self._view, e.pos.x, e.pos.y))) for e in gui_app.mouse_events]
+    top = gui_app.get_active_widget()
+    if top is self._main and NAV[self._selected] not in NATIVE:
+      self._selected = 0  # left the Models page with the mici back gesture
+    modal = self._mode == "modal"
+    page_events = [] if modal else events
+
     rl.draw_rectangle(0, 0, NAV_W, SCREEN[1], NAV_BG)
     rl.draw_text_ex(gui_app.font(FontWeight.BOLD), "xpilot", rl.Vector2(48, 52), 76, 0, rl.WHITE)
     medium = gui_app.font(FontWeight.MEDIUM)
-    for index, (label, _) in enumerate(PAGES):
+    for index, label in enumerate(NAV):
       rect = rl.Rectangle(0, NAV_TOP + index * ROW_H, NAV_W, ROW_H)
-      for event in gui_app.mouse_events:
-        inside = rl.check_collision_point_rec(self._to_screen(event.pos), rect)
-        if event.left_pressed and inside:
-          self._pressed = index
-        if event.left_released and self._pressed == index:
-          self._pressed = None
-          if inside:
-            self._select(index)
+      if self._tapped(index, rect, page_events):
+        self._select(index)
       selected = index == self._selected
       if selected or self._pressed == index:
         rl.draw_rectangle_rec(rect, NAV_SEL if selected else NAV_PRESSED)
       if selected:
         rl.draw_rectangle_rec(rl.Rectangle(0, rect.y, 8, ROW_H), ACCENT)
       rl.draw_text_ex(medium, label, rl.Vector2(48, rect.y + (ROW_H - 44) / 2), 44, 0, rl.WHITE if selected else DIM)
-    x = OFFROAD_VIEW[0]
-    rl.draw_text_ex(gui_app.font(FontWeight.BOLD), PAGES[self._selected][0], rl.Vector2(x, (OFFROAD_VIEW[1] - 80) / 2), 80, 0, rl.WHITE)
-    footer = OFFROAD_VIEW[1] + OFFROAD_VIEW[3]
-    rl.draw_text_ex(medium, self._status, rl.Vector2(x, footer + (SCREEN[1] - footer - 30) / 2), 30, 0, DIM)
+
+    # title band: the page title, or a breadcrumb and Back for a sub-page / a mici page pushed above main
+    x, y, w, h = offroad.content_rect()
+    label = NAV[self._selected]
+    sub = self._sub[0] if self._sub is not None else None
+    if self._mode == "mici" and label in NATIVE:
+      sub = FALLBACK_TITLES.get(type(top).__name__, "")
+    bold = gui_app.font(FontWeight.BOLD)
+    if sub is None:
+      rl.draw_text_ex(bold, label, rl.Vector2(x, (TITLE_H - 72) / 2), 72, 0, rl.WHITE)
+    else:
+      back = rl.Rectangle(x - 24, 0, 260, 76)
+      if self._tapped("back", back, page_events):
+        if self._mode == "mici":
+          gui_app.pop_widgets_to(self._main, instant=True)
+        else:
+          self._sub = None
+      rl.draw_text_ex(medium, "\u2039 Back", rl.Vector2(x, 22), 40, 0, ACCENT if self._pressed != "back" else DIM)
+      rl.draw_text_ex(bold, f"{label} \u203a {sub}" if sub else label, rl.Vector2(x, 72), 60, 0, rl.WHITE)
+
+    if self._mode == "mici":
+      return  # the mici page is drawn in FALLBACK_VIEW
+    page = self._page()
+    if page is not self._shown:
+      if self._shown is not None:
+        self._shown.hide_event()
+      if page is not None:
+        page.show_event()
+      self._shown = page
+    if page is not None:
+      with self._native(page_events):
+        page.render(rl.Rectangle(x, y, w, h))
+    self._hook_modal()
+    if modal:
+      with self._native(events):
+        top.render(rl.Rectangle(0, 0, *SCREEN))
