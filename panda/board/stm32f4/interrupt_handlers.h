@@ -1,21 +1,3 @@
-// ********************* Debug fault instrumentation *********************
-// Fixed RAM locations (above .bss, below the stack top) that survive a
-// system reset, so we can read back where a fault happened.
-#define DBG_FAULT_PC    (*(volatile uint32_t *)0x2001C000U)
-#define DBG_FAULT_LR    (*(volatile uint32_t *)0x2001C004U)
-#define DBG_FAULT_MARK  (*(volatile uint32_t *)0x2001C008U)
-
-void HardFault_Handler(void) {
-  uint32_t sp_val = 0U;
-  __asm__ volatile ("mrs %0, msp" : "=r" (sp_val));
-  uint32_t *sp = (uint32_t *)sp_val;
-  DBG_FAULT_PC = sp[6];
-  DBG_FAULT_LR = sp[5];
-  DBG_FAULT_MARK = 0xFA17DEADU;
-  NVIC_SystemReset();
-  while (1) {}
-}
-
 // ********************* Bare interrupt handlers *********************
 // Only implemented the STM32F413 interrupts for now
 
