@@ -36,6 +36,10 @@ class TeslaSettingsMici(NavScroller):
                                description='When off, the DM processes do not start. Change only while parked; applies on the next drive.')
     self.dm_toggle.set_enabled(lambda: ui_state.is_offroad() and has_driver_camera())
     self._scroller.add_widget(self.dm_toggle)
+    self.map_toggle = BigToggle('OSM Map Data', initial_state=ui_state.params.get('MapProvider', return_default=True) == 'osm',
+                                toggle_callback=self._set_map_provider)
+    self.map_toggle.set_enabled(ui_state.is_offroad)
+    self._scroller.add_widget(self.map_toggle)
     for key in BOOL_KEYS:
       toggle = BigToggle(LABELS[key], initial_state=bool(ui_state.params.get(key, return_default=True)),
                          toggle_callback=lambda value, k=key: self._set_param(k, value))
@@ -62,6 +66,11 @@ class TeslaSettingsMici(NavScroller):
     if ui_state.is_offroad() and has_driver_camera():
       ui_state.params.put_bool('DriverMonitoringEnabled', value, block=True)
     self.dm_toggle.set_checked(driver_monitoring_configured(ui_state.params))
+
+  def _set_map_provider(self, value):
+    if ui_state.is_offroad():
+      ui_state.params.put('MapProvider', 'osm' if value else 'none', block=True)
+    self.map_toggle.set_checked(ui_state.params.get('MapProvider', return_default=True) == 'osm')
 
   def _set_param(self, key, value):
     if ui_state.is_offroad() and (key != 'LongitudinalPlannerMode' or not planner_session_is_active(ui_state.sm)):
@@ -152,6 +161,7 @@ class TeslaSettingsMici(NavScroller):
   def show_event(self):
     super().show_event()
     self.dm_toggle.set_checked(driver_monitoring_configured(ui_state.params))
+    self.map_toggle.set_checked(ui_state.params.get('MapProvider', return_default=True) == 'osm')
     for key, toggle in self.toggles:
       toggle.set_checked(bool(ui_state.params.get(key, return_default=True)))
     for key, button in self.choice_buttons.items():
