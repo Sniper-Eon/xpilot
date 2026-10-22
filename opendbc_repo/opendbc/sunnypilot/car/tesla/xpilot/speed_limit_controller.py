@@ -1,6 +1,6 @@
 from opendbc.car.can_definitions import CanData
-from opendbc.sunnypilot.car.tesla.dynamic_acc_debug import log_dynamic_acc
-from opendbc.sunnypilot.car.tesla.values import TeslaFlagsSP
+from opendbc.sunnypilot.car.tesla.xpilot.dynamic_acc_debug import log_dynamic_acc
+from opendbc.sunnypilot.car.tesla.xpilot.values_sp import TeslaFlagsSP
 
 
 SWITCH_STATUS_ADDRESS = 0x3C2

@@ -2,9 +2,9 @@ from types import SimpleNamespace
 
 import pytest
 
-from opendbc.sunnypilot.car.tesla.speed_limit_controller import TeslaSpeedLimitController, create_speed_wheel_frame
-from opendbc.sunnypilot.car.tesla.carstate_ext import CarStateExt
-from opendbc.sunnypilot.car.tesla.values import TeslaFlagsSP
+from opendbc.sunnypilot.car.tesla.xpilot.speed_limit_controller import TeslaSpeedLimitController, create_speed_wheel_frame
+from opendbc.sunnypilot.car.tesla.xpilot.carstate_ext import CarStateExt
+from opendbc.sunnypilot.car.tesla.xpilot.values_sp import TeslaFlagsSP
 
 
 IDLE_TEMPLATE = bytes.fromhex("2955000000000080")

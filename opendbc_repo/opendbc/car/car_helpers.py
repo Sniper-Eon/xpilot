@@ -6,6 +6,7 @@ from opendbc.car.can_definitions import CanRecvCallable, CanSendCallable
 from opendbc.car.carlog import carlog
 from opendbc.car.structs import CarParams, CarParamsT
 from opendbc.car.fingerprints import eliminate_incompatible_cars, all_legacy_fingerprint_cars
+from opendbc.car.interfaces import port_package
 from opendbc.car.fw_versions import ObdCallback, get_fw_versions_ordered, get_present_ecus, match_fw_to_car
 from opendbc.car.mock.values import CAR as MOCK
 from opendbc.car.values import BRANDS
@@ -19,7 +20,7 @@ FRAME_FINGERPRINT = 100  # 1s
 def load_interfaces(brand_names):
   ret = {}
   for brand_name in brand_names:
-    path = f'opendbc.car.{brand_name}'
+    path = port_package(brand_name)
     CarInterface = __import__(path + '.interface', fromlist=['CarInterface']).CarInterface
     for model_name in brand_names[brand_name]:
       ret[model_name] = CarInterface

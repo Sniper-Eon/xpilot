@@ -20,9 +20,9 @@ import subprocess
 
 from opendbc.can import CANPacker
 from opendbc.car import structs
-from opendbc.car.tesla.interface import CarInterface
-from opendbc.car.tesla.values import CAR
-from opendbc.sunnypilot.car.tesla.values import TeslaFlagsSP, TeslaSafetyFlagsSP
+from opendbc.sunnypilot.car.tesla.xpilot.interface import CarInterface
+from opendbc.sunnypilot.car.tesla.xpilot.values import CAR
+from opendbc.sunnypilot.car.tesla.xpilot.values_sp import TeslaFlagsSP, TeslaSafetyFlagsSP
 from openpilot.tesla.car.card_adapter import TeslaCardAdapter
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -107,8 +107,8 @@ def main():
                                                 limit=5, set_speed=30) == (30, [])
   results["6_official_sla_untouched"] = official_sla_untouched()
 
-  files = ["openpilot/tesla/car/card_adapter.py", "opendbc_repo/opendbc/sunnypilot/car/tesla/carstate_ext.py",
-           "opendbc_repo/opendbc/sunnypilot/car/tesla/speed_limit_controller.py"]
+  files = ["openpilot/tesla/car/card_adapter.py", "opendbc_repo/opendbc/sunnypilot/car/tesla/xpilot/carstate_ext.py",
+           "opendbc_repo/opendbc/sunnypilot/car/tesla/xpilot/speed_limit_controller.py"]
   print(json.dumps({
     "commit": subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True, text=True).stdout.strip(),
     "dirty": bool(subprocess.run(["git", "status", "--porcelain"], cwd=ROOT, capture_output=True, text=True).stdout.strip()),

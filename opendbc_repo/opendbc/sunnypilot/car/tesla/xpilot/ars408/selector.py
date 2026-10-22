@@ -1,8 +1,8 @@
 from opendbc.car import structs
 from opendbc.car.interfaces import RadarInterfaceBase
-from opendbc.car.tesla.radar_interface import RADAR_START_ADDR, RadarInterface as OEMRadarInterface
-from opendbc.sunnypilot.car.tesla.ars408.interface import ARS408RadarInterface
-from opendbc.sunnypilot.car.tesla.values import TeslaFlagsSP
+from opendbc.sunnypilot.car.tesla.xpilot.radar_interface import RADAR_START_ADDR, RadarInterface as OEMRadarInterface
+from opendbc.sunnypilot.car.tesla.xpilot.ars408.interface import ARS408RadarInterface
+from opendbc.sunnypilot.car.tesla.xpilot.values_sp import TeslaFlagsSP
 
 
 def RadarInterface(CP: structs.CarParams, CP_SP: structs.CarParamsSP) -> RadarInterfaceBase:

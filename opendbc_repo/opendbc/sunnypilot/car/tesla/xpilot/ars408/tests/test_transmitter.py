@@ -4,9 +4,9 @@ import pytest
 
 from opendbc.can import CANParser
 from opendbc.car import structs
-from opendbc.sunnypilot.car.tesla.ars408.constants import ARS408_BUS, FILTER_SIGNAL_SPECS
-from opendbc.sunnypilot.car.tesla.ars408.transmitter import ARS408Transmitter
-from opendbc.sunnypilot.car.tesla.values import TeslaFlagsSP
+from opendbc.sunnypilot.car.tesla.xpilot.ars408.constants import ARS408_BUS, FILTER_SIGNAL_SPECS
+from opendbc.sunnypilot.car.tesla.xpilot.ars408.transmitter import ARS408Transmitter
+from opendbc.sunnypilot.car.tesla.xpilot.values_sp import TeslaFlagsSP
 
 
 def transmitter(*, enabled: bool = True) -> ARS408Transmitter:

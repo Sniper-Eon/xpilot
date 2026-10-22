@@ -2,12 +2,12 @@ import pytest
 
 from opendbc.car import structs
 from opendbc.car.interfaces import RadarInterfaceBase
-from opendbc.car.tesla.radar_interface import RadarInterface as OEMRadarInterface
-from opendbc.car.tesla.values import CAR
-from opendbc.sunnypilot.car.interfaces import _initialize_tesla_radar_backend
-from opendbc.sunnypilot.car.tesla.ars408.interface import ARS408RadarInterface
-from opendbc.sunnypilot.car.tesla.ars408.selector import RadarInterface
-from opendbc.sunnypilot.car.tesla.values import TeslaFlagsSP, TeslaSafetyFlagsSP
+from opendbc.sunnypilot.car.tesla.xpilot.radar_interface import RadarInterface as OEMRadarInterface
+from opendbc.sunnypilot.car.tesla.xpilot.values import CAR
+from opendbc.sunnypilot.car.tesla.xpilot.setup import _initialize_tesla_radar_backend
+from opendbc.sunnypilot.car.tesla.xpilot.ars408.interface import ARS408RadarInterface
+from opendbc.sunnypilot.car.tesla.xpilot.ars408.selector import RadarInterface
+from opendbc.sunnypilot.car.tesla.xpilot.values_sp import TeslaFlagsSP, TeslaSafetyFlagsSP
 
 
 def params(*, radar_unavailable: bool = True) -> tuple[structs.CarParams, structs.CarParamsSP]:

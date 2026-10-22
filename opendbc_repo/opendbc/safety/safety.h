@@ -8,7 +8,8 @@
 
 // all the safety modes
 #include "opendbc/safety/modes/defaults.h"
-#include "opendbc/safety/modes/tesla.h"
+// xpilot Tesla safety mode (SAFETY_TESLA). Upstream modes/tesla.h stays untouched and is not compiled.
+#include "opendbc/safety/modes/tesla_xpilot.h"
 #include "opendbc/safety/modes/elm327.h"
 
 uint32_t GET_BYTES_LE(const CANPacket_t *msg, int start, int len) {

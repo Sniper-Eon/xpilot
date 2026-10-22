@@ -1,8 +1,8 @@
 from collections.abc import Iterable
 
 from opendbc.car.carlog import carlog
-from opendbc.sunnypilot.car.tesla.ars408.constants import ARS408_MAX_DISTANCE_M, ARS408_SENSOR_ID
-from opendbc.sunnypilot.car.tesla.ars408.models import (
+from opendbc.sunnypilot.car.tesla.xpilot.ars408.constants import ARS408_MAX_DISTANCE_M, ARS408_SENSOR_ID
+from opendbc.sunnypilot.car.tesla.xpilot.ars408.models import (
   CycleResult, DiagnosticErrors, DiagnosticsSnapshot, FilterStateHeader, FilterStateRecord, ObjectStatus,
   RadarStateSnapshot, TrackerResult,
 )

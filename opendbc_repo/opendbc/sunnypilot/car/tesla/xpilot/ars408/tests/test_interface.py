@@ -4,8 +4,8 @@ from dataclasses import replace
 import pytest
 
 from opendbc.car import structs
-from opendbc.sunnypilot.car.tesla.ars408.interface import ARS408RadarInterface
-from opendbc.sunnypilot.car.tesla.ars408.models import (
+from opendbc.sunnypilot.car.tesla.xpilot.ars408.interface import ARS408RadarInterface
+from opendbc.sunnypilot.car.tesla.xpilot.ars408.models import (
   ObjectGeneral, ObjectQuality, ObjectStatus, ParsedFrame, RadarStateSnapshot,
 )
 

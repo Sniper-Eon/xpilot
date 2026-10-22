@@ -4,9 +4,9 @@ import unittest
 import numpy as np
 
 from opendbc.car.lateral import get_max_angle_delta_vm, get_max_angle_vm
-from opendbc.car.tesla.teslacan import get_steer_ctrl_type
-from opendbc.car.tesla.values import CANBUS, CarControllerParams, STEER_DISENGAGE_THRESHOLD, TeslaSafetyFlags, TeslaFlags
-from opendbc.car.tesla.carcontroller import get_safety_CP
+from opendbc.sunnypilot.car.tesla.xpilot.teslacan import get_steer_ctrl_type
+from opendbc.sunnypilot.car.tesla.xpilot.values import CANBUS, CarControllerParams, STEER_DISENGAGE_THRESHOLD, TeslaSafetyFlags, TeslaFlags
+from opendbc.sunnypilot.car.tesla.xpilot.carcontroller import get_safety_CP
 from opendbc.car.structs import CarParams
 from opendbc.car.vehicle_model import VehicleModel
 from opendbc.can import CANDefine
@@ -14,7 +14,7 @@ from opendbc.safety.tests.libsafety import libsafety_py
 import opendbc.safety.tests.common as common
 from opendbc.safety.tests.common import CANPackerSafety, MAX_SPEED_DELTA, MAX_WRONG_COUNTERS, away_round, round_speed
 
-from opendbc.sunnypilot.car.tesla.values import TeslaSafetyFlagsSP
+from opendbc.sunnypilot.car.tesla.xpilot.values_sp import TeslaSafetyFlagsSP
 
 MSG_DAS_steeringControl = 0x488
 MSG_APS_eacMonitor = 0x27d
@@ -71,9 +71,9 @@ class TestTeslaSafetyBase(common.CarSafetyTest, common.AngleSteeringSafetyTest, 
 
   def setUp(self):
     self.VM = VehicleModel(get_safety_CP())
-    self.packer = CANPackerSafety("tesla_model3_party")
-    self.packer_adas = CANPackerSafety("tesla_model3_vehicle")
-    self.define = CANDefine("tesla_model3_party")
+    self.packer = CANPackerSafety("tesla_model3_party_xpilot")
+    self.packer_adas = CANPackerSafety("tesla_model3_vehicle_xpilot")
+    self.define = CANDefine("tesla_model3_party_xpilot")
     self.acc_states = {d: v for v, d in self.define.dv["DAS_control"]["DAS_accState"].items()}
     self.autopark_states = {d: v for v, d in self.define.dv["DI_state"]["DI_autoparkState"].items()}
     self.active_autopark_states = [self.autopark_states[s] for s in ('ACTIVE', 'COMPLETE', 'SELFPARK_STARTED')]
@@ -521,7 +521,7 @@ class TestTeslaLongitudinalSafety(TestTeslaSafetyBase):
     self.safety.set_current_safety_param_sp(TeslaSafetyFlagsSP.HAS_VEHICLE_BUS)
     self.safety.set_safety_hooks(CarParams.SafetyModel.tesla, self.SAFETY_PARAM)
     self.safety.init_tests()
-    packer_adas = CANPackerSafety("tesla_model3_vehicle")
+    packer_adas = CANPackerSafety("tesla_model3_vehicle_xpilot")
     touch = packer_adas.make_can_msg_safety("UI_status2", CANBUS.vehicle, {"UI_activeTouchPoints": 4})
     handoff = self._long_control_msg(50, acc_state=self.acc_states["ACC_ON"],
                                      accel_limits=(0, 0), aeb_event=3, bus=0, counter=3)
@@ -692,7 +692,7 @@ class TestTeslaIgnition(unittest.TestCase):
   def setUp(self):
     self.safety = libsafety_py.libsafety
     self.safety.init_tests()
-    self.packer = CANPackerSafety("tesla_model3_party")
+    self.packer = CANPackerSafety("tesla_model3_party_xpilot")
 
   def _gear_msg(self, counter, gear):
     return self.packer.make_can_msg_safety("DI_systemStatus", 0,
@@ -731,7 +731,7 @@ class TestTeslaVehicleBusSafety(TestTeslaSafetyBase):
   def setUp(self):
     super().setUp()
     self.safety = libsafety_py.libsafety
-    self.packer_adas = CANPackerSafety("tesla_model3_vehicle")
+    self.packer_adas = CANPackerSafety("tesla_model3_vehicle_xpilot")
     self.safety.set_current_safety_param_sp(TeslaSafetyFlagsSP.HAS_VEHICLE_BUS | TeslaSafetyFlagsSP.MADS_SCREEN_BUTTON_3_FINGER)
     self.safety.set_safety_hooks(CarParams.SafetyModel.tesla, 0)
     self.safety.init_tests()

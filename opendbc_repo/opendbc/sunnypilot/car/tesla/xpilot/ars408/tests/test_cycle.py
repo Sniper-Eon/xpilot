@@ -1,5 +1,5 @@
-from opendbc.sunnypilot.car.tesla.ars408.cycle import ARS408CycleAssembler
-from opendbc.sunnypilot.car.tesla.ars408.models import ObjectExtended, ObjectGeneral, ObjectQuality, ObjectStatus
+from opendbc.sunnypilot.car.tesla.xpilot.ars408.cycle import ARS408CycleAssembler
+from opendbc.sunnypilot.car.tesla.xpilot.ars408.models import ObjectExtended, ObjectGeneral, ObjectQuality, ObjectStatus
 
 
 def general(raw_id: int) -> ObjectGeneral:

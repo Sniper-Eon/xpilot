@@ -2,11 +2,11 @@ import math
 
 from opendbc.can import CANParser
 from opendbc.car.can_definitions import CanData
-from opendbc.sunnypilot.car.tesla.ars408.constants import (
+from opendbc.sunnypilot.car.tesla.xpilot.ars408.constants import (
   ARS408_BUS, ARS408_DBC, ARS408_EXTENDED, ARS408_FILTER_STATE_CONFIG, ARS408_FILTER_STATE_HEADER,
   ARS408_GENERAL, ARS408_QUALITY, ARS408_RADAR_STATE, ARS408_RX_DLC, ARS408_STATUS, FILTER_SIGNAL_SPECS,
 )
-from opendbc.sunnypilot.car.tesla.ars408.models import (
+from opendbc.sunnypilot.car.tesla.xpilot.ars408.models import (
   FilterStateHeader, FilterStateRecord, ObjectExtended, ObjectGeneral, ObjectQuality, ObjectStatus, ParsedFrame,
   RadarStateSnapshot,
 )

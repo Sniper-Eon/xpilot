@@ -1,8 +1,8 @@
-from opendbc.sunnypilot.car.tesla.ars408.diagnostics import (
+from opendbc.sunnypilot.car.tesla.xpilot.ars408.diagnostics import (
   ARS408Diagnostics, CONFIG_GRACE_REPORTS, INTERFERENCE_CONFIRM_REPORTS, RADAR_STATE_TIMEOUT_NS,
   STARTUP_GRACE_NS, STATUS_TIMEOUT_NS,
 )
-from opendbc.sunnypilot.car.tesla.ars408.models import (
+from opendbc.sunnypilot.car.tesla.xpilot.ars408.models import (
   CycleResult, FilterStateHeader, FilterStateRecord, ObjectStatus, RadarStateSnapshot, TrackerResult,
   TrackedObject,
 )

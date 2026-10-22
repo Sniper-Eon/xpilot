@@ -1,7 +1,7 @@
 import math
 from dataclasses import dataclass
 
-from opendbc.sunnypilot.car.tesla.ars408.constants import ARS408_MAX_OBJECTS
+from opendbc.sunnypilot.car.tesla.xpilot.ars408.constants import ARS408_MAX_OBJECTS
 
 
 def _finite(*values: float) -> None:

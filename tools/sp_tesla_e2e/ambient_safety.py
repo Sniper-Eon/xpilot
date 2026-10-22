@@ -6,7 +6,7 @@ from types import SimpleNamespace
 from openpilot.common.params import Params
 from openpilot.cereal import messaging
 from opendbc.car.structs import CarParams, CarParamsSP, CarState, CarControl
-from opendbc.sunnypilot.car.tesla.values import TeslaSafetyFlagsSP
+from opendbc.sunnypilot.car.tesla.xpilot.values_sp import TeslaSafetyFlagsSP
 from opendbc.safety.tests.libsafety import libsafety_py
 from opendbc.can import CANPacker
 from openpilot.tesla.car.card_adapter import TeslaCardAdapter

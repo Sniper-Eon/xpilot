@@ -5,7 +5,7 @@ import random
 from openpilot.cereal import log
 from opendbc.car.structs import car
 import openpilot.cereal.messaging as messaging
-from opendbc.car.tesla.interface import CarInterface
+from opendbc.sunnypilot.car.tesla.xpilot.interface import CarInterface
 from openpilot.common.realtime import DT_CTRL
 from openpilot.selfdrive.selfdrived.events import ET, Events
 from openpilot.selfdrive.selfdrived.alertmanager import AlertManager

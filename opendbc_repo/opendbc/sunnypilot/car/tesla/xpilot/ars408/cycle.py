@@ -1,4 +1,4 @@
-from opendbc.sunnypilot.car.tesla.ars408.models import (
+from opendbc.sunnypilot.car.tesla.xpilot.ars408.models import (
   AssembledObject, CycleResult, ObjectExtended, ObjectGeneral, ObjectQuality, ObjectStatus,
 )
 

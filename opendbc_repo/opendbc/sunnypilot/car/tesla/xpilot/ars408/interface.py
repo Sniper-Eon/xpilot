@@ -4,15 +4,15 @@ from collections.abc import Callable
 from opendbc.car import structs
 from opendbc.car.can_definitions import CanData
 from opendbc.car.interfaces import RadarInterfaceBase
-from opendbc.sunnypilot.car.tesla.ars408.constants import ARS408_MAX_DISTANCE_M
-from opendbc.sunnypilot.car.tesla.ars408.cycle import ARS408CycleAssembler
-from opendbc.sunnypilot.car.tesla.ars408.diagnostics import ARS408Diagnostics
-from opendbc.sunnypilot.car.tesla.ars408.models import (
+from opendbc.sunnypilot.car.tesla.xpilot.ars408.constants import ARS408_MAX_DISTANCE_M
+from opendbc.sunnypilot.car.tesla.xpilot.ars408.cycle import ARS408CycleAssembler
+from opendbc.sunnypilot.car.tesla.xpilot.ars408.diagnostics import ARS408Diagnostics
+from opendbc.sunnypilot.car.tesla.xpilot.ars408.models import (
   DiagnosticErrors, FilterStateHeader, FilterStateRecord, ObjectExtended, ObjectGeneral, ObjectQuality, ObjectStatus,
   RadarStateSnapshot, TrackerResult,
 )
-from opendbc.sunnypilot.car.tesla.ars408.parser import ARS408Parser
-from opendbc.sunnypilot.car.tesla.ars408.tracker import ARS408Tracker
+from opendbc.sunnypilot.car.tesla.xpilot.ars408.parser import ARS408Parser
+from opendbc.sunnypilot.car.tesla.xpilot.ars408.tracker import ARS408Tracker
 
 
 class ARS408RadarInterface(RadarInterfaceBase):

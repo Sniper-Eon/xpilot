@@ -15,11 +15,11 @@ from opendbc.can import CANPacker
 from opendbc.can.dbc import DBC
 from opendbc.can.parser import get_raw_value
 from opendbc.car import structs
-from opendbc.car.tesla.interface import CarInterface
-from opendbc.car.tesla.values import CAR
+from opendbc.sunnypilot.car.tesla.xpilot.interface import CarInterface
+from opendbc.sunnypilot.car.tesla.xpilot.values import CAR
 from opendbc.car.vehicle_model import VehicleModel
-from opendbc.sunnypilot.car.tesla.carstate_ext import TeslaLongitudinalSource
-from opendbc.sunnypilot.car.tesla.values import TeslaFlagsSP, TeslaSafetyFlagsSP
+from opendbc.sunnypilot.car.tesla.xpilot.carstate_ext import TeslaLongitudinalSource
+from opendbc.sunnypilot.car.tesla.xpilot.values_sp import TeslaFlagsSP, TeslaSafetyFlagsSP
 from opendbc.safety.tests.libsafety import libsafety_py
 from openpilot.cereal import messaging
 from openpilot.common.params import Params
@@ -294,7 +294,7 @@ def main():
     except Exception as error:
       cases.append({"case": name, "passed": False, "error": repr(error), "traceback": traceback.format_exc()})
   sources = [Path(__file__), ROOT / "docs/sp-tesla-migration/TESLA_CONTROL_FIXES.md", ROOT / "opendbc_repo/opendbc/safety/modes/tesla.h"]
-  for directory in ("opendbc_repo/opendbc/car/tesla", "opendbc_repo/opendbc/sunnypilot/car/tesla", "openpilot/tesla/car"):
+  for directory in ("opendbc_repo/opendbc/sunnypilot/car/tesla/xpilot", "openpilot/tesla/car"):
     sources.extend(sorted((ROOT / directory).rglob("*.py")))
   result = {
     "passed": all(row["passed"] for row in cases), "scope": "offline synthetic CAN, actual CI/CS/controller/adapter and compiled safety; no physical CAN",

@@ -1,10 +1,10 @@
 import math
 from dataclasses import dataclass
 
-from opendbc.sunnypilot.car.tesla.ars408.constants import (
+from opendbc.sunnypilot.car.tesla.xpilot.ars408.constants import (
   ARS408_MAX_DISTANCE_M, MeasurementState, RejectionReason,
 )
-from opendbc.sunnypilot.car.tesla.ars408.models import AssembledObject, CycleResult, TrackedObject, TrackerResult
+from opendbc.sunnypilot.car.tesla.xpilot.ars408.models import AssembledObject, CycleResult, TrackedObject, TrackerResult
 
 
 NEW_TRACK_MIN_PROBABILITY = 3

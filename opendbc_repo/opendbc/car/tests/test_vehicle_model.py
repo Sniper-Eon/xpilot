@@ -3,8 +3,8 @@ import math
 
 import numpy as np
 
-from opendbc.car.tesla.interface import CarInterface
-from opendbc.car.tesla.values import CAR
+from opendbc.sunnypilot.car.tesla.xpilot.interface import CarInterface
+from opendbc.sunnypilot.car.tesla.xpilot.values import CAR
 from opendbc.car.vehicle_model import VehicleModel, dyn_ss_sol, create_dyn_state_matrices
 
 

@@ -3,9 +3,9 @@ import math
 import pytest
 
 from opendbc.can import CANPacker
-from opendbc.sunnypilot.car.tesla.ars408.constants import ARS408_BUS, ARS408_GENERAL, ARS408_STATUS
-from opendbc.sunnypilot.car.tesla.ars408.models import ObjectGeneral, ObjectStatus, RadarStateSnapshot
-from opendbc.sunnypilot.car.tesla.ars408.parser import ARS408Parser
+from opendbc.sunnypilot.car.tesla.xpilot.ars408.constants import ARS408_BUS, ARS408_GENERAL, ARS408_STATUS
+from opendbc.sunnypilot.car.tesla.xpilot.ars408.models import ObjectGeneral, ObjectStatus, RadarStateSnapshot
+from opendbc.sunnypilot.car.tesla.xpilot.ars408.parser import ARS408Parser
 
 
 @pytest.fixture

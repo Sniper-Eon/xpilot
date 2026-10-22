@@ -2,10 +2,10 @@ from dataclasses import replace
 
 import pytest
 
-from opendbc.sunnypilot.car.tesla.ars408.models import (
+from opendbc.sunnypilot.car.tesla.xpilot.ars408.models import (
   AssembledObject, CycleResult, ObjectExtended, ObjectGeneral, ObjectQuality, ObjectStatus,
 )
-from opendbc.sunnypilot.car.tesla.ars408.tracker import ARS408Tracker
+from opendbc.sunnypilot.car.tesla.xpilot.ars408.tracker import ARS408Tracker
 
 
 def obj(raw_id: int, *, probability: int = 4, state: int = 2, d_rel: float = 30.0, y_rel: float = 0.0,

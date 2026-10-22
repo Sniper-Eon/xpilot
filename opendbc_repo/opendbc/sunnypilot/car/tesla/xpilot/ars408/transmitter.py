@@ -3,8 +3,8 @@ import math
 from opendbc.can import CANPacker
 from opendbc.car import structs
 from opendbc.car.can_definitions import CanData
-from opendbc.sunnypilot.car.tesla.ars408.constants import ARS408_BUS, ARS408_DBC, FILTER_SIGNAL_SPECS
-from opendbc.sunnypilot.car.tesla.values import TeslaFlagsSP
+from opendbc.sunnypilot.car.tesla.xpilot.ars408.constants import ARS408_BUS, ARS408_DBC, FILTER_SIGNAL_SPECS
+from opendbc.sunnypilot.car.tesla.xpilot.values_sp import TeslaFlagsSP
 
 
 MOTION_TX_INTERVAL_FRAMES = 5
