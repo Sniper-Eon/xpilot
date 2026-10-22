@@ -40,7 +40,7 @@ openpilot/tesla/
   ui/screen.py ui/grid.py ui/slot.py ui/slots/   大屏宿主、插槽格式、插槽
   ui/settings_page.py ui/settings_meta.py        Tesla 设置页
 opendbc_repo/opendbc/safety/plugins/
-  plugin.h registry.h auto_speed.h ambient_light.h   panda safety 插件（见第 6 节，目前未接入）
+  plugin.h registry.h auto_speed.h ambient_light.h   panda safety 插件（见第 6 节，已接入，未编译验证）
 ```
 
 ## 4. Python 插件接口（`openpilot/tesla/plugin.py`）
@@ -97,13 +97,13 @@ typedef struct {
 
 规则：一个插件只负责一个报文，原有 safety 模式的白名单和检查一律不改；校验内容至少包括报文模板、新鲜度、频率限制、`controls_allowed`、只在 Tesla 模式下生效，以及会话上限。
 
-**当前状态：未接入。** 需要在 `safety.h` 里加 4 处调用：
+**当前状态：已接入（实验性），未编译验证。** `safety.h` 里有 4 处调用：
 1. include `opendbc/safety/plugins/registry.h`；
 2. `safety_rx_hook` 里，`valid` 为真时调用 `safety_plugins_rx(msg)`；
-3. `safety_tx_hook` 里，属于插件的报文交给 `plugin->tx(msg)` 校验；
+3. `safety_tx_hook` 里，属于插件的报文交给 `plugin->tx(msg)` 校验，其余报文仍走原模式；
 4. `set_safety_hooks` 里调用 `safety_plugins_reset()`。
 
-这次修改被 Claude Code 的权限分类器判定为"削弱安全"而拦下，需要用户在 `.claude/settings.json` 里授权（见本文末尾）。在接入之前，自动设定速度（0x3C2）和氛围灯（0x679）的发送会被 panda 拦掉。接入之后必须在 Mac 或设备上编译 panda 和 libsafety，并补上插件的 safety 测试。
+上车前必须在 Mac 或设备上编译 panda 和 libsafety，跑 safety 测试，并补上插件的 safety 测试。
 
 ## 7. 雷达接入接口
 

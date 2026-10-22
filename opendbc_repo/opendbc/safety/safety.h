@@ -11,6 +11,9 @@
 #include "opendbc/safety/modes/tesla.h"
 #include "opendbc/safety/modes/elm327.h"
 
+// xpilot feature plugins (experimental): each owns one extra TX message and validates it itself
+#include "opendbc/safety/plugins/registry.h"
+
 uint32_t GET_BYTES_LE(const CANPacket_t *msg, int start, int len) {
   uint32_t ret = 0U;
   for (int i = 0; i < len; i++) {
@@ -186,6 +189,10 @@ bool safety_rx_hook(const CANPacket_t *msg) {
   if (valid && whitelisted) {
     current_hooks->rx(msg);
   }
+  // xpilot plugins observe every valid frame (templates, freshness); they never change mode state
+  if (valid) {
+    safety_plugins_rx(msg);
+  }
 
   // Handles gas, brake, and regen paddle
   generic_rx_checks();
@@ -221,14 +228,20 @@ static bool tx_msg_safety_check(const CANPacket_t *msg, const CanMsg msg_list[],
 }
 
 bool safety_tx_hook(CANPacket_t *msg) {
+  const safety_plugin *plugin = safety_plugin_for(msg);
   bool whitelisted = tx_msg_safety_check(msg, current_safety_config.tx_msgs, current_safety_config.tx_msgs_len);
   if ((current_safety_mode == SAFETY_ALLOUTPUT) || (current_safety_mode == SAFETY_ELM327)) {
     whitelisted = true;
   }
 
   bool safety_allowed = false;
-  if (whitelisted) {
+  if (plugin != NULL) {
+    // xpilot plugin message: validated only by its plugin; the mode's own messages are untouched
+    whitelisted = true;
+    safety_allowed = plugin->tx(msg);
+  } else if (whitelisted) {
     safety_allowed = current_hooks->tx(msg);
+  } else {
   }
 
   return !relay_malfunction && whitelisted && safety_allowed;
@@ -436,6 +449,7 @@ int set_safety_hooks(uint16_t mode, uint16_t param) {
       current_hooks = safety_hook_registry[i].hooks;
       current_safety_mode = mode;
       current_safety_param = param;
+      safety_plugins_reset();
       set_status = 0;  // set
     }
   }
