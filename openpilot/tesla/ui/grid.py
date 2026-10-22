@@ -1,47 +1,65 @@
-"""Slot format and placement for the big-screen host. No pyray here, so it is checkable anywhere
+"""Slot format and zone placement for the big-screen host. No pyray here, so it is checkable anywhere
 (tools/sp_tesla_e2e/slot_layout_check.py).
 
 Slot format: a module in openpilot/tesla/ui/slots/ (or a plugin's ui.py) defines a subclass of openpilot.tesla.ui.slot.Slot with
-  SPEC = SlotSpec(id, title, cells=(cols, rows), services=(...), show="always"|"onroad"|"offroad", hz=5.0, order=100)
-The host finds it at startup and places it around the video window; nothing else needs registering.
+  SPEC = SlotSpec(id, title, zone="left"|"right"|"top"|"bottom"|"auto", units=1, services=(...), show=..., hz=5.0, order=100)
+The host finds it at startup and places it in the zones around the onroad view; nothing else needs registering.
+
+Onroad screen (2160x1080 px): left and right columns stack cards vertically (unit 270 px tall, 360 wide); the top and
+bottom bands of the center column stack them horizontally (unit 360 px wide, 218 tall); the mici view sits in VIEW.
 """
 from dataclasses import dataclass
-import itertools
 from typing import Literal
 
-CELL = 180  # px; the 2160x1080 screen is a 12 x 6 grid
-COLS, ROWS = 12, 6
+SCREEN = (2160, 1080)
+ZONES = {
+  "left": (0, 0, 360, 1080),
+  "right": (1800, 0, 360, 1080),
+  "top": (360, 0, 1440, 218),
+  "bottom": (360, 862, 1440, 218),
+}
+VIEW = (360, 218, 1440, 644)  # mici onroad view at 1440/536 scale
+UNITS = 4  # units per zone
+PAD = 12   # px inset of each card inside its units
+AUTO_ORDER = ("left", "right", "bottom", "top")
 
 
 @dataclass(frozen=True)
 class SlotSpec:
   id: str                          # unique
   title: str
-  cells: tuple[int, int] = (2, 1)  # size in grid cells (cols, rows)
+  zone: Literal["left", "right", "top", "bottom", "auto"] = "auto"
+  units: int = 1                   # size along the zone (1..UNITS); larger slots are never shown
   services: tuple[str, ...] = ()   # every service update() reads; empty means it reads ui_state.sm
-  show: Literal["always", "onroad", "offroad"] = "always"
+  show: Literal["always", "onroad", "offroad"] = "always"  # the host draws cards only onroad, so "offroad" slots stay hidden
   hz: float = 5.0                  # max redraw rate; other frames reuse the cached texture
   order: int = 100                 # placement priority, lower first
 
+  def __post_init__(self):
+    if self.zone not in ZONES and self.zone != "auto":
+      raise ValueError(f"slot {self.id}: unknown zone {self.zone}")
+    if self.units < 1:
+      raise ValueError(f"slot {self.id}: units must be >= 1")
 
-def _overlap(a, b) -> bool:
-  return a[0] < b[0] + b[2] and b[0] < a[0] + a[2] and a[1] < b[1] + b[3] and b[1] < a[1] + a[3]
 
-
-def place(window: tuple[float, float, float, float], specs: list[SlotSpec], started: bool) -> dict[str, tuple[int, int, int, int]]:
-  """First-fit, row-major placement of visible slots in cells the window (x, y, w, h px) does not touch.
-  Returns slot id -> (x, y, w, h) px. Slots without room are left out."""
-  taken = [[_overlap((c * CELL, r * CELL, CELL, CELL), window) for c in range(COLS)] for r in range(ROWS)]
+def place(specs: list[SlotSpec], started: bool) -> dict[str, tuple[int, int, int, int]]:
+  """Visible slots in (order, id) order, each into its zone (or the first zone with room for "auto").
+  Returns slot id -> (x, y, w, h) px, inset by PAD. Slots without room are left out."""
+  used = dict.fromkeys(ZONES, 0)
   out = {}
   for spec in sorted(specs, key=lambda s: (s.order, s.id)):
     if spec.show != "always" and (spec.show == "onroad") != started:
       continue
-    cols, rows = spec.cells
-    for r, c in itertools.product(range(ROWS - rows + 1), range(COLS - cols + 1)):
-      cells = [(rr, cc) for rr in range(r, r + rows) for cc in range(c, c + cols)]
-      if not any(taken[rr][cc] for rr, cc in cells):
-        for rr, cc in cells:
-          taken[rr][cc] = True
-        out[spec.id] = (c * CELL, r * CELL, cols * CELL, rows * CELL)
-        break
+    zone = next((z for z in (AUTO_ORDER if spec.zone == "auto" else (spec.zone,)) if used[z] + spec.units <= UNITS), None)
+    if zone is None:
+      continue
+    x, y, w, h = ZONES[zone]
+    if zone in ("left", "right"):
+      unit = h // UNITS
+      rect = (x, y + used[zone] * unit, w, spec.units * unit)
+    else:
+      unit = w // UNITS
+      rect = (x + used[zone] * unit, y, spec.units * unit, h)
+    used[zone] += spec.units
+    out[spec.id] = (rect[0] + PAD, rect[1] + PAD, rect[2] - 2 * PAD, rect[3] - 2 * PAD)
   return out

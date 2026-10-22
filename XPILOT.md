@@ -9,7 +9,7 @@
 - **主体**：横向、纵向、模型都是 SP 原版，Tesla 车端代码是上游原版。
 - **扩展**：xpilot 的功能全部以插件形式接入，不改 SP 主体逻辑。
 - **已删除**：其他车型、comma 云、sunnylink、旧的大屏 UI、扭矩车用的横向控制、翻译（UI 只用英文）。
-- **硬件**：C3、C3X、C3XL、C4。大屏设备上 mici UI 显示在一个窗口里，四周是插槽。
+- **硬件**：C3、C3X、C3XL、C4。大屏设备上 mici UI 显示在中间，四周是插件卡片（见第 9 节）。
 
 ## 2. 硬规则
 
@@ -43,7 +43,7 @@ openpilot/tesla/
   plugins/ambient_light/    盲区氛围灯
   plugins/external_compute/ 外接算力桥接
   ui/screen.py ui/grid.py ui/slot.py ui/slots/   大屏宿主、插槽格式、插槽
-  ui/plugin_ui.py           UI 侧插件加载：找到插槽和 HudOverlay，插件关闭时隐藏
+  ui/plugin_ui.py           UI 侧插件加载：找到插槽、HudOverlay 和 ScreenOverlay，插件关闭时隐藏
   ui/plugins_page.py        设置里的"Plugins"页：统一管理所有插件（开关、设置、出错标记）
   ui/settings_page.py ui/settings_meta.py        Tesla 设置页（上游 Tesla 选项、DM、地图）
 opendbc_repo/opendbc/safety/plugins/
@@ -143,7 +143,7 @@ class MyFeature(Plugin):   # 名字、开关、设置都来自 plugin.json，代
 2. 不用注册：插件会被自动发现，Plugins 页按类别显示它的开关和设置。
 3. 运行 `python3 openpilot/tesla/plugins/gen_params.py`，把 `params` 生成到 `common/plugin_params.inc`，一起提交。
 4. 有 CAN 发送的：写 `opendbc/safety/plugins/<名字>.h` 并加进 `registry.h`。`safetyParam` 位要和 Python 侧一致（auto_speed 用的是 `0x4000`）。
-5. 有 UI 的：写 `plugins/<名字>/ui.py`，里面的 `Slot` 子类（大屏插槽，格式见 `ui/grid.py`）和 `HudOverlay` 子类（行车画面叠加层，无参构造）会被自动加载；插件关闭时自动隐藏。不属于任何插件的插槽放 `openpilot/tesla/ui/slots/`。
+5. 有 UI 的：写 `plugins/<名字>/ui.py`，里面的 `Slot` 子类（大屏卡片，格式见 `ui/grid.py`）、`HudOverlay` 子类（mici 行车画面叠加层，无参构造）和 `ScreenOverlay` 子类（大屏整屏叠加层，无参构造）会被自动加载；插件关闭时自动隐藏。不属于任何插件的插槽放 `openpilot/tesla/ui/slots/`。
 6. 先写失败模式和检查，再写实现；能在本机跑的就跑（`plugin_host_check.py` 和 `manifest_check.py` 会检查清单、资源声明和参数）。
 
 ## 6. panda safety 插件接口（`opendbc/safety/plugins/`）
@@ -196,11 +196,17 @@ typedef struct {
 - **下载插件的参数**：不编译进 Params，而是存在 `/data/xpilot_plugins/.params/<key>`，支持 BOOL、INT、FLOAT、STRING、JSON。宿主把交给插件、开关判断和设置页的 params 都包了一层（`plugin_params.ParamsView`），插件照常用 `params.get/get_bool/put`。删除插件时参数值保留，重装后设置还在。
 - **带二进制的插件**：需要编译的代码（例如 acados 求解器）以预编译二进制发布，清单里写 `"platform": {"machine", "python"}`（由插件自己的 `build_native.py` 在目标设备上生成）。设备只显示、安装和加载平台一致的版本；升级 Python 等导致不一致时，插件被跳过并显示 "Failed"。panda safety 插件只能内置。
 
-## 9. UI 插槽（大屏）
+## 9. UI（大屏，2160×1080）
 
-- **加插槽**：插件的插槽写在 `plugins/<名字>/ui.py`；不属于插件的在 `openpilot/tesla/ui/slots/` 新建文件，继承 `Slot` 并写好 `SPEC = SlotSpec(id, title, cells, services, show, hz, order)`，会被自动发现，在 12×6 网格中自动排布。
-- **只显示**：插槽不接收触摸。
-- **大屏窗口**：居中 1608×720；停车时左右插槽直接选择 Home 和各设置分类，中间复用 mici 的具体设置页。行驶时插槽显示数据，顶部只显示行车告警。
+- **行驶时**：mici 画面在中间 V=(360,218,1440,644)（缩放 1440/536），报警只由 mici 在画面内显示一次。四周是卡片区：左列 L=(0,0,360,1080)、右列 R=(1800,0,360,1080)、上带 T=(360,0,1440,218)、下带 B=(360,862,1440,218)。
+- **加卡片**：插件的写在 `plugins/<名字>/ui.py`；不属于插件的在 `openpilot/tesla/ui/slots/` 新建文件。继承 `Slot`，写好 `SPEC = SlotSpec(id, title, zone, units, services, show, hz, order)`，会被自动发现。
+  - `zone`：`left`/`right` 竖排（每单位 270 px 高、360 宽），`top`/`bottom` 横排（每单位 360 px 宽、218 高），每区 4 个单位；`auto` 依次找 left、right、bottom、top 里第一个放得下的区。
+  - 按 (`order`, `id`) 依次放；放不下的卡片不显示；卡片四周留 12 px。`show="offroad"` 的卡片不显示（停车时没有卡片区）。
+  - 外观用 `Slot.draw_value(rect, value, unit, sub)`（标题、大数字、单位、灰色副行）或 `draw_lines(rect, lines)`，保持统一。
+  - 卡片只显示，不接收触摸。连续出错 3 次停止绘制。
+- **整屏叠加层**：`ScreenOverlay`（`update(sm)`、`draw(zones)`，`zones` 是 left/right/top/bottom/view 的屏幕矩形），行驶时在卡片之后绘制；出错隔离同上，插件关闭时隐藏。
+- **停车时**：左列导航（xpilot、Home、Toggles、Models、Plugins、Tesla、Network、Device、Software、Developer），选中的行有蓝色左边条；右边上方是页面标题，中间是 mici 内容（456,180,1608,720，3 倍），下方是版本信息。导航直接构造各设置页（`ui/screen.py` 的 `PAGES`），选择时先回到主界面再打开，导航栈不增长。
+- 布局检查：`tools/sp_tesla_e2e/slot_layout_check.py`（本机）；渲染和触摸：`tools/sp_tesla_e2e/big_screen_e2e.py`（只能在设备上跑）。
 
 ## 10. 现有插件
 
@@ -215,7 +221,7 @@ typedef struct {
 
 ```
 python3 tools/sp_tesla_e2e/static_imports.py --baseline <基线 json>   # 有没有断掉的 import
-python3 tools/sp_tesla_e2e/slot_layout_check.py                       # 插槽排布
+python3 tools/sp_tesla_e2e/slot_layout_check.py                       # 卡片分区排布
 python3 tools/sp_tesla_e2e/plugin_host_check.py                       # 插件宿主：出错隔离、总开关、元数据、参数、目标车速
 python3 tools/sp_tesla_e2e/external_bridge_check.py                   # 外接算力 TCP 桥接（本机真实 socket）
 python3 tools/sp_tesla_e2e/manifest_check.py                          # 插件清单、资源声明、冲突裁决

@@ -6,7 +6,7 @@ from openpilot.tesla.ui.slot import Slot
 
 
 class CarSlot(Slot):
-  SPEC = SlotSpec("car", "Car", cells=(2, 2), hz=10, order=10)
+  SPEC = SlotSpec("car", "Car", zone="bottom", units=1, hz=10, order=50)
 
   def __init__(self):
     super().__init__()

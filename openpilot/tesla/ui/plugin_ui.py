@@ -1,4 +1,4 @@
-"""UI side of plugins: finds Slot and HudOverlay classes in openpilot/tesla/ui/slots/ and in each plugin's ui.py,
+"""UI side of plugins: finds Slot, HudOverlay and ScreenOverlay classes in openpilot/tesla/ui/slots/ and in each plugin's ui.py,
 and hides a plugin's widgets while the plugin is switched off (Plugins page). A module that fails to import is
 logged and skipped, so a broken plugin UI never takes the UI down."""
 import importlib
@@ -20,6 +20,16 @@ class HudOverlay(Widget):
     """Every frame before render(); read ui_state.sm here."""
 
 
+class ScreenOverlay:
+  """Drawn by the big-screen host onroad, after its cards, in screen px. Subclass in a plugin's ui.py; must construct with no arguments."""
+
+  def update(self, sm) -> None:
+    """Every frame before draw(); sm is ui_state.sm."""
+
+  def draw(self, zones: dict) -> None:
+    """zones: "left", "right", "top", "bottom" (card zones) and "view" (the mici view) as rl.Rectangle."""
+
+
 def _classes(module_name: str, base) -> list:
   try:
     mod = importlib.import_module(module_name)
@@ -31,10 +41,10 @@ def _classes(module_name: str, base) -> list:
     cloudlog.exception(f"ui module {module_name} failed to load")
     return []
   return [cls for _, cls in inspect.getmembers(mod, inspect.isclass)
-          if issubclass(cls, base) and cls is not base and cls.__module__ == mod.__name__ and (base is HudOverlay or hasattr(cls, "SPEC"))]
+          if issubclass(cls, base) and cls is not base and cls.__module__ == mod.__name__ and (base in (HudOverlay, ScreenOverlay) or hasattr(cls, "SPEC"))]
 
 
-def load(base) -> list[tuple[str | None, Widget]]:
+def load(base) -> list[tuple[str | None, object]]:
   """(plugin NAME or None for core slots, widget instance) for every class deriving from base."""
   from openpilot.tesla.ui import slots as slots_pkg
   found: list[tuple[str | None, type]] = []

@@ -7,7 +7,7 @@ from openpilot.tesla.ui.slot import Slot
 
 
 class MapSlot(Slot):
-  SPEC = SlotSpec("map", "Map", cells=(3, 2), services=("liveMapDataSP", "navInstruction"), hz=2, order=20)
+  SPEC = SlotSpec("map", "Map", zone="bottom", units=2, services=("liveMapDataSP", "navInstruction"), hz=2, order=60)
 
   def __init__(self):
     super().__init__()
@@ -21,11 +21,11 @@ class MapSlot(Slot):
       if m.speedLimitValid:
         lines.append(f"Limit {m.speedLimit * factor:.0f}")
       if m.roadName:
-        lines.append(m.roadName[:18])
+        lines.append(m.roadName[:32])
     if sm.alive['navInstruction'] and sm['navInstruction'].maneuverPrimaryText:
       nav = sm['navInstruction']
-      lines.append(f"{nav.maneuverDistance:.0f} m {nav.maneuverPrimaryText}"[:18])
+      lines.append(f"{nav.maneuverDistance:.0f} m {nav.maneuverPrimaryText}"[:32])
     self._lines = lines or ["No map data"]
 
   def _render(self, rect):
-    self.draw_lines(rect, self._lines, size=48)
+    self.draw_lines(rect, self._lines, size=36)

@@ -1,4 +1,8 @@
-"""Big-screen mici content with direct settings navigation in the side slots."""
+"""Big-screen host (C3/C3X/C3XL, 2160x1080) around the mici UI.
+Onroad: the mici view in grid.VIEW, plugin cards in the zones around it (grid.py), then plugin ScreenOverlays.
+Alerts are drawn once, by mici inside the view.
+Offroad: a nav column (Home and the settings pages), the page title above the mici content at 3x, a status footer.
+The nav and the cards sit outside the mici viewport, so their touches map outside every mici widget and are ignored by mici."""
 from contextlib import contextmanager
 import math
 import time
@@ -9,19 +13,33 @@ from openpilot.cereal import messaging
 from openpilot.common.hardware import HARDWARE
 from openpilot.common.params import Params
 from openpilot.common.swaglog import cloudlog
-from openpilot.selfdrive.ui.mici.layouts.settings.settings import SettingsBigButton
+from openpilot.common.version import get_build_metadata
+from openpilot.selfdrive.ui.mici.layouts.settings.developer import DeveloperLayoutMici
+from openpilot.selfdrive.ui.mici.layouts.settings.device.device_layout import DeviceLayoutMici
+from openpilot.selfdrive.ui.mici.layouts.settings.network.network_layout import NetworkLayoutMici
+from openpilot.selfdrive.ui.mici.layouts.settings.software import SoftwareLayoutMici
+from openpilot.selfdrive.ui.mici.layouts.settings.toggles import TogglesLayoutMici
 from openpilot.selfdrive.ui.mici.widgets.button import BigButton
-from openpilot.system.ui.lib.application import gui_app, FontWeight
-from openpilot.selfdrive.ui.mici.onroad.alert_renderer import AlertRenderer
+from openpilot.selfdrive.ui.sunnypilot.mici.layouts.models import ModelsLayoutMici
 from openpilot.selfdrive.ui.ui_state import ui_state
 from openpilot.sunnypilot.hardware.profile import HardwareProfile, get_hardware_profile
-from openpilot.tesla.ui.grid import place
-from openpilot.tesla.ui.plugin_ui import MAX_FAILURES, EnabledPlugins, load
-from openpilot.tesla.ui.slot import Slot
+from openpilot.system.ui.lib.application import gui_app, FontWeight
+from openpilot.tesla.ui.grid import SCREEN, VIEW, ZONES, place
+from openpilot.tesla.ui.plugin_ui import MAX_FAILURES, EnabledPlugins, ScreenOverlay, load
+from openpilot.tesla.ui.plugins_page import PluginsPage
+from openpilot.tesla.ui.settings_page import TeslaSettingsMici
+from openpilot.tesla.ui.slot import DIM, Slot
 
-SCREEN = (2160, 1080)
 MICI = (536, 240)
-BANNER_SCALE = 2  # the mici alert layout at 2x: 1080x160 logical, full width and 320 px tall on screen
+OFFROAD_VIEW = (456, 180, 1608, 720)  # mici at 3x in the main area right of the nav column
+NAV_W, NAV_TOP, ROW_H = 360, 180, 96
+# Nav entries: (label, page class); pages are built on first use. Home is the mici main layout.
+PAGES = (("Home", None), ("Toggles", TogglesLayoutMici), ("Models", ModelsLayoutMici), ("Plugins", PluginsPage), ("Tesla", TeslaSettingsMici),
+         ("Network", NetworkLayoutMici), ("Device", DeviceLayoutMici), ("Software", SoftwareLayoutMici), ("Developer", DeveloperLayoutMici))
+NAV_BG = rl.Color(14, 15, 19, 255)
+NAV_SEL = rl.Color(34, 38, 48, 255)
+NAV_PRESSED = rl.Color(26, 28, 36, 255)
+ACCENT = rl.Color(54, 140, 255, 255)
 
 
 def is_big_screen() -> bool:
@@ -42,6 +60,14 @@ def scaled(s: float):
     rl.begin_scissor_mode = prev
 
 
+def _hide_back(page) -> None:
+  """Pages opened from the nav need no Back card: the nav stays visible. The tesla pages (SettingsList) start with one;
+  hide it. This is the host's only reach into a page's internals (NavScroller._scroller)."""
+  items = page._scroller.items
+  if items and isinstance(items[0], BigButton) and items[0].text == "Back":
+    items[0].set_visible(False)
+
+
 class _Tile:
   def __init__(self, plugin: str | None, slot: Slot):
     self.plugin, self.slot, self.rect, self.texture, self.last, self.failures = plugin, slot, None, None, 0.0, 0
@@ -52,58 +78,65 @@ class BigScreenHost:
 
   def __init__(self):
     self._params = Params()
-    self._s = 3.0
-    self._x, self._y = (SCREEN[0] - MICI[0] * self._s) / 2, (SCREEN[1] - MICI[1] * self._s) / 2
-    self._banner = AlertRenderer()
     self._tiles = [_Tile(name, s) for name, s in load(Slot)]  # core slots/ and each plugin's ui.py
+    self._overlays = [[name, o, 0] for name, o in load(ScreenOverlay)]
     self._enabled = EnabledPlugins(self._params)
     services = sorted({svc for t in self._tiles for svc in t.slot.SPEC.services})
     self._sm = messaging.SubMaster(services) if services else None
+    self._zones = {**{k: rl.Rectangle(*z) for k, z in ZONES.items()}, "view": rl.Rectangle(*VIEW)}
     self._layout_key = None
-    self._menu = []
+    self._main = None
+    self._pages: dict[int, object] = {}
     self._selected = 0
-    self._menu_pressed = None
+    self._pressed = None
+    try:
+      self._status = get_build_metadata().ui_description
+    except Exception:
+      self._status = ""
 
-  def bind_settings(self, main, settings) -> None:
+  def bind_settings(self, main, _settings) -> None:
     self._main = main
-    self._menu = [("Home", None)] + [(button.text.title(), button._click_callback) for button in settings._scroller.items
-                                   if isinstance(button, SettingsBigButton)]
 
   def open_settings(self) -> None:
-    self._select_menu(1)
+    self._select(1)
 
-  def _select_menu(self, index: int) -> None:
-    gui_app.pop_widgets_to(self._main, instant=True)
+  def _select(self, index: int) -> None:
+    gui_app.pop_widgets_to(self._main, instant=True)  # never grow the nav stack
     self._selected = index
     if index:
-      self._menu[index][1]()
-      items = gui_app.get_active_widget()._scroller.items
-      if isinstance(items[0], BigButton) and items[0].text == "Back":
-        items.pop(0)
+      if index not in self._pages:
+        self._pages[index] = PAGES[index][1]()
+        _hide_back(self._pages[index])
+      gui_app.push_widget(self._pages[index])
+
+  def _view(self) -> tuple[float, float, float, float]:
+    return VIEW if ui_state.started else OFFROAD_VIEW
 
   def viewport(self) -> rl.Rectangle:
-    return rl.Rectangle(self._x, self._y, MICI[0] * self._s, MICI[1] * self._s)
+    return rl.Rectangle(*self._view())
 
   def to_logical(self, x: float, y: float) -> tuple[float, float]:
-    return (x - self._x) / self._s, (y - self._y) / self._s
+    vx, vy, vw, vh = self._view()
+    return (x - vx) * MICI[0] / vw, (y - vy) * MICI[1] / vh
+
+  def _to_screen(self, pos) -> rl.Vector2:
+    vx, vy, vw, vh = self._view()
+    return rl.Vector2(vx + pos.x * vw / MICI[0], vy + pos.y * vh / MICI[1])
 
   def render(self) -> None:
     if not ui_state.started:
       if not gui_app.widget_in_stack(self._main._onboarding_window):
-        self._draw_menu()
+        self._draw_offroad()
       return
     enabled = self._enabled.get()
-    key = (self._x, self._y, self._s, ui_state.started, frozenset(enabled))
+    key = frozenset(enabled)
     if key != self._layout_key:
       self._layout_key = key
-      shown = [t.slot.SPEC for t in self._tiles if t.plugin is None or t.plugin in enabled]
-      rects = place((self._x, self._y, MICI[0] * self._s, MICI[1] * self._s), shown, ui_state.started)
+      rects = place([t.slot.SPEC for t in self._tiles if t.plugin is None or t.plugin in enabled], True)
       for t in self._tiles:
         t.rect = rects.get(t.slot.SPEC.id)
     self._draw_tiles()
-    # Alerts never shrink with the window: same renderer and timeout logic as mici, drawn across the top.
-    with scaled(BANNER_SCALE):
-      self._banner.render(rl.Rectangle(0, 0, SCREEN[0] / BANNER_SCALE, 160))
+    self._draw_overlays()
 
   def _draw_tiles(self) -> None:
     if self._sm is not None:
@@ -133,21 +166,42 @@ class BigScreenHost:
         rl.end_texture_mode()
       rl.draw_texture_pro(t.texture.texture, rl.Rectangle(0, 0, w, -h), rl.Rectangle(x, y, w, h), rl.Vector2(0, 0), 0.0, rl.WHITE)
 
-  def _draw_menu(self) -> None:
+  def _draw_overlays(self) -> None:
+    for entry in self._overlays:
+      name, overlay, failures = entry
+      if failures >= MAX_FAILURES or not self._enabled.shows(name):
+        continue
+      try:
+        overlay.update(ui_state.sm)
+        overlay.draw(self._zones)
+        entry[2] = 0
+      except Exception:
+        entry[2] += 1  # same isolation as slots
+        cloudlog.exception(f"screen overlay {type(overlay).__name__} failed")
+
+  def _draw_offroad(self) -> None:
     if gui_app.get_active_widget() is self._main:
       self._selected = 0
-    for index, (label, _) in enumerate(self._menu):
-      rect = rl.Rectangle(18 if index < 5 else SCREEN[0] - 258, 90 + (index % 5) * 180, 240, 144)
+    rl.draw_rectangle(0, 0, NAV_W, SCREEN[1], NAV_BG)
+    rl.draw_text_ex(gui_app.font(FontWeight.BOLD), "xpilot", rl.Vector2(48, 52), 76, 0, rl.WHITE)
+    medium = gui_app.font(FontWeight.MEDIUM)
+    for index, (label, _) in enumerate(PAGES):
+      rect = rl.Rectangle(0, NAV_TOP + index * ROW_H, NAV_W, ROW_H)
       for event in gui_app.mouse_events:
-        pos = rl.Vector2(event.pos.x * self._s + self._x, event.pos.y * self._s + self._y)
-        inside = rl.check_collision_point_rec(pos, rect)
+        inside = rl.check_collision_point_rec(self._to_screen(event.pos), rect)
         if event.left_pressed and inside:
-          self._menu_pressed = index
-        if event.left_released and self._menu_pressed == index:
-          self._menu_pressed = None
+          self._pressed = index
+        if event.left_released and self._pressed == index:
+          self._pressed = None
           if inside:
-            self._select_menu(index)
-      rl.draw_rectangle_rounded(rect, 0.15, 8, rl.Color(36, 100, 180, 255) if index == self._selected else rl.Color(24, 24, 28, 255))
-      font = gui_app.font(FontWeight.BOLD)
-      width = rl.measure_text_ex(font, label, 36, 0).x
-      rl.draw_text_ex(font, label, rl.Vector2(rect.x + (rect.width - width) / 2, rect.y + 48), 36, 0, rl.WHITE)
+            self._select(index)
+      selected = index == self._selected
+      if selected or self._pressed == index:
+        rl.draw_rectangle_rec(rect, NAV_SEL if selected else NAV_PRESSED)
+      if selected:
+        rl.draw_rectangle_rec(rl.Rectangle(0, rect.y, 8, ROW_H), ACCENT)
+      rl.draw_text_ex(medium, label, rl.Vector2(48, rect.y + (ROW_H - 44) / 2), 44, 0, rl.WHITE if selected else DIM)
+    x = OFFROAD_VIEW[0]
+    rl.draw_text_ex(gui_app.font(FontWeight.BOLD), PAGES[self._selected][0], rl.Vector2(x, (OFFROAD_VIEW[1] - 80) / 2), 80, 0, rl.WHITE)
+    footer = OFFROAD_VIEW[1] + OFFROAD_VIEW[3]
+    rl.draw_text_ex(medium, self._status, rl.Vector2(x, footer + (SCREEN[1] - footer - 30) / 2), 30, 0, DIM)
