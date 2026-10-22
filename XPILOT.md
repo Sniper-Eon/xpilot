@@ -222,6 +222,7 @@ python3 tools/sp_tesla_e2e/manifest_check.py                          # 插件�
 python3 tools/sp_tesla_e2e/phase2_check.py                            # 插件报警、变道策略、横向修正
 python3 tools/sp_tesla_e2e/phase3_check.py                            # 可替换的横向控制器和纵向规划
 python3 tools/sp_tesla_e2e/store_check.py                             # 插件商店：下载、校验、安装、参数（本机 HTTP 服务）
+python3 tools/sp_tesla_e2e/store_e2e.py --repo ~/xpilot-plugins       # 插件仓库端到端：索引 → 安装 → 发现 → 钩子生效
 python3 tools/dev_sp_release/upstream_watch.py                        # 列出值得 cherry-pick 的上游提交
 ```
 
