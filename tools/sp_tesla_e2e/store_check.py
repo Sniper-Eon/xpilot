@@ -18,6 +18,7 @@ Failure cases listed before implementation:
 - S14 an installed plugin whose platform no longer matches (e.g. after a Python upgrade) is loaded instead of skipped
 - S15 a plugin for this platform is refused
 - S16 a plugin that breaks the code layout rules (manifest.layout_problems, e.g. one file over MAX_LINES) is installed
+- S17 the UI looks for an installed plugin's ui.py under openpilot.tesla.plugins instead of xpilot_ext
 """
 import hashlib
 import http.server
@@ -96,7 +97,7 @@ PLUGIN_PY = "from .helper import VALUE\nfrom openpilot.tesla.plugin import Plugi
 
 
 def good_files(pid, version="1.0.0", **over):
-  return {"__init__.py": "", "helper.py": f"VALUE = {version!r}\n", "plugin.py": PLUGIN_PY,
+  return {"__init__.py": "", "helper.py": f"VALUE = {version!r}\n", "plugin.py": PLUGIN_PY, "ui.py": "from .helper import VALUE\n",
           "plugin.json": json.dumps(manifest(pid, version=version, **over))}
 
 
@@ -195,6 +196,9 @@ def main() -> int:
     errors.append(f"S6 installed plugin not discovered: {names} {plugins.LOAD_ERRORS}")
   elif ext.X != "1.0.0":
     errors.append("S6 relative import inside the installed package failed")
+  elif plugins.ui_module(ext) != "xpilot_ext.ext_ok.ui" or importlib.import_module(plugins.ui_module(ext)).VALUE != "1.0.0" or \
+      plugins.ui_module(next(c for c in plugins.PLUGINS if c.NAME == "auto_speed")) != "openpilot.tesla.plugins.auto_speed.ui":
+    errors.append(f"S17 wrong ui module: {plugins.ui_module(ext)}")
   if names.count("auto_speed") != 1:
     errors.append("S4 built-in id duplicated")
 

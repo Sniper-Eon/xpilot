@@ -89,6 +89,12 @@ def view(params):
   return params if isinstance(params, ParamsView) or params is None else ParamsView(params, INSTALLED_SPECS)
 
 
+def ui_module(cls) -> str:
+  """Module path of a plugin's ui.py: store plugins live under xpilot_ext, built-in ones here."""
+  pkg = "xpilot_ext" if cls.__module__.startswith("xpilot_ext.") else __name__
+  return f"{pkg}.{cls.NAME}.ui"
+
+
 def is_enabled(cls, params) -> bool:
   return cls.ENABLE_PARAM is None or view(params).get_bool(cls.ENABLE_PARAM)
 

@@ -8,7 +8,7 @@ import time
 
 from openpilot.common.swaglog import cloudlog
 from openpilot.system.ui.widgets import Widget
-from openpilot.tesla.plugins import PLUGINS, resolve
+from openpilot.tesla.plugins import PLUGINS, resolve, ui_module
 
 MAX_FAILURES = 3  # a widget that raises this many times in a row is not drawn again
 
@@ -51,7 +51,7 @@ def load(base) -> list[tuple[str | None, object]]:
   for info in pkgutil.iter_modules(slots_pkg.__path__):
     found += [(None, cls) for cls in _classes(f"{slots_pkg.__name__}.{info.name}", base)]
   for plugin in PLUGINS:
-    found += [(plugin.NAME, cls) for cls in _classes(f"openpilot.tesla.plugins.{plugin.NAME}.ui", base)]
+    found += [(plugin.NAME, cls) for cls in _classes(ui_module(plugin), base)]
   out = []
   for name, cls in found:
     try:
