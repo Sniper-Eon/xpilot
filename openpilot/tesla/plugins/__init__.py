@@ -13,6 +13,7 @@
 """
 import importlib
 import importlib.util
+import json
 import math
 import sys
 import time
@@ -212,6 +213,40 @@ def processes() -> list:
 def services() -> list[str]:
   """Extra services plannerd, selfdrived and controlsd subscribe for plugin hooks (ignored for alive/valid checks)."""
   return sorted({svc for p in PLUGINS for svc in p.SERVICES})
+
+
+def send_msg(pm, plugin, kind: str, payload, valid_for_ms: int = 0) -> bool:
+  """Publish one pluginMsg as plugin (class or instance): source = its id, payload = JSON of payload, validForMs
+  0 = no expiry. pm must publish "pluginMsg". A kind without a msg:<kind> claim is refused and recorded."""
+  from openpilot.cereal import messaging
+  try:
+    if f"msg:{kind}" not in plugin.CLAIMS:
+      raise PermissionError(f"pluginMsg {kind!r} without a msg:{kind} claim")
+    msg = messaging.new_message("pluginMsg", valid=True)
+    m = msg.pluginMsg
+    m.source, m.kind, m.payload, m.validForMs = plugin.NAME, kind, json.dumps(payload), valid_for_ms
+  except Exception as e:
+    record_fault(plugin.NAME, "pluginMsg", e)
+    return False
+  pm.send("pluginMsg", msg)
+  return True
+
+
+class PluginMsgs:
+  """pluginMsg reader: fresh(kind) -> {source plugin id: payload} of the latest unexpired message per source."""
+
+  def __init__(self, sock=None):
+    from openpilot.cereal import messaging
+    self.messaging, self.last = messaging, {}
+    self.sock = sock or messaging.sub_sock("pluginMsg", conflate=False)
+
+  def fresh(self, kind: str, now_ns: int | None = None) -> dict:
+    for e in self.messaging.drain_sock(self.sock):
+      m = e.pluginMsg
+      self.last[(m.source, m.kind)] = (e.logMonoTime, m.validForMs, m.payload)
+    now_ns = time.monotonic_ns() if now_ns is None else now_ns
+    return {src: json.loads(p) for (src, k), (t, valid_ms, p) in self.last.items()
+            if k == kind and (valid_ms == 0 or 0 <= now_ns - t <= valid_ms * 1_000_000)}
 
 
 def _collect(params, hook: str, claim: str, where: str, *args) -> list:

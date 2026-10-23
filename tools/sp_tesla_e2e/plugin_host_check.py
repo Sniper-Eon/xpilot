@@ -31,6 +31,9 @@ Failure cases listed before implementation:
 - M1 the osm_map plugin's mapd, mapd_manager, map_osm processes are missing from the manager list (not found,
        not claimed), or process_config.py still registers them itself
 - M2 they run when MapProvider is not "osm", or do not run (onroad) when it is "osm" or unset (default "osm")
+- G1 send_msg publishes a kind the plugin has no msg:<kind> claim for, or does not record it as a fault
+- G2 a declared kind is not delivered, its source is not the plugin id, or kind/payload/validForMs are lost
+- G3 PluginMsgs.fresh returns other kinds or expired messages, or drops validForMs 0 (no expiry)
 
 Run from the repo root with the openpilot python env. Native-only modules (Params) are stubbed if missing.
 """
@@ -244,6 +247,7 @@ def main() -> int:
   errors += map_checks(plugins_mod)  # before the checks below, which replace PLUGINS with fakes
   errors += long_target_checks(plugins_mod)
   errors += radar_checks(plugins_mod)
+  errors += msg_checks(plugins_mod)
 
   print(json.dumps({"plugins": [c.NAME for c in real], "errors": errors}, indent=1))
   return 1 if errors else 0
@@ -389,6 +393,31 @@ def map_checks(plugins) -> list[str]:
     for n in names:
       if n in procs and procs[n].should_run(True, params, None) != want:
         errors.append(f"M2 {n} should_run={not want} with MapProvider={value!r}")
+  return errors
+
+
+def msg_checks(plugins) -> list[str]:
+  from openpilot.cereal import messaging
+  errors, faults, sent = [], [], []
+  plugins.record_fault = lambda name, where, exc: faults.append((name, where))
+  pm = types.SimpleNamespace(send=lambda svc, msg: sent.append((svc, messaging.log_from_bytes(msg.to_bytes()))))
+
+  class Pub(Plugin):
+    NAME, CLAIMS = "pub", ("msg:demo.a", "msg:demo.b")
+  if plugins.send_msg(pm, Pub, "demo.c", {"x": 1}) or sent or faults != [("pub", "pluginMsg")]:
+    errors.append(f"G1 undeclared kind: sent {len(sent)}, faults {faults}")
+  ok = plugins.send_msg(pm, Pub(CP, None), "demo.a", {"x": 1}, 100) and plugins.send_msg(pm, Pub, "demo.b", [2])
+  m = sent[0][1].pluginMsg if sent else None
+  if not ok or [s for s, _ in sent] != ["pluginMsg"] * 2 or (m.source, m.kind, json.loads(m.payload), m.validForMs) != ("pub", "demo.a", {"x": 1}, 100):
+    errors.append(f"G2 declared kind: ok {ok}, sent {[(s, e.pluginMsg) for s, e in sent]}")
+
+  reader = plugins.PluginMsgs(sock=object())
+  reader.messaging = types.SimpleNamespace(drain_sock=lambda sock: [e for _, e in sent])
+  t = sent[0][1].logMonoTime if sent else 0
+  if reader.fresh("demo.a", t + 50_000_000) != {"pub": {"x": 1}} or reader.fresh("demo.a", t + 200_000_000):
+    errors.append("G3 demo.a fresh within 100 ms only")
+  if reader.fresh("demo.b", t + 10**12) != {"pub": [2]}:
+    errors.append("G3 validForMs 0 expired, or kinds mixed")
   return errors
 
 

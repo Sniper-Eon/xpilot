@@ -9,7 +9,7 @@ Failure cases listed before implementation:
 - M4 a conflict is won by load order instead of priority (then id)
 - M5 a plugin uses something it did not claim and keeps running: sends an unclaimed CAN address/bus,
      returns a long target or plan filter without claiming it, or starts an unclaimed process
-- M6 shared claims (long.target, plan.filter) are treated as exclusive
+- M6 shared claims (long.target, plan.filter, msg:<kind>) are treated as exclusive, or msg:<kind> is refused
 - M7 switching a plugin on leaves its conflicting plugins switched on
 - M8 a built-in plugin's manifest is invalid, or its claims do not cover the hooks it overrides
 - M9 an unknown claim kind is accepted
@@ -92,6 +92,8 @@ def main() -> int:
   active, _ = mf.resolve(items, {"a", "d"})
   if active != {"a", "d"}:
     errors.append(f"M10 disabled plugin took a claim: {active}")
+  if not mf._CLAIM_RE.fullmatch("msg:x.y") or mf.resolve([("e", 1, ("msg:x.y",)), ("f", 2, ("msg:x.y",))], {"e", "f"})[0] != {"e", "f"}:
+    errors.append("M6 msg:<kind> refused or exclusive")
   if set(mf.conflicting("c", items)) != {"a", "b"} or mf.conflicting("d", items):
     errors.append(f"M7 conflicting('c') = {mf.conflicting('c', items)}")
 
