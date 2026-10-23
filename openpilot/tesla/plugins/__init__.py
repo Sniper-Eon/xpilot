@@ -192,6 +192,11 @@ def processes() -> list:
   return procs
 
 
+def owner(params, claim: str) -> str | None:
+  """Name of the active plugin holding this claim, or None."""
+  return next((cls.NAME for cls in active(params) if claim in cls.CLAIMS), None)
+
+
 def holds(params, claim: str) -> bool:
   """True if an active plugin holds this claim, e.g. source:map stops SP's OSM map processes (fork_processes.py)."""
   return any(claim in cls.CLAIMS for cls in active(params))

@@ -5,6 +5,7 @@ Keeps openpilot/system/manager/process_config.py official except for one call:
 - micd/soundd only run on hardware with a microphone/amplifier (C3XL has neither)
 - C3XL routes alerts to its GPIO buzzer
 - xpilot feature plugins add their own processes (openpilot/tesla/plugins); an active source:map plugin replaces OSM
+- SP's model stack runs only while sp_models (or nobody) owns role:perception.model
 """
 from openpilot.common.hardware import PC
 from openpilot.sunnypilot.hardware.driver_monitoring import driver_monitoring_enabled
@@ -26,6 +27,8 @@ def apply_fork_processes(procs: list, only_onroad) -> list:
   _gate(by_name["soundd"], lambda params: has_audio_output())
   for name in ("mapd", "mapd_manager", "map_osm"):
     _gate(by_name[name], lambda params: not plugins.holds(params, "source:map"))
+  for name in ("models_manager", "modeld", "modeld_tinygrad", "modeld_warmup"):  # SP's model stack = plugin sp_models
+    _gate(by_name[name], lambda params: plugins.owner(params, "role:perception.model") in (None, "sp_models"))
   return procs + [
     PythonProcess("alert_output", "openpilot.sunnypilot.system.alert_output",
                   lambda started, params, CP: not PC and get_hardware_profile() == HardwareProfile.C3XL),

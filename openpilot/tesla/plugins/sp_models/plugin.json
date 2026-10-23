@@ -1,0 +1,14 @@
+{
+  "id": "sp_models",
+  "name": "SP Model Manager",
+  "version": "1.0.0",
+  "api": 1,
+  "category": "perception_model",
+  "entry": "plugin:SpModels",
+  "author": "sunnypilot",
+  "description": "Default driving model: SP's model manager (download, select, cache) and its modeld runners. Always on; a store plugin that claims role:perception.model replaces it.",
+  "priority": 10000,
+  "enable_param": null,
+  "claims": ["role:perception.model"],
+  "params": {}
+}

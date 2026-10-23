@@ -30,6 +30,9 @@ Failure cases listed before implementation:
        or a disabled one stops them
 - P24 externald bridges a provider from a disabled plugin or one without the external.provider claim,
        or a raising provider hook takes the others down
+- P26 SP's model stack (sp_models) is not the default owner of role:perception.model, keeps running next to an
+       enabled replacement (two modelV2 publishers), stays off when the replacement is switched off, stops when no
+       plugin owns the role (no model at all), or fork_processes.py does not gate all four SP model processes
 - P25 the bms plugin decodes 0x132/0x292 wrong (sign of the current, scales), keeps stale or other-bus frames,
        or does not publish carStateSP.teslaBattery
 
@@ -60,6 +63,9 @@ CORE_KEYS = dict(re.findall(KEY_RE, (ROOT / "openpilot/common/params_keys.h").re
 INC = ROOT / "openpilot/common/plugin_params.inc"
 PLUGIN_KEYS = dict(re.findall(KEY_RE, INC.read_text())) if INC.exists() else {}
 KEYS = {**CORE_KEYS, **PLUGIN_KEYS}
+
+
+DEFAULT_CORE = {"sp_models"}
 
 
 class FakeParams:
@@ -208,9 +214,12 @@ def main() -> int:
   keys = {**KEYS, **{k: v["type"] for k, v in plugins_mod.INSTALLED_SPECS.items()}}  # store plugins keep params in .params/
   seen = set()
   for cls in real:
-    if not cls.TITLE or not cls.ENABLE_PARAM:
+    default = cls.NAME in DEFAULT_CORE  # always-on default of a replaceable core role (XPILOT.md rule 6)
+    if not cls.TITLE or (not cls.ENABLE_PARAM and not default):
       errors.append(f"P9 {cls.NAME} lacks TITLE or ENABLE_PARAM")
-    if keys.get(cls.ENABLE_PARAM) != "BOOL":
+    if default and cls.ENABLE_PARAM is not None:
+      errors.append(f"P9 default {cls.NAME} has a switch {cls.ENABLE_PARAM}")
+    if not default and keys.get(cls.ENABLE_PARAM) != "BOOL":
       errors.append(f"P9 {cls.NAME} ENABLE_PARAM {cls.ENABLE_PARAM} not a declared BOOL")
     for s in cls.SETTINGS:
       if s.key not in keys:
@@ -244,7 +253,7 @@ def main() -> int:
         errors.append(f"P12 {k} in {owners[k]} and {f.parent.name}")
       owners[k] = f.parent.name
   errors += long_target_checks(plugins_mod)
-  errors += source_checks(plugins_mod)
+  errors += source_checks(plugins_mod, real)
   errors += bms_checks()
 
   print(json.dumps({"plugins": [c.NAME for c in real], "errors": errors}, indent=1))
@@ -345,7 +354,7 @@ def long_target_checks(plugins) -> list[str]:
   return errors
 
 
-def source_checks(plugins) -> list[str]:
+def source_checks(plugins, real) -> list[str]:
   errors, faults = [], []
   plugins.record_fault = lambda name, where, exc: faults.append(where)
 
@@ -385,6 +394,23 @@ def source_checks(plugins) -> list[str]:
   gate = (ROOT / "openpilot/sunnypilot/system/fork_processes.py").read_text()
   if 'for name in ("mapd", "mapd_manager", "map_osm")' not in gate or 'plugins.holds(params, "source:map")' not in gate:
     errors.append("P23 fork_processes.py does not gate SP's OSM processes on source:map")
+
+  role = "role:perception.model"
+  sp = type("sp_models", (Plugin,), {"NAME": "sp_models", "ENABLE_PARAM": None, "CLAIMS": (role,), "PRIORITY": 10000})
+  rep = type("op_models", (Plugin,), {"NAME": "op_models", "ENABLE_PARAM": "OpKey", "CLAIMS": (role,), "PRIORITY": 100})
+  plugins.PLUGINS = (sp, rep)
+  got = [plugins.owner(FakeParams(), role), plugins.owner(FakeParams({"OpKey": True}), role)]
+  plugins.PLUGINS = ()
+  got.append(plugins.owner(FakeParams(), role))
+  if got != ["sp_models", "op_models", None]:
+    errors.append(f"P26 role:perception.model owner (default, replaced, none) = {got}")
+  models = [c for c in real if role in c.CLAIMS]
+  sp_real = next((c for c in models if c.NAME == "sp_models"), None)
+  if sp_real is None or sp_real.ENABLE_PARAM is not None or any(c.PRIORITY >= sp_real.PRIORITY for c in models if c is not sp_real):
+    errors.append(f"P26 sp_models must be the always-on, lowest-priority owner of {role}: {[(c.NAME, c.PRIORITY) for c in models]}")
+  if 'for name in ("models_manager", "modeld", "modeld_tinygrad", "modeld_warmup")' not in gate or \
+     'plugins.owner(params, "role:perception.model") in (None, "sp_models")' not in gate:
+    errors.append("P26 fork_processes.py does not gate SP's model processes on role:perception.model")
 
   faults.clear()
   good, unclaimed, off = types.SimpleNamespace(), types.SimpleNamespace(), types.SimpleNamespace()
