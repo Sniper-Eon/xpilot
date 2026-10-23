@@ -335,7 +335,7 @@ typedef struct {
   - `sizes`：支持的尺寸，第一个是默认；要在行驶时显示必须包含 `small`。
   - `state(sm)`：读数据，返回这块磁贴要显示的内容（可比较的值）。最多每秒调用 `hz` 次；**只有返回值变了（或尺寸变了）才重画**，其余帧画缓存的纹理。`draw(rect, size, state)` 画磁贴正面。
   - 外观用 `Tile.face(rect, ...)`（底色、左下角标题）、`draw_value`（大数字、单位、灰色副行）或 `draw_lines`，保持统一。
-  - **文字自动适配尺寸**（`tile.py`、`tiles.py`）：不要自己算字号。字号随磁贴变大（`tiles.scale`：small 1，medium 及以上 2；标题 30/45 px），宽度放不下就缩小，最小 `tiles.MIN_FONT`（24 px），还放不下就截断加 `...`（`tile.clip`）。`draw_lines` 放不下的行从末尾丢掉，所以重要的行放前面。自己画文字时用 `tile.fit`、`tile.clip`、`tile.lines_in`。文字只用 ASCII（设备字体缺 `‹ › · —` 等字，会显示成 `?`；`tile_layout_check.py` 检查）。
+  - **文字自动适配尺寸**（`tile.py`、`tiles.py`）：不要自己算字号。字号随磁贴变大（`tiles.scale`：small 1，medium 及以上 2；标题 34/51 px），宽度放不下就缩小，最小 `tiles.MIN_FONT`（24 px），还放不下就截断加 `...`（`tile.clip`）。`draw_lines` 放不下的行从末尾丢掉，所以重要的行放前面。自己画文字时用 `tile.text`、`tile.fit`、`tile.clip`、`tile.lines_in`；不要直接调 `rl.draw_text_ex`：gui_app 会把它放大 FONT_SCALE 倍（1.16），而 `rl.measure_text_ex` 不放大，量出的宽度就不对，文字会被裁掉。文字只用 ASCII（设备字体缺 `‹ › · —` 等字，会显示成 `?`；`tile_layout_check.py` 检查）。
   - 连续出错 3 次停止绘制，不影响其他磁贴。
 - **配色**：`tiles.THEMES`（Cobalt、Teal、Emerald、Crimson、Violet、Graphite），在 Toggles 页的"Tile color"里选，存在 `XpilotTileTheme`（STRING，和布局一样存成 `.params` 文件，不进 `params_keys.h`）。宿主启动时和每次回到磁贴屏时读取，设置 `Tile.COLOR` 并让所有磁贴重画；编辑栏的选中按钮也用这个颜色。
 - **插件市场**（Plugins 磁贴，`pages/plugins.py`）：左边一列是 `manifest.CATEGORIES` 里有插件的分类（加载失败时最前面多一个 "Failed"），左下角是商店的 Refresh；右边是选中分类的列表：每个插件一行开关，标题下是版本、作者和简介，后面是商店里有、这次没加载的插件（Install）。点插件行（开关以外）打开插件页：开关、设置项、Source/Version/Author/Category/Claims/Priority，商店下载的插件还有 Update/Remove。Source 说明能不能卸载：内置插件（代码在仓库里，随系统更新）只能关掉开关，不能卸载；商店插件可以 Remove。分类和行由 `offroad.market_sections` 生成（`offroad_pages_check.py` O12），分类未知的商店插件归到 tools。原来单独的 Store 子页已删除。

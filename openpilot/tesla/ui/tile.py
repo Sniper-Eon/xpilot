@@ -6,11 +6,11 @@ from typing import ClassVar
 
 import pyray as rl
 
-from openpilot.system.ui.lib.application import FontWeight, gui_app
+from openpilot.system.ui.lib.application import FONT_SCALE, FontWeight, gui_app
 from openpilot.tesla.ui.tiles import ACCENT, MIN_FONT, TileSpec, fit_lines, scale
 
 DIM = rl.Color(255, 255, 255, 170)
-TITLE, UNIT, SUB = 30, 40, 36  # font sizes on a small tile, px
+TITLE, UNIT, SUB = 34, 46, 42  # font sizes on a small tile, px
 PAD = 16
 
 
@@ -19,7 +19,8 @@ def text_w(weight: FontWeight, text: str, size: int) -> float:
 
 
 def text(weight: FontWeight, s: str, x: float, y: float, size: int, color=rl.WHITE) -> None:
-  rl.draw_text_ex(gui_app.font(weight), s, rl.Vector2(x, y), size, 0, color)
+  # gui_app scales rl.draw_text_ex by FONT_SCALE but not rl.measure_text_ex; undo it so size is real px and text_w is exact
+  rl.draw_text_ex(gui_app.font(weight), s, rl.Vector2(x, y), size / FONT_SCALE, 0, color)
 
 
 def clip(weight: FontWeight, s: str, size: int, w: float) -> str:
@@ -61,7 +62,7 @@ class Tile:
     self.face(rect)
 
   def title_size(self, rect: rl.Rectangle) -> int:
-    return int(TITLE * (1 + scale(rect.width, rect.height)) / 2)  # 30 px small, 45 px medium and up
+    return int(TITLE * (1 + scale(rect.width, rect.height)) / 2)  # 34 px small, 51 px medium and up
 
   def face(self, rect: rl.Rectangle, icon: str | None = None) -> None:
     """Square tile in COLOR with the title at the bottom left and an optional centered icon (assets path)."""
@@ -84,7 +85,7 @@ class Tile:
     bottom = rect.height - self.title_size(rect) - 28
     unit_size = int(UNIT * s)
     unit_w = text_w(FontWeight.MEDIUM, unit, unit_size) + 8 if unit else 0
-    size = fit(FontWeight.BOLD, value, max(MIN_FONT, min(150 * s, bottom - below - 24)), room - unit_w)
+    size = fit(FontWeight.BOLD, value, max(MIN_FONT, min(170 * s, bottom - below - 24)), room - unit_w)
     value_w = text_w(FontWeight.BOLD, value, size)
     y = rect.y + (bottom - size - below) / 2
     x = rect.x + (rect.width - value_w - unit_w) / 2

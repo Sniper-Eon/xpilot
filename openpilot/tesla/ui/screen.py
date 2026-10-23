@@ -22,6 +22,7 @@ from openpilot.common.swaglog import cloudlog
 from openpilot.selfdrive.ui.ui_state import ui_state
 from openpilot.sunnypilot.hardware.profile import HardwareProfile, get_hardware_profile
 from openpilot.system.ui.lib.application import MousePos, gui_app, FontWeight
+from openpilot.system.ui.lib.text_measure import measure_text_cached
 from openpilot.system.ui.widgets.list_view import button_item, text_item
 from openpilot.tesla.plugin_params import ParamsView
 from openpilot.tesla.ui import offroad, tiles
@@ -368,7 +369,7 @@ class BigScreenHost:
     if drive:
       rl.draw_rectangle_rec(rl.Rectangle(*VIEW), rl.Color(40, 42, 50, 255))
       label = "Driving view"
-      width = rl.measure_text_ex(gui_app.font(FontWeight.MEDIUM), label, 48, 0).x
+      width = measure_text_cached(gui_app.font(FontWeight.MEDIUM), label, 48).x
       rl.draw_text_ex(gui_app.font(FontWeight.MEDIUM), label, rl.Vector2(VIEW[0] + (VIEW[2] - width) / 2, VIEW[1] + VIEW[3] / 2 - 24), 48, 0, DIM)
     self._draw_tiles(placed, now)
     if not self._edit:
@@ -395,7 +396,7 @@ class BigScreenHost:
       active = name == self._layout
       rl.draw_rectangle(x, y, w, h, rl.Color(*Tile.COLOR, 255) if active else rl.Color(72, 75, 88, 255))
       label = name.capitalize()
-      width = rl.measure_text_ex(medium, label, 40, 0).x
+      width = measure_text_cached(medium, label, 40).x
       rl.draw_text_ex(medium, label, rl.Vector2(x + (w - width) / 2, y + (h - 40) / 2), 40, 0, rl.WHITE)
 
   @staticmethod
