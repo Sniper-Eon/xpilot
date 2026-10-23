@@ -76,7 +76,8 @@ class PluginPage(ListPage):
     self.add(self.switches.make(plugin, plugin.DESCRIPTION))
     self.rows = [SettingRow(s) for s in plugin.SETTINGS]
     self.add(*[r.item for r in self.rows])
-    self.add(text_item("Version", f"v{m.version}"), text_item("Author", m.author or "unknown"),
+    self.add(text_item("Source", "store (removable)" if plugin.NAME in jobs.installed else "built-in (switch off only)"),
+             text_item("Version", f"v{m.version}"), text_item("Author", m.author or "unknown"),
              text_item("Category", CATEGORIES.get(plugin.CATEGORY, plugin.CATEGORY)),
              text_item("Claims", ", ".join(plugin.CLAIMS) or "none"), text_item("Priority", str(plugin.PRIORITY)))
     pid = plugin.NAME

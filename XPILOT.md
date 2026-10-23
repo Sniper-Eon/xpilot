@@ -28,7 +28,7 @@
 3. **插件不能绕过车端和 panda 的检查。** 纵向：`long_target` 加速只能替换驾驶员设定车速（条件见第 4 节）；`plan_filter` 只能收紧；`role:long.planner` 可以整体替换纵向计划、包括跟车（用户 2026-10-22 决定），但加速度限制、FCW、踩刹车退出、原车 AEB 和 panda 限制不变。横向：`role:lateral.controller` 的输出不额外限制，靠车端转角速率限制和 panda 兜底。外接算力的数据只做建议。
 4. **每个 CAN 发送地址都必须有 panda safety 插件**（`opendbc/safety/plugins/`），在插件里自己校验内容、频率、时效和 `controls_allowed`。没有 safety 插件，panda 会直接拦掉。
 5. **插件出错不能拖垮进程**：输入过期就当周期什么都不发。宿主兜底：插件在任何钩子里抛异常，就被记进 `XpilotPluginFaults`、本次进程内停用，其他插件和 SP 照常运行；plan filter 出错时计划照常发布。UI 磁贴和叠加层连续出错 3 次会停止绘制。
-6. **Params**：插件的 key 写在自己 `plugin.json` 的 `params` 里，然后运行 `python3 openpilot/tesla/plugins/gen_params.py` 生成 `common/plugin_params.inc` 并一起提交；不属于插件的 key 才写进 `params_keys.h`。每个插件有一个 BOOL 总开关 `enable_param`，默认关闭；例外：只做显示、`claims` 为空的 `ui` 类插件（如 `speed_card`）可以默认开启。设置项写在 `plugin.json` 的 `settings` 里。
+6. **Params**：插件的 key 写在自己 `plugin.json` 的 `params` 里，然后运行 `python3 openpilot/tesla/plugins/gen_params.py` 生成 `common/plugin_params.inc` 并一起提交；不属于插件的 key 才写进 `params_keys.h`。每个插件有一个 BOOL 总开关 `enable_param`，默认关闭；例外：只做显示、`claims` 为空的 `ui`、`overlays` 类插件（如 `speed_card`）可以默认开启。设置项写在 `plugin.json` 的 `settings` 里。
 7. **cereal**：只追加字段，不改已有字段的序号和类型。新消息用 `custom.capnp` 里的 `customReserved*` 槽位。
 8. **验证**（沿用 `AGENTS.md`）：
    - 先列出失败模式，再写检查。
@@ -115,7 +115,7 @@ opendbc_repo/opendbc/safety/plugins/
 | 7 | `perception_model` | 替换模型 | 需要模型管线和算力，变更最大 |
 | 8 | `safety_fallback` | 退出和 Autopilot 交接策略 | 安全相关，必须先有 panda 侧方案 |
 
-其他：`data_source` 数据源和外接算力、`alerts` 报警、`body_comfort` 车身和舒适、`ui` 界面、`tools` 工具和诊断。
+其他：`data_source` 数据源和外接算力、`alerts` 报警、`body_comfort` 车身和舒适、`ui` 磁贴、`overlays` 行驶叠加层、`tools` 工具和诊断。
 
 ### 4.3 资源声明（claims）和冲突
 
@@ -338,7 +338,7 @@ typedef struct {
   - **文字自动适配尺寸**（`tile.py`、`tiles.py`）：不要自己算字号。字号随磁贴变大（`tiles.scale`：small 1，medium 及以上 2；标题 30/45 px），宽度放不下就缩小，最小 `tiles.MIN_FONT`（24 px），还放不下就截断加 `...`（`tile.clip`）。`draw_lines` 放不下的行从末尾丢掉，所以重要的行放前面。自己画文字时用 `tile.fit`、`tile.clip`、`tile.lines_in`。文字只用 ASCII（设备字体缺 `‹ › · —` 等字，会显示成 `?`；`tile_layout_check.py` 检查）。
   - 连续出错 3 次停止绘制，不影响其他磁贴。
 - **配色**：`tiles.THEMES`（Cobalt、Teal、Emerald、Crimson、Violet、Graphite），在 Toggles 页的"Tile color"里选，存在 `XpilotTileTheme`（STRING，和布局一样存成 `.params` 文件，不进 `params_keys.h`）。宿主启动时和每次回到磁贴屏时读取，设置 `Tile.COLOR` 并让所有磁贴重画；编辑栏的选中按钮也用这个颜色。
-- **插件市场**（Plugins 磁贴，`pages/plugins.py`）：左边一列是 `manifest.CATEGORIES` 里有插件的分类（加载失败时最前面多一个 "Failed"），左下角是商店的 Refresh；右边是选中分类的列表：每个插件一行开关，标题下是版本、作者和简介，后面是商店里有、这次没加载的插件（Install）。点插件行（开关以外）打开插件页：开关、设置项、Version/Author/Category/Claims/Priority，商店下载的插件还有 Update/Remove。分类和行由 `offroad.market_sections` 生成（`offroad_pages_check.py` O12），分类未知的商店插件归到 tools。原来单独的 Store 子页已删除。
+- **插件市场**（Plugins 磁贴，`pages/plugins.py`）：左边一列是 `manifest.CATEGORIES` 里有插件的分类（加载失败时最前面多一个 "Failed"），左下角是商店的 Refresh；右边是选中分类的列表：每个插件一行开关，标题下是版本、作者和简介，后面是商店里有、这次没加载的插件（Install）。点插件行（开关以外）打开插件页：开关、设置项、Source/Version/Author/Category/Claims/Priority，商店下载的插件还有 Update/Remove。Source 说明能不能卸载：内置插件（代码在仓库里，随系统更新）只能关掉开关，不能卸载；商店插件可以 Remove。分类和行由 `offroad.market_sections` 生成（`offroad_pages_check.py` O12），分类未知的商店插件归到 tools。原来单独的 Store 子页已删除。
 - **Tesla 页**（`pages/tesla.py`）：Vehicle 组第一行是 "Car model"，打开子页选 Auto 或 sunnypilot 车型列表（`car_list.json`）里的某一款 Tesla。选车型写 `CarPlatformBundle`（`{**car_list[名字], "name": 名字}`，和 params_migration 一样），card 下次启动时把 `platform` 当作固定指纹；Auto 删除这个参数，恢复自动识别。只在停车时可用。列表由 `offroad.tesla_models` 生成（O13 检查平台都在 opendbc 里）。
 - **设置磁贴（内置）**：Status（原 Home）、Toggles、Models、Plugins、Tesla、Network、Device、Software、Developer，放在 `ui/slots/settings.py`，`show="offroad"`。`PAGE` 是 `ui/pages/` 里对应的原生页面（Models 是 `pages/models.py` 的 `ModelsPage`：当前模型和下载状态、小模型/大模型列表子页（默认模型，再按文件夹分组，收藏在前，按钮 CURRENT/QUEUED/SELECT）、取消下载、刷新列表、清除缓存；选择、刷新、清缓存只在停车时可用）。设置磁贴不再打开 mici 页面（`offroad_pages_check.py` O1 不允许 `MICI`）。
 - **详情页（WP 风格）**：整屏。左上角是返回圆钮（线画的箭头，点击区 `BACK=(0,0,140,230)`），右边小号大写的上级名（`XPILOT` 或父页面名），下面是大号小写标题；内容区 `CONTENT=(140,230,1920,850)`，由宿主按屏幕像素直接画 `ui/pages/` 里的原生列表页（tici 的 `list_view`/`scroller_tici` 控件）。页面打开的子页（如 Plugins 的插件页、Tesla 的 Car model）压栈，返回一层层退回，退到底回到磁贴屏。
