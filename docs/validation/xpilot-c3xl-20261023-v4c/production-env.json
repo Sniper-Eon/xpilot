@@ -1,0 +1,8 @@
+{
+  "pid": 193461,
+  "cwd": "/data/xpilot-install-20261022/candidate/openpilot/system/manager",
+  "cmdline": [
+    "openpilot.selfdrive.ui.ui"
+  ],
+  "selected_environment": {}
+}

@@ -1,0 +1,3 @@
+ openpilot/tesla/ui/pages/device.py   | 7 +++++--
+ openpilot/tesla/ui/pages/training.py | 8 ++++++--
+ 2 files changed, 11 insertions(+), 4 deletions(-)

@@ -1,0 +1,8 @@
+{
+  "utc": "2026-10-23T04:49:56.796476+00:00",
+  "before_restore_exists": true,
+  "before_restore_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+  "restored": false,
+  "final_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+  "matches_initial": true
+}

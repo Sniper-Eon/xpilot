@@ -1,0 +1,13 @@
+{
+  "passed": true,
+  "source_head": "25e9eeb2969a24fc2bb7b6c2ae4d571ea257f191",
+  "png_count": 22,
+  "maximum_png_bytes": 314500,
+  "dirty_files_unchanged": 287,
+  "params_and_layout_unchanged": true,
+  "perf_recomputed_from_raw_samples": true,
+  "original_e2e_script_unchanged": true,
+  "panda_version_signature_match": true,
+  "panda_safety_diff_empty": true,
+  "scope": "artifact integrity and raw metric recomputation; not additional product tests"
+}

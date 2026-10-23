@@ -1,0 +1,37 @@
+{
+  "passed": true,
+  "head": "25e9eeb2969a24fc2bb7b6c2ae4d571ea257f191",
+  "errors": [],
+  "driver_camera_visible": false,
+  "regulatory_visible": false,
+  "training_step_after_next": 0,
+  "returned_to_device": true,
+  "before_sha256": {
+    "/data/params/d/IsDriverViewEnabled": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+    "/data/params/d/CompletedTrainingVersion": "911fc0c48cb0c70601db5775a9bef1b740dc4cc9f9b46389b9f0563fe7eb94d7",
+    "/data/params/d/RecordFront": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+    "/data/xpilot_plugins/.params/XpilotTileLayout": "bbfa8eb72310ee2e77e8322de689f69e969fbdb599f69695ce6600b0c3749034"
+  },
+  "after_sha256": {
+    "/data/params/d/IsDriverViewEnabled": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+    "/data/params/d/CompletedTrainingVersion": "911fc0c48cb0c70601db5775a9bef1b740dc4cc9f9b46389b9f0563fe7eb94d7",
+    "/data/params/d/RecordFront": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+    "/data/xpilot_plugins/.params/XpilotTileLayout": "bbfa8eb72310ee2e77e8322de689f69e969fbdb599f69695ce6600b0c3749034"
+  },
+  "touches": [
+    {
+      "screen_xy": [
+        949.0,
+        147.0
+      ],
+      "monotonic": 17407.874482369
+    },
+    {
+      "screen_xy": [
+        1650.0,
+        945.0
+      ],
+      "monotonic": 17409.572419994
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+"""Failures: wrong host/path/profile/head; missing/stale services; started/engaged;
+Panda controls or faults; missing Panda; dirty-file overlap; preservation drift.
+Read-only gate plus reproducible identity/content snapshot; no input injection.
+"""
+import hashlib, json, socket, subprocess, time
+from pathlib import Path
+from openpilot.common.params import Params
+from openpilot.cereal import messaging
+p=Params()
+assert socket.gethostname()=='comma-9c13c9f5'
+assert Path('/data/hardware_profile').read_text().strip()=='c3xl'
+assert Path('/data/openpilot').resolve()==Path('/data/xpilot-install-20261022/candidate')
+sm=messaging.SubMaster(['deviceState','pandaStates','managerState','uiDebug'])
+rows=[]
+end=time.monotonic()+5
+while time.monotonic()<end:
+ sm.update(100)
+ assert p.get_bool('IsOffroad') and not p.get_bool('IsEngaged')
+ if sm.seen['deviceState']: assert not sm['deviceState'].started
+ if sm.updated['pandaStates']:
+  row=[{'controlsAllowed':a.controlsAllowed,'faultStatus':str(a.faultStatus),'pandaType':str(a.pandaType)} for a in sm['pandaStates']]
+  assert row and all(not a['controlsAllowed'] and a['faultStatus']=='none' for a in row)
+  rows.append(row)
+assert rows and all(sm.alive.values())
+def file(path):
+ q=Path(path)
+ return {'exists':q.exists(),'size':q.stat().st_size if q.exists() else None,'sha256':hashlib.sha256(q.read_bytes()).hexdigest() if q.is_file() else None}
+git=lambda *a: subprocess.check_output(['git',*a],text=True).strip()
+dirty=subprocess.check_output(['git','ls-files','-m','-o','--exclude-standard','-z']).decode().strip('\0').split('\0')
+keys=('DoReboot','DoShutdown','DoUninstall','HasAcceptedTerms','HasAcceptedTermsSP','CompletedTrainingVersion','IsDriverViewEnabled','CalibrationParams','LiveTorqueParameters','LiveParametersV2','LiveDelay','InteractivityTimeout','RecordFront')
+print(json.dumps({'hostname':socket.gethostname(),'head':git('rev-parse','HEAD'),'branch':git('branch','--show-current'),'remote':git('remote','get-url','origin'),'active_path':str(Path('/data/openpilot').resolve()),'IsOffroad':p.get_bool('IsOffroad'),'IsEngaged':p.get_bool('IsEngaged'),'started':sm['deviceState'].started,'service':subprocess.check_output(['systemctl','is-active','comma'],text=True).strip(),'alive':dict(sm.alive),'valid':dict(sm.valid),'panda_samples':rows,'processes':[{'name':a.name,'running':a.running,'pid':a.pid,'exitCode':a.exitCode} for a in sm['managerState'].processes],'layout':file('/data/xpilot_plugins/.params/XpilotTileLayout'),'protected_params':{k:file('/data/params/d/'+k) for k in keys},'dirty_files':{a:file(a) for a in dirty if a},'e2e_script':file('tools/sp_tesla_e2e/big_screen_e2e.py')},indent=2))

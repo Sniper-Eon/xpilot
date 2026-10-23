@@ -1,0 +1,6 @@
+kj/filesystem-disk-unix.c++:1734: warning: PWD environment variable doesn't match current directory; pwd = /data/openpilot
+Traceback (most recent call last):
+  File "/data/xpilot-ui-check-v4c-evidence/gate.py", line 24, in <module>
+    assert rows and all(sm.alive.values())
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError

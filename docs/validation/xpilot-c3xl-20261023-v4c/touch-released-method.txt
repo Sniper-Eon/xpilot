@@ -1,0 +1,16 @@
+"""Read-only receipt for unreleased slots or BTN_TOUCH after the corner taps."""
+import array,fcntl,json,os,struct
+from pathlib import Path
+fd=os.open('/dev/input/event2',os.O_RDONLY)
+assert Path('/sys/class/input/event2/device/name').read_text().strip()=='Samsung Touchscreen'
+slot=struct.unpack('6i',fcntl.ioctl(fd,0x8018456f,bytes(24)))
+n=slot[2]+1
+slots=array.array('i',[0x39]+[0]*n)
+fcntl.ioctl(fd,(2<<30)|((n+1)*4<<16)|(ord('E')<<8)|0x0a,slots,True)
+keys=fcntl.ioctl(fd,0x80604518,bytes(96))
+pressed=bool(keys[330//8]&(1<<(330%8)))
+os.close(fd)
+r={'tracking_ids':list(slots)[1:],'BTN_TOUCH':pressed,'passed':not pressed and all(s==-1 for s in slots[1:])}
+Path('/data/xpilot-ui-check-v4c-evidence/touch-released.json').write_text(json.dumps(r,indent=2)+'\n')
+print(json.dumps(r,indent=2))
+assert r['passed']

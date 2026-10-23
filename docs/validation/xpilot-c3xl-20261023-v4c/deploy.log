@@ -1,0 +1,158 @@
+kj/filesystem-disk-unix.c++:1734: warning: PWD environment variable doesn't match current directory; pwd = /data/openpilot
+/data/xpilot-install-20261022/xpilot-20261023-v4c.bundle is okay
+The bundle contains this ref:
+25e9eeb2969a24fc2bb7b6c2ae4d571ea257f191 refs/remotes/origin/xpilot
+The bundle requires this ref:
+00f7924ca05272103dd7cd2063cd5c66d1767b87 
+The bundle uses this hash algorithm: sha1
+kj/filesystem-disk-unix.c++:1734: warning: PWD environment variable doesn't match current directory; pwd = /data/openpilot
+From /data/xpilot-install-20261022/xpilot-20261023-v4c.bundle
+   00f7924..25e9eeb  origin/xpilot -> origin/xpilot
+Updating 00f7924..25e9eeb
+Fast-forward
+ .../xpilot-c3xl-20261023-v4b/.gitattributes        |    1 +
+ .../InteractivityTimeout.before                    |    1 +
+ docs/validation/xpilot-c3xl-20261023-v4b/REPORT.md |  266 +++
+ .../validation/xpilot-c3xl-20261023-v4b/SHA256SUMS |   67 +
+ .../XpilotTileLayout.user-final                    |    1 +
+ .../xpilot-c3xl-20261023-v4b/add-tiles.png         |  Bin 0 -> 131084 bytes
+ .../after-e2e-initial.json                         | 2054 ++++++++++++++++++
+ .../xpilot-c3xl-20261023-v4b/after-e2e.json        | 2187 ++++++++++++++++++++
+ .../xpilot-c3xl-20261023-v4b/artifacts.json        |  217 ++
+ .../xpilot-c3xl-20261023-v4b/before.json           | 2180 +++++++++++++++++++
+ docs/validation/xpilot-c3xl-20261023-v4b/build.log |  661 ++++++
+ .../xpilot-c3xl-20261023-v4b/deploy-method.txt     |   16 +
+ .../validation/xpilot-c3xl-20261023-v4b/deploy.log |  128 ++
+ .../driver-view-restoration.json                   |   23 +
+ .../xpilot-c3xl-20261023-v4b/e2e-exit-code.txt     |    1 +
+ .../xpilot-c3xl-20261023-v4b/e2e-run-method.txt    |   11 +
+ docs/validation/xpilot-c3xl-20261023-v4b/e2e.log   |  333 +++
+ .../xpilot-c3xl-20261023-v4b/edit-drive-moved.png  |  Bin 0 -> 171859 bytes
+ .../xpilot-c3xl-20261023-v4b/edit-drive.png        |  Bin 0 -> 164695 bytes
+ .../xpilot-c3xl-20261023-v4b/edit-resized.png      |  Bin 0 -> 266635 bytes
+ docs/validation/xpilot-c3xl-20261023-v4b/edit.png  |  Bin 0 -> 261889 bytes
+ .../final-check-method.txt                         |   25 +
+ .../final-preservation-attempt1.json               |  112 +
+ .../final-preservation.json                        |  112 +
+ .../xpilot-c3xl-20261023-v4b/final-runtime.json    | 1979 ++++++++++++++++++
+ .../xpilot-c3xl-20261023-v4b/gate-method.txt       |   31 +
+ .../xpilot-c3xl-20261023-v4b/log-end.json          |    1 +
+ .../xpilot-c3xl-20261023-v4b/log-start.json        |    1 +
+ .../xpilot-c3xl-20261023-v4b/onboarding.png        |  Bin 0 -> 249748 bytes
+ .../xpilot-c3xl-20261023-v4b/onroad-blindspot.png  |  Bin 0 -> 310631 bytes
+ .../xpilot-c3xl-20261023-v4b/page-developer.png    |  Bin 0 -> 213219 bytes
+ .../page-device-driver-camera.png                  |  Bin 0 -> 141753 bytes
+ .../xpilot-c3xl-20261023-v4b/page-device-terms.png |  Bin 0 -> 163298 bytes
+ .../page-device-training-guide.png                 |  Bin 0 -> 304483 bytes
+ .../xpilot-c3xl-20261023-v4b/page-device.png       |  Bin 0 -> 234097 bytes
+ .../xpilot-c3xl-20261023-v4b/page-models.png       |  Bin 0 -> 284735 bytes
+ .../xpilot-c3xl-20261023-v4b/page-network.png      |  Bin 0 -> 151794 bytes
+ .../page-plugins-store.png                         |  Bin 0 -> 138508 bytes
+ .../xpilot-c3xl-20261023-v4b/page-plugins.png      |  Bin 0 -> 227358 bytes
+ .../xpilot-c3xl-20261023-v4b/page-software.png     |  Bin 0 -> 241288 bytes
+ .../xpilot-c3xl-20261023-v4b/page-status.png       |  Bin 0 -> 189850 bytes
+ .../xpilot-c3xl-20261023-v4b/page-tesla.png        |  Bin 0 -> 221333 bytes
+ .../xpilot-c3xl-20261023-v4b/page-toggles.png      |  Bin 0 -> 228690 bytes
+ .../panda-attempt1-error.txt                       |    6 +
+ .../xpilot-c3xl-20261023-v4b/panda-post-build.json |   45 +
+ .../xpilot-c3xl-20261023-v4b/panda-pre.json        |   45 +
+ .../xpilot-c3xl-20261023-v4b/panda-read-method.txt |   25 +
+ .../xpilot-c3xl-20261023-v4b/panda-safety.diffstat |    0
+ .../perf-attempt1-samples.json                     |    1 +
+ .../xpilot-c3xl-20261023-v4b/perf-attempt1.log     |    6 +
+ .../xpilot-c3xl-20261023-v4b/perf-failure.json     |   18 +
+ .../xpilot-c3xl-20261023-v4b/perf-method.txt       |   67 +
+ .../xpilot-c3xl-20261023-v4b/perf-run-method.txt   |   11 +
+ .../xpilot-c3xl-20261023-v4b/pre-e2e-gate.json     | 2187 ++++++++++++++++++++
+ .../xpilot-c3xl-20261023-v4b/pre-perf-gate.json    | 2187 ++++++++++++++++++++
+ .../xpilot-c3xl-20261023-v4b/pre-stop-gate.json    | 2187 ++++++++++++++++++++
+ .../xpilot-c3xl-20261023-v4b/production-env.json   |   13 +
+ .../xpilot-c3xl-20261023-v4b/production-gate.json  | 2187 ++++++++++++++++++++
+ .../production-runtime.json                        | 1979 ++++++++++++++++++
+ .../production-startup.log                         |  191 ++
+ .../xpilot-c3xl-20261023-v4b/restored-startup.log  |  530 +++++
+ .../xpilot-c3xl-20261023-v4b/result.json           |  317 +++
+ .../xpilot-c3xl-20261023-v4b/runtime-method.txt    |   15 +
+ .../xpilot-c3xl-20261023-v4b/source.diffstat       |   58 +
+ docs/validation/xpilot-c3xl-20261023-v4b/start.png |  Bin 0 -> 251938 bytes
+ .../xpilot-c3xl-20261023-v4b/timeout-method.txt    |   21 +
+ .../xpilot-c3xl-20261023-v4b/timeout.log           |    2 +
+ .../validation/xpilot-c3xl-20261023-v4b/ui-60s.log |  127 ++
+ openpilot/tesla/ui/pages/device.py                 |    7 +-
+ openpilot/tesla/ui/pages/training.py               |    8 +-
+ 70 files changed, 22644 insertions(+), 4 deletions(-)
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4b/.gitattributes
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4b/InteractivityTimeout.before
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4b/REPORT.md
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4b/SHA256SUMS
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4b/XpilotTileLayout.user-final
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4b/add-tiles.png
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4b/after-e2e-initial.json
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4b/after-e2e.json
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4b/artifacts.json
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4b/before.json
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4b/build.log
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4b/deploy-method.txt
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4b/deploy.log
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4b/driver-view-restoration.json
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4b/e2e-exit-code.txt
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4b/e2e-run-method.txt
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4b/e2e.log
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4b/edit-drive-moved.png
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4b/edit-drive.png
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4b/edit-resized.png
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4b/edit.png
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4b/final-check-method.txt
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4b/final-preservation-attempt1.json
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4b/final-preservation.json
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4b/final-runtime.json
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4b/gate-method.txt
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4b/log-end.json
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4b/log-start.json
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4b/onboarding.png
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4b/onroad-blindspot.png
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4b/page-developer.png
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4b/page-device-driver-camera.png
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4b/page-device-terms.png
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4b/page-device-training-guide.png
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4b/page-device.png
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4b/page-models.png
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4b/page-network.png
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4b/page-plugins-store.png
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4b/page-plugins.png
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4b/page-software.png
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4b/page-status.png
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4b/page-tesla.png
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4b/page-toggles.png
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4b/panda-attempt1-error.txt
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4b/panda-post-build.json
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4b/panda-pre.json
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4b/panda-read-method.txt
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4b/panda-safety.diffstat
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4b/perf-attempt1-samples.json
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4b/perf-attempt1.log
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4b/perf-failure.json
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4b/perf-method.txt
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4b/perf-run-method.txt
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4b/pre-e2e-gate.json
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4b/pre-perf-gate.json
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4b/pre-stop-gate.json
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4b/production-env.json
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4b/production-gate.json
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4b/production-runtime.json
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4b/production-startup.log
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4b/restored-startup.log
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4b/result.json
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4b/runtime-method.txt
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4b/source.diffstat
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4b/start.png
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4b/timeout-method.txt
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4b/timeout.log
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4b/ui-60s.log
+kj/filesystem-disk-unix.c++:1734: warning: PWD environment variable doesn't match current directory; pwd = /data/openpilot
+25e9eeb2969a24fc2bb7b6c2ae4d571ea257f191
+Building compilation database compile_commands.json
+scons: done building targets.
+real 12.90
+user 11.42
+sys 1.51

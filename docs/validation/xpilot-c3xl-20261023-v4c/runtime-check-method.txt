@@ -1,0 +1,15 @@
+import json,time,subprocess
+from pathlib import Path
+from openpilot.cereal import messaging
+sm=messaging.SubMaster(['deviceState','pandaStates','managerState','peripheralState','uiDebug'])
+rows=[]
+end=time.monotonic()+15
+while time.monotonic()<end:
+ sm.update(1000)
+ if sm.updated['pandaStates']:
+  rows.append({'faults':[str(p.faultStatus) for p in sm['pandaStates']], 'controls_allowed':[p.controlsAllowed for p in sm['pandaStates']], 'types':[str(p.pandaType) for p in sm['pandaStates']]})
+result={'head':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),'active_path':str(Path('/data/openpilot').resolve()),'alive':dict(sm.alive),'valid':dict(sm.valid),'started':sm['deviceState'].started,'processes':[{'name':p.name,'running':p.running,'pid':p.pid,'exitCode':p.exitCode} for p in sm['managerState'].processes], 'panda_samples':rows}
+result['passed']=bool(rows) and all(sm.alive.values()) and all(r['faults'] and all(f=='none' for f in r['faults']) and not any(r['controls_allowed']) for r in rows) and any(p['name']=='ui' and p['running'] for p in result['processes'])
+Path('/data/xpilot-ui-check-v4c-evidence/runtime-check.json').write_text(json.dumps(result,indent=2))
+print(json.dumps(result,indent=2))
+assert result['passed']

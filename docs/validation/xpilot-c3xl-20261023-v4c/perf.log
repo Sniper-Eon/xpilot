@@ -1,0 +1,42 @@
+kj/filesystem-disk-unix.c++:1734: warning: PWD environment variable doesn't match current directory; pwd = /data/openpilot
+{
+  "head": "25e9eeb2969a24fc2bb7b6c2ae4d571ea257f191",
+  "duration_seconds": 30.00506329700147,
+  "ui_pid": 190774,
+  "process_cpu_percent": 23.296068169596364,
+  "started": false,
+  "frame_samples": 1742,
+  "frame_time_ms": {
+    "avg": 17.200258263764233,
+    "median": 17.197128295898438,
+    "p95": 17.229191875457765,
+    "p99": 17.249255867004393,
+    "max": 17.270540237426758
+  },
+  "frame_cpu_ms": {
+    "avg": 1.5138373958667575,
+    "median": 1.436058521270752,
+    "p95": 1.886937814950943,
+    "p99": 2.2083351469039916,
+    "max": 3.1630170345306396
+  },
+  "over_20ms": 0,
+  "over_33_3ms": 0,
+  "over_100ms": 0,
+  "uiDebug_valid_samples": 0,
+  "panda_samples": 300,
+  "ui_ticks_delta": 699,
+  "clock_ticks_per_second": 100,
+  "wake_touches_seconds": [
+    -0.23114179599724594,
+    10.058436713999981,
+    20.064788108000357
+  ],
+  "wake_touch_raw_xy": [
+    10,
+    10
+  ],
+  "first_frame_seconds": 0.00886731400169083,
+  "last_frame_seconds": 30.005039494000812,
+  "maximum_sample_gap_seconds": 0.06656912399921566
+}

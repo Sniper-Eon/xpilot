@@ -1,0 +1,71 @@
+ .../xpilot-c3xl-20261023-v4b/.gitattributes        |    1 +
+ .../InteractivityTimeout.before                    |    1 +
+ docs/validation/xpilot-c3xl-20261023-v4b/REPORT.md |  266 +++
+ .../validation/xpilot-c3xl-20261023-v4b/SHA256SUMS |   67 +
+ .../XpilotTileLayout.user-final                    |    1 +
+ .../xpilot-c3xl-20261023-v4b/add-tiles.png         |  Bin 0 -> 131084 bytes
+ .../after-e2e-initial.json                         | 2054 ++++++++++++++++++
+ .../xpilot-c3xl-20261023-v4b/after-e2e.json        | 2187 ++++++++++++++++++++
+ .../xpilot-c3xl-20261023-v4b/artifacts.json        |  217 ++
+ .../xpilot-c3xl-20261023-v4b/before.json           | 2180 +++++++++++++++++++
+ docs/validation/xpilot-c3xl-20261023-v4b/build.log |  661 ++++++
+ .../xpilot-c3xl-20261023-v4b/deploy-method.txt     |   16 +
+ .../validation/xpilot-c3xl-20261023-v4b/deploy.log |  128 ++
+ .../driver-view-restoration.json                   |   23 +
+ .../xpilot-c3xl-20261023-v4b/e2e-exit-code.txt     |    1 +
+ .../xpilot-c3xl-20261023-v4b/e2e-run-method.txt    |   11 +
+ docs/validation/xpilot-c3xl-20261023-v4b/e2e.log   |  333 +++
+ .../xpilot-c3xl-20261023-v4b/edit-drive-moved.png  |  Bin 0 -> 171859 bytes
+ .../xpilot-c3xl-20261023-v4b/edit-drive.png        |  Bin 0 -> 164695 bytes
+ .../xpilot-c3xl-20261023-v4b/edit-resized.png      |  Bin 0 -> 266635 bytes
+ docs/validation/xpilot-c3xl-20261023-v4b/edit.png  |  Bin 0 -> 261889 bytes
+ .../final-check-method.txt                         |   25 +
+ .../final-preservation-attempt1.json               |  112 +
+ .../final-preservation.json                        |  112 +
+ .../xpilot-c3xl-20261023-v4b/final-runtime.json    | 1979 ++++++++++++++++++
+ .../xpilot-c3xl-20261023-v4b/gate-method.txt       |   31 +
+ .../xpilot-c3xl-20261023-v4b/log-end.json          |    1 +
+ .../xpilot-c3xl-20261023-v4b/log-start.json        |    1 +
+ .../xpilot-c3xl-20261023-v4b/onboarding.png        |  Bin 0 -> 249748 bytes
+ .../xpilot-c3xl-20261023-v4b/onroad-blindspot.png  |  Bin 0 -> 310631 bytes
+ .../xpilot-c3xl-20261023-v4b/page-developer.png    |  Bin 0 -> 213219 bytes
+ .../page-device-driver-camera.png                  |  Bin 0 -> 141753 bytes
+ .../xpilot-c3xl-20261023-v4b/page-device-terms.png |  Bin 0 -> 163298 bytes
+ .../page-device-training-guide.png                 |  Bin 0 -> 304483 bytes
+ .../xpilot-c3xl-20261023-v4b/page-device.png       |  Bin 0 -> 234097 bytes
+ .../xpilot-c3xl-20261023-v4b/page-models.png       |  Bin 0 -> 284735 bytes
+ .../xpilot-c3xl-20261023-v4b/page-network.png      |  Bin 0 -> 151794 bytes
+ .../page-plugins-store.png                         |  Bin 0 -> 138508 bytes
+ .../xpilot-c3xl-20261023-v4b/page-plugins.png      |  Bin 0 -> 227358 bytes
+ .../xpilot-c3xl-20261023-v4b/page-software.png     |  Bin 0 -> 241288 bytes
+ .../xpilot-c3xl-20261023-v4b/page-status.png       |  Bin 0 -> 189850 bytes
+ .../xpilot-c3xl-20261023-v4b/page-tesla.png        |  Bin 0 -> 221333 bytes
+ .../xpilot-c3xl-20261023-v4b/page-toggles.png      |  Bin 0 -> 228690 bytes
+ .../panda-attempt1-error.txt                       |    6 +
+ .../xpilot-c3xl-20261023-v4b/panda-post-build.json |   45 +
+ .../xpilot-c3xl-20261023-v4b/panda-pre.json        |   45 +
+ .../xpilot-c3xl-20261023-v4b/panda-read-method.txt |   25 +
+ .../xpilot-c3xl-20261023-v4b/panda-safety.diffstat |    0
+ .../perf-attempt1-samples.json                     |    1 +
+ .../xpilot-c3xl-20261023-v4b/perf-attempt1.log     |    6 +
+ .../xpilot-c3xl-20261023-v4b/perf-failure.json     |   18 +
+ .../xpilot-c3xl-20261023-v4b/perf-method.txt       |   67 +
+ .../xpilot-c3xl-20261023-v4b/perf-run-method.txt   |   11 +
+ .../xpilot-c3xl-20261023-v4b/pre-e2e-gate.json     | 2187 ++++++++++++++++++++
+ .../xpilot-c3xl-20261023-v4b/pre-perf-gate.json    | 2187 ++++++++++++++++++++
+ .../xpilot-c3xl-20261023-v4b/pre-stop-gate.json    | 2187 ++++++++++++++++++++
+ .../xpilot-c3xl-20261023-v4b/production-env.json   |   13 +
+ .../xpilot-c3xl-20261023-v4b/production-gate.json  | 2187 ++++++++++++++++++++
+ .../production-runtime.json                        | 1979 ++++++++++++++++++
+ .../production-startup.log                         |  191 ++
+ .../xpilot-c3xl-20261023-v4b/restored-startup.log  |  530 +++++
+ .../xpilot-c3xl-20261023-v4b/result.json           |  317 +++
+ .../xpilot-c3xl-20261023-v4b/runtime-method.txt    |   15 +
+ .../xpilot-c3xl-20261023-v4b/source.diffstat       |   58 +
+ docs/validation/xpilot-c3xl-20261023-v4b/start.png |  Bin 0 -> 251938 bytes
+ .../xpilot-c3xl-20261023-v4b/timeout-method.txt    |   21 +
+ .../xpilot-c3xl-20261023-v4b/timeout.log           |    2 +
+ .../validation/xpilot-c3xl-20261023-v4b/ui-60s.log |  127 ++
+ openpilot/tesla/ui/pages/device.py                 |    7 +-
+ openpilot/tesla/ui/pages/training.py               |    8 +-
+ 70 files changed, 22644 insertions(+), 4 deletions(-)

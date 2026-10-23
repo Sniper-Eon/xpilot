@@ -1,0 +1,25 @@
+set -e
+export PATH=/usr/local/venv/bin:/usr/local/bin:/usr/bin:/bin
+export PYTHONPATH=/data/openpilot:/data/openpilot/opendbc_repo:/data/openpilot/msgq_repo:/data/openpilot/tinygrad_repo:/data/openpilot/rednose_repo
+cd /data/openpilot
+python3 /data/xpilot-ui-check-v4c-evidence/gate.py > /data/xpilot-ui-check-v4c-evidence/production-gate.json
+tmux capture-pane -p -S -600 -t comma:0.0 > /data/xpilot-ui-check-v4c-evidence/production-startup.log
+test "$(tmux display-message -p -t comma:0.0 '#{pane_pipe}')" = 0
+tmux pipe-pane -t comma:0.0 'cat >> /data/xpilot-ui-check-v4c-ui-60s.log'
+trap 'tmux pipe-pane -t comma:0.0' EXIT
+python3 - <<'PY'
+import datetime,json,time
+from pathlib import Path
+root=Path('/data/xpilot-ui-check-v4c-evidence')
+a=time.monotonic()
+(root/'log-start.json').write_text(json.dumps({'monotonic':a,'utc':datetime.datetime.now(datetime.timezone.utc).isoformat()})+'\n')
+time.sleep(30)
+time.sleep(30)
+b=time.monotonic()
+(root/'log-end.json').write_text(json.dumps({'monotonic':b,'elapsed':b-a,'utc':datetime.datetime.now(datetime.timezone.utc).isoformat()})+'\n')
+PY
+tmux pipe-pane -t comma:0.0
+trap - EXIT
+python3 /data/xpilot-ui-check-v4c-evidence/runtime-check.py > /data/xpilot-ui-check-v4c-evidence/production-runtime.json
+python3 /data/xpilot-ui-check-v4c-evidence/gate.py > /data/xpilot-ui-check-v4c-evidence/pre-perf-gate.json
+python3 /data/xpilot-ui-check-v4c-evidence/perf.py > /data/xpilot-ui-check-v4c-perf.log 2>&1

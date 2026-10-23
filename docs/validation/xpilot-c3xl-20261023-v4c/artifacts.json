@@ -1,0 +1,288 @@
+[
+  {
+    "name": "add-tiles.png",
+    "device_original": "/data/xpilot-ui-check-v4c/add-tiles.png",
+    "host_original": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/validation-X-20261023-U3/xpilot-ui-check-v4c/add-tiles.png",
+    "repository_copy": "docs/validation/xpilot-c3xl-20261023-v4c/add-tiles.png",
+    "size": 131084,
+    "dimensions": [
+      2160,
+      1080
+    ],
+    "sha256": "087b3aa5d2ffbf4144b2143291bc75b80399e363018203617fe4c3ee1e80031a",
+    "transformation": "none; byte-identical"
+  },
+  {
+    "name": "edit-drive-moved.png",
+    "device_original": "/data/xpilot-ui-check-v4c/edit-drive-moved.png",
+    "host_original": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/validation-X-20261023-U3/xpilot-ui-check-v4c/edit-drive-moved.png",
+    "repository_copy": "docs/validation/xpilot-c3xl-20261023-v4c/edit-drive-moved.png",
+    "size": 171859,
+    "dimensions": [
+      2160,
+      1080
+    ],
+    "sha256": "89568f604354d95b654b7567cc5c3ac3aa7e48e22b2cdc4f12d2292abc2c9508",
+    "transformation": "none; byte-identical"
+  },
+  {
+    "name": "edit-drive.png",
+    "device_original": "/data/xpilot-ui-check-v4c/edit-drive.png",
+    "host_original": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/validation-X-20261023-U3/xpilot-ui-check-v4c/edit-drive.png",
+    "repository_copy": "docs/validation/xpilot-c3xl-20261023-v4c/edit-drive.png",
+    "size": 164695,
+    "dimensions": [
+      2160,
+      1080
+    ],
+    "sha256": "5671fe38d4378a968d0c9a5880ed7481c952202d517718a392bf3240e5635f4c",
+    "transformation": "none; byte-identical"
+  },
+  {
+    "name": "edit-resized.png",
+    "device_original": "/data/xpilot-ui-check-v4c/edit-resized.png",
+    "host_original": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/validation-X-20261023-U3/xpilot-ui-check-v4c/edit-resized.png",
+    "repository_copy": "docs/validation/xpilot-c3xl-20261023-v4c/edit-resized.png",
+    "size": 266635,
+    "dimensions": [
+      2160,
+      1080
+    ],
+    "sha256": "63859fb2b3f503467c2fcd7bdb44da3efc216688726044af89dcc8eb5212a052",
+    "transformation": "none; byte-identical"
+  },
+  {
+    "name": "edit.png",
+    "device_original": "/data/xpilot-ui-check-v4c/edit.png",
+    "host_original": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/validation-X-20261023-U3/xpilot-ui-check-v4c/edit.png",
+    "repository_copy": "docs/validation/xpilot-c3xl-20261023-v4c/edit.png",
+    "size": 261889,
+    "dimensions": [
+      2160,
+      1080
+    ],
+    "sha256": "820e910349441a1b05b0b5bedfbf88a972dc48b3b73b2827b8a4618ceb264c11",
+    "transformation": "none; byte-identical"
+  },
+  {
+    "name": "onboarding.png",
+    "device_original": "/data/xpilot-ui-check-v4c/onboarding.png",
+    "host_original": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/validation-X-20261023-U3/xpilot-ui-check-v4c/onboarding.png",
+    "repository_copy": "docs/validation/xpilot-c3xl-20261023-v4c/onboarding.png",
+    "size": 249748,
+    "dimensions": [
+      2160,
+      1080
+    ],
+    "sha256": "e7c150cd45d3c184eec74cb99e23e801c7299e352800b8c2d1c115c4003787e7",
+    "transformation": "none; byte-identical"
+  },
+  {
+    "name": "onroad-blindspot.png",
+    "device_original": "/data/xpilot-ui-check-v4c/onroad-blindspot.png",
+    "host_original": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/validation-X-20261023-U3/xpilot-ui-check-v4c/onroad-blindspot.png",
+    "repository_copy": "docs/validation/xpilot-c3xl-20261023-v4c/onroad-blindspot.png",
+    "size": 314500,
+    "dimensions": [
+      2160,
+      1080
+    ],
+    "sha256": "d0ff6513a10175871f981170bb4362d80f9fd787a14b55d0f1d4b6d7319972da",
+    "transformation": "none; byte-identical"
+  },
+  {
+    "name": "page-developer.png",
+    "device_original": "/data/xpilot-ui-check-v4c/page-developer.png",
+    "host_original": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/validation-X-20261023-U3/xpilot-ui-check-v4c/page-developer.png",
+    "repository_copy": "docs/validation/xpilot-c3xl-20261023-v4c/page-developer.png",
+    "size": 213219,
+    "dimensions": [
+      2160,
+      1080
+    ],
+    "sha256": "077bdef348d76b88bffe10288b70960585c130f29917cf3e2858609bf6b5f7bf",
+    "transformation": "none; byte-identical"
+  },
+  {
+    "name": "page-device-terms.png",
+    "device_original": "/data/xpilot-ui-check-v4c/page-device-terms.png",
+    "host_original": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/validation-X-20261023-U3/xpilot-ui-check-v4c/page-device-terms.png",
+    "repository_copy": "docs/validation/xpilot-c3xl-20261023-v4c/page-device-terms.png",
+    "size": 163298,
+    "dimensions": [
+      2160,
+      1080
+    ],
+    "sha256": "808b0a26e275d1460b5e00c6ab1497710e7a52365362ee880f5446c24a33a3f1",
+    "transformation": "none; byte-identical"
+  },
+  {
+    "name": "page-device-training-guide.png",
+    "device_original": "/data/xpilot-ui-check-v4c/page-device-training-guide.png",
+    "host_original": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/validation-X-20261023-U3/xpilot-ui-check-v4c/page-device-training-guide.png",
+    "repository_copy": "docs/validation/xpilot-c3xl-20261023-v4c/page-device-training-guide.png",
+    "size": 304483,
+    "dimensions": [
+      2160,
+      1080
+    ],
+    "sha256": "f9b475f004dcdcc9a1115121474514705b5d1e205805141f51a79f43e6cd4d1f",
+    "transformation": "none; byte-identical"
+  },
+  {
+    "name": "page-device.png",
+    "device_original": "/data/xpilot-ui-check-v4c/page-device.png",
+    "host_original": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/validation-X-20261023-U3/xpilot-ui-check-v4c/page-device.png",
+    "repository_copy": "docs/validation/xpilot-c3xl-20261023-v4c/page-device.png",
+    "size": 228865,
+    "dimensions": [
+      2160,
+      1080
+    ],
+    "sha256": "eacbf31b65f3d7695d51b3b32618fd60d3630812936e1e5dd3eb96906c569679",
+    "transformation": "none; byte-identical"
+  },
+  {
+    "name": "page-models.png",
+    "device_original": "/data/xpilot-ui-check-v4c/page-models.png",
+    "host_original": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/validation-X-20261023-U3/xpilot-ui-check-v4c/page-models.png",
+    "repository_copy": "docs/validation/xpilot-c3xl-20261023-v4c/page-models.png",
+    "size": 284735,
+    "dimensions": [
+      2160,
+      1080
+    ],
+    "sha256": "2a3a36253233c7272696ed089ceaad775456766c94ddb24fcae4caeca9628704",
+    "transformation": "none; byte-identical"
+  },
+  {
+    "name": "page-network.png",
+    "device_original": "/data/xpilot-ui-check-v4c/page-network.png",
+    "host_original": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/validation-X-20261023-U3/xpilot-ui-check-v4c/page-network.png",
+    "repository_copy": "docs/validation/xpilot-c3xl-20261023-v4c/page-network.png",
+    "size": 151794,
+    "dimensions": [
+      2160,
+      1080
+    ],
+    "sha256": "0ab461b0f60060885d453bf77e7b1396b546097b941773b374d3279cf56c7a20",
+    "transformation": "none; byte-identical"
+  },
+  {
+    "name": "page-plugins-store.png",
+    "device_original": "/data/xpilot-ui-check-v4c/page-plugins-store.png",
+    "host_original": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/validation-X-20261023-U3/xpilot-ui-check-v4c/page-plugins-store.png",
+    "repository_copy": "docs/validation/xpilot-c3xl-20261023-v4c/page-plugins-store.png",
+    "size": 138508,
+    "dimensions": [
+      2160,
+      1080
+    ],
+    "sha256": "c4f767aa95b60cbad668997877d5ee917a486e297799479274f9115f3360cc59",
+    "transformation": "none; byte-identical"
+  },
+  {
+    "name": "page-plugins.png",
+    "device_original": "/data/xpilot-ui-check-v4c/page-plugins.png",
+    "host_original": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/validation-X-20261023-U3/xpilot-ui-check-v4c/page-plugins.png",
+    "repository_copy": "docs/validation/xpilot-c3xl-20261023-v4c/page-plugins.png",
+    "size": 227358,
+    "dimensions": [
+      2160,
+      1080
+    ],
+    "sha256": "60c2ed112fce024e9e83fc572d985a1fb16e1c709df309df5497a1843f476350",
+    "transformation": "none; byte-identical"
+  },
+  {
+    "name": "page-software.png",
+    "device_original": "/data/xpilot-ui-check-v4c/page-software.png",
+    "host_original": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/validation-X-20261023-U3/xpilot-ui-check-v4c/page-software.png",
+    "repository_copy": "docs/validation/xpilot-c3xl-20261023-v4c/page-software.png",
+    "size": 241949,
+    "dimensions": [
+      2160,
+      1080
+    ],
+    "sha256": "18cb8af8ec00cf95a2a9e33668a387237254c13667f426d21c001d816bdcbfd8",
+    "transformation": "none; byte-identical"
+  },
+  {
+    "name": "page-status.png",
+    "device_original": "/data/xpilot-ui-check-v4c/page-status.png",
+    "host_original": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/validation-X-20261023-U3/xpilot-ui-check-v4c/page-status.png",
+    "repository_copy": "docs/validation/xpilot-c3xl-20261023-v4c/page-status.png",
+    "size": 190675,
+    "dimensions": [
+      2160,
+      1080
+    ],
+    "sha256": "2886542e2c7b6cba0bb19a358009a67b51923659a17175067008e0e555c31123",
+    "transformation": "none; byte-identical"
+  },
+  {
+    "name": "page-tesla.png",
+    "device_original": "/data/xpilot-ui-check-v4c/page-tesla.png",
+    "host_original": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/validation-X-20261023-U3/xpilot-ui-check-v4c/page-tesla.png",
+    "repository_copy": "docs/validation/xpilot-c3xl-20261023-v4c/page-tesla.png",
+    "size": 221333,
+    "dimensions": [
+      2160,
+      1080
+    ],
+    "sha256": "4804c18e6f4c0d5959ad1e523a852796d319d7156ba7f702c01771d9833264b6",
+    "transformation": "none; byte-identical"
+  },
+  {
+    "name": "page-toggles.png",
+    "device_original": "/data/xpilot-ui-check-v4c/page-toggles.png",
+    "host_original": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/validation-X-20261023-U3/xpilot-ui-check-v4c/page-toggles.png",
+    "repository_copy": "docs/validation/xpilot-c3xl-20261023-v4c/page-toggles.png",
+    "size": 228690,
+    "dimensions": [
+      2160,
+      1080
+    ],
+    "sha256": "6c48eeb28dd3312d33ccf8f756d71e75baba240be3396f6b7491782bd3ce4651",
+    "transformation": "none; byte-identical"
+  },
+  {
+    "name": "start.png",
+    "device_original": "/data/xpilot-ui-check-v4c/start.png",
+    "host_original": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/validation-X-20261023-U3/xpilot-ui-check-v4c/start.png",
+    "repository_copy": "docs/validation/xpilot-c3xl-20261023-v4c/start.png",
+    "size": 251938,
+    "dimensions": [
+      2160,
+      1080
+    ],
+    "sha256": "a547009278f1872763f331fc2421d4779c93ad539c4490ec9d68629a1752c75b",
+    "transformation": "none; byte-identical"
+  },
+  {
+    "name": "training-next-after.png",
+    "device_original": "/data/xpilot-ui-check-v4c-evidence/training-next-after.png",
+    "host_original": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/validation-X-20261023-U3/xpilot-ui-check-v4c-evidence/training-next-after.png",
+    "repository_copy": "docs/validation/xpilot-c3xl-20261023-v4c/training-next-after.png",
+    "size": 228865,
+    "dimensions": [
+      2160,
+      1080
+    ],
+    "sha256": "eacbf31b65f3d7695d51b3b32618fd60d3630812936e1e5dd3eb96906c569679",
+    "transformation": "none; byte-identical"
+  },
+  {
+    "name": "training-next-before.png",
+    "device_original": "/data/xpilot-ui-check-v4c-evidence/training-next-before.png",
+    "host_original": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/validation-X-20261023-U3/xpilot-ui-check-v4c-evidence/training-next-before.png",
+    "repository_copy": "docs/validation/xpilot-c3xl-20261023-v4c/training-next-before.png",
+    "size": 304483,
+    "dimensions": [
+      2160,
+      1080
+    ],
+    "sha256": "f9b475f004dcdcc9a1115121474514705b5d1e205805141f51a79f43e6cd4d1f",
+    "transformation": "none; byte-identical"
+  }
+]

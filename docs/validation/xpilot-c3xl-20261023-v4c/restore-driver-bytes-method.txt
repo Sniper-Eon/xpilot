@@ -1,0 +1,18 @@
+"""Only restore a manager-cleared false parameter's initial bytes; reject true.
+Failure modes: unexpected original value, current true, layout drift, failed readback.
+"""
+import datetime,hashlib,json
+from pathlib import Path
+from openpilot.common.params import Params
+root=Path('/data/xpilot-ui-check-v4c-evidence')
+path=Path('/data/params/d/IsDriverViewEnabled')
+raw=(root/'IsDriverViewEnabled.before').read_bytes()
+current=path.read_bytes() if path.exists() else None
+assert raw==b'0' and current in (None,b'0')
+assert Path('/data/xpilot_plugins/.params/XpilotTileLayout').read_bytes()==(root/'XpilotTileLayout.before').read_bytes()
+assert Params().get_bool('IsOffroad') and not Params().get_bool('IsEngaged')
+if current!=raw: Params().put('IsDriverViewEnabled',raw,block=True)
+result={'utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'before_restore_exists':current is not None,'before_restore_sha256':hashlib.sha256(current).hexdigest() if current is not None else None,'restored':current!=raw,'final_sha256':hashlib.sha256(path.read_bytes()).hexdigest(),'matches_initial':path.read_bytes()==raw}
+(root/'driver-view-preservation.json').write_text(json.dumps(result,indent=2)+'\n')
+print(json.dumps(result,indent=2))
+assert result['matches_initial']

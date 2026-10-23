@@ -1,0 +1,101 @@
+"""GPU E2E failure modes: wrong hardware; hidden rows visible; next enters DM,
+opens a modal or fails to return to Device; layout, driver view or training bytes
+change. Uses production pages and mapped press/release, with screenshot receipts.
+"""
+import hashlib,json,socket,subprocess,time,traceback
+from pathlib import Path
+import pyray as rl
+from openpilot.common.params import Params
+from openpilot.system.ui.lib.application import gui_app,MouseEvent,MousePos
+from openpilot.selfdrive.ui.mici.layouts.main import MiciMainLayout
+from openpilot.selfdrive.ui.ui_state import ui_state
+from openpilot.sunnypilot.hardware.profile import has_driver_camera
+from openpilot.tesla.ui import tiles
+from openpilot.tesla.ui.screen import BigScreenHost
+out=Path('/data/xpilot-ui-check-v4c-evidence')
+assert socket.gethostname()=='comma-9c13c9f5' and not has_driver_camera()
+assert Params().get_bool('IsOffroad') and not Params().get_bool('IsEngaged')
+gui_app.init_window('xpilot training next E2E',host=BigScreenHost)
+main=MiciMainLayout()
+host=gui_app.host
+original=host.render
+paths=[Path('/data/params/d')/k for k in ('IsDriverViewEnabled','CompletedTrainingVersion','RecordFront')]+[Path('/data/xpilot_plugins/.params/XpilotTileLayout')]
+def snapshot():
+ return {str(p):hashlib.sha256(p.read_bytes()).hexdigest() if p.exists() else None for p in paths}
+before=snapshot()
+errors=[]
+completed=False
+frame,next_step=0,1
+pending=[]
+sub=None
+points=[]
+def touch(x,y):
+ global pending
+ lx,ly=host.to_logical(x,y)
+ points.append({'screen_xy':[x,y],'monotonic':time.monotonic()})
+ for pressed in (True,False):
+  pending=[MouseEvent(MousePos(lx,ly),0,pressed,not pressed,pressed,time.monotonic())]
+  yield 1 if pressed else 4
+def screenshot(name):
+ target=rl.load_render_texture(2160,1080)
+ rl.begin_texture_mode(target)
+ rl.clear_background(rl.BLACK)
+ events=gui_app._mouse_events
+ gui_app._mouse_events=[]
+ original()
+ gui_app._mouse_events=events
+ rl.end_texture_mode()
+ image=rl.load_image_from_texture(target.texture)
+ rl.image_flip_vertical(image)
+ assert rl.export_image(image,str(out/(name+'.png')))
+ rl.unload_image(image)
+ rl.unload_render_texture(target)
+def steps():
+ global sub,completed
+ yield 30
+ x,y,w,h=tiles.tile_rect(host._placed['device'])
+ yield from touch(x+w/2,y+h/2)
+ assert len(host._stack)==1
+ page=host._stack[-1][1]
+ assert type(page).__name__=='DevicePage'
+ rows={r.title:r for r in page._scroller._items}
+ assert not rows['Driver camera preview'].is_visible and not rows['Regulatory info'].is_visible
+ rows['Review training guide'].callback()
+ yield 4
+ sub=host._stack[-1][1]
+ assert type(sub).__name__=='TrainingGuidePage' and sub._step==0
+ screenshot('training-next-before')
+ b=sub._steps[0][2][0]._rect
+ yield from touch(b.x+b.width/2,b.y+b.height/2)
+ assert host._stack==[('Device',page)] and host._shown is page
+ assert sub._step==0 and not sub._active and not ui_state.params.get_bool('IsDriverViewEnabled')
+ screenshot('training-next-after')
+ assert snapshot()==before
+ completed=True
+ gui_app.request_close()
+ yield 1
+scenario=steps()
+def render():
+ global frame,next_step,pending
+ frame+=1
+ gui_app._mouse_events,pending=pending,[]
+ original()
+ assert not host._is_modal(gui_app.get_active_widget())
+ assert not ui_state.params.get_bool('IsDriverViewEnabled')
+ if sub is not None: assert sub._step==0
+ if frame>=next_step: next_step=frame+next(scenario)
+host.render=render
+try:
+ for should_render,*_ in gui_app.render():
+  ui_state.update()
+  assert not ui_state.started and not ui_state.engaged
+ assert completed
+except Exception:
+ errors.append(traceback.format_exc())
+finally:
+ host._show(None)
+ host.render=original
+ result={'passed':completed and not errors,'head':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),'errors':errors,'driver_camera_visible':False,'regulatory_visible':False,'training_step_after_next':sub._step if sub is not None else None,'returned_to_device':completed,'before_sha256':before,'after_sha256':snapshot(),'touches':points}
+ (out/'training-next-result.json').write_text(json.dumps(result,indent=2)+'\n')
+ print(json.dumps(result,indent=2))
+assert result['passed']
