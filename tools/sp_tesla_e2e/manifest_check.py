@@ -161,8 +161,9 @@ def main() -> int:
     for proc in cls.processes():
       if f"process:{proc.name}" not in claims:
         errors.append(f"M8 {cls.NAME} process {proc.name} unclaimed")
-  if len(plugins.PLUGINS) != len(found):
-    errors.append(f"M8 {len(found)} manifests but {len(plugins.PLUGINS)} plugin classes")
+  builtin = [c for c in plugins.PLUGINS if not c.__module__.startswith("xpilot_ext.")]  # store plugins are not in mf.load_all()
+  if len(builtin) != len(found):
+    errors.append(f"M8 {len(found)} manifests but {len(builtin)} built-in plugin classes")
 
   for m in found:
     debt = LAYOUT_DEBT.get(m.id, set())
