@@ -41,6 +41,16 @@ def to_screen(view, x: float, y: float) -> tuple[float, float]:
 with open(os.path.join(BASEDIR, "openpilot/selfdrive/selfdrived/alerts_offroad.json")) as f:
   OFFROAD_ALERT_KEYS = tuple(json.load(f))
 
+CAR_LIST = os.path.join(BASEDIR, "openpilot/sunnypilot/selfdrive/car/car_list.json")
+MODEL_PARAM = "CarPlatformBundle"  # card.py fingerprints as bundle["platform"] when set; unset = auto fingerprint
+
+
+def tesla_models() -> list[tuple[str, dict]]:
+  """(name, CarPlatformBundle value) of each Tesla in sunnypilot's car list, in name order (bundle as params_migration writes it)."""
+  with open(CAR_LIST) as f:
+    cars = json.load(f)
+  return sorted((name, {**data, "name": name}) for name, data in cars.items() if data.get("brand") == "tesla")
+
 
 def offroad_alerts(params) -> list[tuple[int, str]]:
   """(severity, text) of the active offroad alerts (alertmanager.set_offroad_alert), most severe first."""

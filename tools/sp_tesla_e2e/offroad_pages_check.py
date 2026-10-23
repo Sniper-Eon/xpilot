@@ -13,6 +13,8 @@ Failure cases listed before implementation:
      or a downloaded plugin missing from the index cannot be removed
 - O12 the plugin market misses a PLUGINS entry or a not-loaded index entry, lists a loaded plugin twice, puts one in the wrong
      category, or breaks CATEGORIES order
+- O13 the Tesla car model list is empty, names a platform opendbc does not know, or a bundle lacks name/platform
+     (card.py fingerprints as CarPlatformBundle["platform"])
 - O6 offroad the mici texture gets a viewport outside mici widgets pushed above main (onboarding and Device sub-pages are
      native now), or loses it for such a widget
 - O7 offroad without a viewport a screen touch maps inside the mici logical screen (a hidden mici widget would react)
@@ -211,6 +213,16 @@ def check_market(errors: list) -> None:
     errors.append(f"O12 market store entries: {found}")
 
 
+def check_models(errors: list) -> None:
+  from opendbc.car.tesla.values import CAR
+  models = offroad.tesla_models()
+  if not models:
+    errors.append("O13 no Tesla car models")
+  for name, bundle in models:
+    if bundle.get("name") != name or bundle.get("platform") not in {c.value for c in CAR}:
+      errors.append(f"O13 car model bundle {bundle}")
+
+
 def check_view(errors: list) -> None:
   for onboarding in (False, True):
     for main in (False, True):
@@ -264,7 +276,7 @@ def check_sources(errors: list) -> None:
 
 def main() -> int:
   errors: list[str] = []
-  for check in (check_tiles, check_pages, check_plugins, check_store, check_market, check_view, check_alerts, check_sources):
+  for check in (check_tiles, check_pages, check_plugins, check_store, check_market, check_models, check_view, check_alerts, check_sources):
     try:
       check(errors)
     except Exception as e:
