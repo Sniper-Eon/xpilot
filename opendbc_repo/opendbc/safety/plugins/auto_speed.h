@@ -9,6 +9,8 @@ static uint8_t auto_speed_template[8] = {0U};
 static uint32_t auto_speed_template_ts = 0U;
 static bool auto_speed_last_tx_valid = false;
 static uint32_t auto_speed_last_tx_ts = 0U;
+static uint32_t auto_speed_session_ts = 0U;
+static uint8_t auto_speed_session_count = 0U;
 
 static bool auto_speed_active(void) {
   return (current_safety_mode == SAFETY_TESLA) && tesla_has_vehicle_bus &&
@@ -39,8 +41,16 @@ static bool auto_speed_tx(const CANPacket_t *msg) {
   const uint32_t now = microsecond_timer_get();
   const bool template_fresh = auto_speed_template_valid && (safety_get_ts_elapsed(now, auto_speed_template_ts) <= 1500000U);
   const bool rate_allowed = !auto_speed_last_tx_valid || (safety_get_ts_elapsed(now, auto_speed_last_tx_ts) >= 250000U);
-  const bool allowed = controls_allowed && tick_allowed && template_matches && template_fresh && rate_allowed;
+  const bool new_session = !auto_speed_last_tx_valid || (safety_get_ts_elapsed(now, auto_speed_last_tx_ts) >= 2000000U);
+  const bool session_allowed = new_session || ((safety_get_ts_elapsed(now, auto_speed_session_ts) < 30000000U) &&
+                                                (auto_speed_session_count < 60U));
+  const bool allowed = controls_allowed && tick_allowed && template_matches && template_fresh && rate_allowed && session_allowed;
   if (allowed) {
+    if (new_session) {
+      auto_speed_session_ts = now;
+      auto_speed_session_count = 0U;
+    }
+    auto_speed_session_count++;
     auto_speed_last_tx_valid = true;
     auto_speed_last_tx_ts = now;
   }
@@ -52,6 +62,8 @@ static void auto_speed_reset(void) {
   auto_speed_last_tx_valid = false;
   auto_speed_template_ts = 0U;
   auto_speed_last_tx_ts = 0U;
+  auto_speed_session_ts = 0U;
+  auto_speed_session_count = 0U;
 }
 
 static const safety_plugin auto_speed_plugin = {
