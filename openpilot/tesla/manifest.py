@@ -44,7 +44,8 @@ CATEGORIES = {
   "data_source": "Data Sources & External Compute",
   "alerts": "Alerts",
   "body_comfort": "Body & Comfort",
-  "ui": "UI",
+  "ui": "Tiles",
+  "overlays": "Driving Overlays",
   "tools": "Tools & Diagnostics",
 }
 

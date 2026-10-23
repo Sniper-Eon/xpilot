@@ -3,7 +3,7 @@
   "name": "Blind Spot Edges",
   "version": "1.0.0",
   "api": 1,
-  "category": "ui",
+  "category": "overlays",
   "entry": "plugin:BlindspotEdges",
   "author": "xpilot",
   "description": "Big screen: red edge on the left or right column while a car is in that blind spot. Display only; on by default.",

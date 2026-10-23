@@ -3,7 +3,7 @@
   "name": "IP Tile",
   "version": "1.0.0",
   "api": 1,
-  "category": "tools",
+  "category": "ui",
   "entry": "plugin:IpTile",
   "author": "xpilot",
   "description": "Big-screen tile: the device IP address and network type. Display only; on by default.",
