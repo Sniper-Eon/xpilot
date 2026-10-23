@@ -1,0 +1,19 @@
+{
+  "id": "osm_map",
+  "name": "OSM Map",
+  "version": "1.0.0",
+  "api": 1,
+  "category": "navigation",
+  "entry": "plugin:OsmMap",
+  "author": "xpilot",
+  "description": "Offline OpenStreetMap data (speed limits, road names, curve speeds) to liveMapDataSP. Runs while MapProvider is \"osm\" (Tesla settings page).",
+  "priority": 100,
+  "enable_param": null,
+  "claims": [
+    "source:map",
+    "process:mapd",
+    "process:mapd_manager",
+    "process:map_osm"
+  ],
+  "params": {}
+}

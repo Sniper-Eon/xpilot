@@ -9,7 +9,6 @@ from openpilot.common.hardware import PC, COMMA_HARDWARE
 from openpilot.system.manager.process import PythonProcess, NativeProcess, DaemonProcess
 from openpilot.common.hardware.hw import Paths
 
-from openpilot.sunnypilot.mapd.mapd_manager import MAPD_PATH
 
 from openpilot.sunnypilot.models.helpers import get_active_model_runner
 from openpilot.sunnypilot.system.fork_processes import apply_fork_processes
@@ -73,13 +72,6 @@ def is_stock_model(started, params, CP: car.CarParams) -> bool:
   """Check if the active model runner is stock."""
   return bool(get_active_model_runner(params, not started) == custom.ModelManagerSP.Runner.stock)
 
-def mapd_ready(started: bool, params: Params, CP: car.CarParams) -> bool:
-  return bool(os.path.exists(Paths.mapd_root()))
-
-def map_osm(started: bool, params: Params, CP: car.CarParams) -> bool:
-  # Map interface: MapProvider picks the single process family that publishes liveMapDataSP.
-  return params.get("MapProvider", return_default=True) == "osm"
-
 def or_(*fns):
   return lambda *args: operator.or_(*(fn(*args) for fn in fns))
 
@@ -139,11 +131,6 @@ procs += [
   PythonProcess("models_manager", "openpilot.sunnypilot.models.manager", only_offroad),
   NativeProcess("modeld_tinygrad", "openpilot/sunnypilot/modeld_v2", ["./modeld"], and_(only_onroad, is_tinygrad_model)),
   PythonProcess("modeld_warmup", "openpilot.sunnypilot.modeld_v2.warmup", only_offroad),
-
-  # mapd
-  NativeProcess("mapd", Paths.mapd_root(), ["bash", "-c", f"{MAPD_PATH} > /dev/null 2>&1"], and_(mapd_ready, map_osm)),
-  PythonProcess("mapd_manager", "openpilot.sunnypilot.mapd.mapd_manager", map_osm),
-  PythonProcess("map_osm", "openpilot.sunnypilot.mapd.live_map_data.standalone", and_(only_onroad, map_osm)),
 
   # locationd
   NativeProcess("locationd_llk", "openpilot/sunnypilot/selfdrive/locationd", ["./locationd"], only_onroad),

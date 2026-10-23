@@ -28,6 +28,9 @@ Failure cases listed before implementation:
 - R3 a radar returned without a source:radar claim, or by the loser of a source:radar conflict, is used
 - R4 radar_interface raises at creation: card raises, no fault recorded, or the port radar is not used
 - R5 the plugin radar raises in update: card raises, or the plugin keeps being called instead of the port radar
+- M1 the osm_map plugin's mapd, mapd_manager, map_osm processes are missing from the manager list (not found,
+       not claimed), or process_config.py still registers them itself
+- M2 they run when MapProvider is not "osm", or do not run (onroad) when it is "osm" or unset (default "osm")
 
 Run from the repo root with the openpilot python env. Native-only modules (Params) are stubbed if missing.
 """
@@ -203,9 +206,9 @@ def main() -> int:
   real = plugins_mod.PLUGINS
   seen = set()
   for cls in real:
-    if not cls.TITLE or not cls.ENABLE_PARAM:
-      errors.append(f"P9 {cls.NAME} lacks TITLE or ENABLE_PARAM")
-    if KEYS.get(cls.ENABLE_PARAM) != "BOOL":
+    if not cls.TITLE:
+      errors.append(f"P9 {cls.NAME} lacks TITLE")
+    if cls.ENABLE_PARAM is not None and KEYS.get(cls.ENABLE_PARAM) != "BOOL":
       errors.append(f"P9 {cls.NAME} ENABLE_PARAM {cls.ENABLE_PARAM} not a declared BOOL")
     for s in cls.SETTINGS:
       if s.key not in KEYS:
@@ -238,6 +241,7 @@ def main() -> int:
       if k in owners:
         errors.append(f"P12 {k} in {owners[k]} and {f.parent.name}")
       owners[k] = f.parent.name
+  errors += map_checks(plugins_mod)  # before the checks below, which replace PLUGINS with fakes
   errors += long_target_checks(plugins_mod)
   errors += radar_checks(plugins_mod)
 
@@ -366,6 +370,25 @@ def radar_checks(plugins) -> list[str]:
       errors.append(f"R5 update fault: {out}, plugin calls {ri.plugin.calls}, faults {faults}")
   except Exception as e:
     errors.append(f"R5 host raised {e!r}")
+  return errors
+
+
+def map_checks(plugins) -> list[str]:
+  errors, names = [], ("mapd_manager", "map_osm")
+  procs = {p.name: p for p in plugins.processes()}
+  if missing := {"mapd", *names} - procs.keys():
+    errors.append(f"M1 map processes missing: {sorted(missing)}")
+  if "map_osm" in (ROOT / "openpilot/system/manager/process_config.py").read_text():
+    errors.append("M1 process_config.py still registers the map processes")
+
+  class P(FakeParams):
+    def get(self, key, return_default=False):
+      return self.values.get(key, "osm" if return_default and key == "MapProvider" else None)
+  for value, want in (("osm", True), (None, True), ("none", False)):
+    params = P({} if value is None else {"MapProvider": value})
+    for n in names:
+      if n in procs and procs[n].should_run(True, params, None) != want:
+        errors.append(f"M2 {n} should_run={not want} with MapProvider={value!r}")
   return errors
 
 
