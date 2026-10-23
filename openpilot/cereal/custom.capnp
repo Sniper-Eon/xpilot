@@ -483,6 +483,14 @@ struct CarStateSP @0xb86e6369214c01c8 {
   # Retired visualization field; retain ordinal/type for recorded-log compatibility.
   teslaRoadContext @2 :TeslaRoadContext;
   teslaTrafficControl @3 :TeslaTrafficControl;
+  teslaBattery @4 :TeslaBattery;
+}
+
+struct TeslaBattery {
+  available @0 :Bool;  # fresh BMS frames from the vehicle bus (bms plugin)
+  soc @1 :Float32;  # %, as the car shows it
+  voltage @2 :Float32;  # V, pack
+  current @3 :Float32;  # A, pack, positive = discharging
 }
 
 struct TeslaRoadContext {

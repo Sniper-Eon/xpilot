@@ -8,6 +8,8 @@
     {"TeslaAutoSpeedLimitOffset", {PERSISTENT | BACKUP, INT, "0"}},
 // blindspot_edges
     {"XpilotBlindspotEdges", {PERSISTENT | BACKUP, BOOL, "1"}},
+// bms
+    {"XpilotBms", {PERSISTENT | BACKUP, BOOL, "0"}},
 // car_tile
     {"XpilotCarTile", {PERSISTENT | BACKUP, BOOL, "1"}},
 // clock_tile
