@@ -10,7 +10,8 @@ Failure cases listed before implementation:
 - P6 a plan filter raises and the longitudinal plan is not published (controlsd would see a stale plan)
 - P7 a faulted plan filter keeps being called every cycle
 - P8 a non-Tesla car loads plugins
-- P9 a real plugin lacks TITLE/ENABLE_PARAM, or names a setting key not declared in params_keys.h,
+- P9 a real plugin lacks TITLE/ENABLE_PARAM, or names a setting key not declared in params_keys.h
+       (or a store plugin's plugin.json),
        or two settings share a key, or ENABLE_PARAM is not a BOOL key
 - P10 a plugin ui.py does not parse, or the plugin page is missing a plugin
 - P11 common/plugin_params.inc is out of date with the plugins' plugin.json params (device would miss a key)
@@ -204,14 +205,15 @@ def main() -> int:
   import importlib
   plugins_mod = importlib.reload(plugins)
   real = plugins_mod.PLUGINS
+  keys = {**KEYS, **{k: v["type"] for k, v in plugins_mod.INSTALLED_SPECS.items()}}  # store plugins keep params in .params/
   seen = set()
   for cls in real:
     if not cls.TITLE or not cls.ENABLE_PARAM:
       errors.append(f"P9 {cls.NAME} lacks TITLE or ENABLE_PARAM")
-    if KEYS.get(cls.ENABLE_PARAM) != "BOOL":
+    if keys.get(cls.ENABLE_PARAM) != "BOOL":
       errors.append(f"P9 {cls.NAME} ENABLE_PARAM {cls.ENABLE_PARAM} not a declared BOOL")
     for s in cls.SETTINGS:
-      if s.key not in KEYS:
+      if s.key not in keys:
         errors.append(f"P9 {cls.NAME} setting {s.key} not in params_keys.h")
       if s.key in seen:
         errors.append(f"P9 duplicate setting {s.key}")
