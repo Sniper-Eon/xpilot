@@ -106,7 +106,9 @@ class BigScreenHost:
       saved = self._layout_params.get(LAYOUT_PARAM)
     except Exception:
       saved = None
-    self._pinned, self._hidden = tiles.arrange([e.spec for e in self._entries.values()], saved)
+    specs = [e.spec for e in self._entries.values()]
+    self._layouts = {mode: tiles.arrange([s for s in specs if tiles.shows(s, mode == "drive")], saved, mode) for mode in ("park", "drive")}
+    self._layout = "park"  # the layout the tile screen shows and edit mode edits; onroad always shows "drive"
     self._placed_key = None
     self._placed: dict[str, tuple[int, int, str]] = {}
     self._main = None
@@ -130,31 +132,32 @@ class BigScreenHost:
 
   # layout
 
-  def _visible(self, started: bool) -> list[tuple[str, str, tuple[str, ...]]]:
+  def _visible(self, mode: str) -> list[tuple[str, str, tuple[str, ...], tuple[int, int] | None]]:
     enabled = self._enabled.get()
     out = []
-    for tid, size in self._pinned:
+    for tid, size, fixed in self._layouts[mode][0]:
       e = self._entries[tid]
-      if e.failures < MAX_FAILURES and tiles.shows(e.spec, started) and (e.plugin is None or e.plugin in enabled):
-        out.append((tid, size, e.spec.sizes))
+      if e.failures < MAX_FAILURES and (e.plugin is None or e.plugin in enabled):
+        out.append((tid, size, e.spec.sizes, fixed))
     return out
 
-  def _place(self, started: bool) -> dict[str, tuple[int, int, str]]:
-    items = self._visible(started)
-    key = (started, tuple(items))
+  def _place(self, mode: str) -> dict[str, tuple[int, int, str]]:
+    items = self._visible(mode)
+    key = (mode, tuple(items))
     if key != self._placed_key:
-      self._placed_key, self._placed = key, tiles.place(items, started)
+      self._placed_key, self._placed = key, tiles.place(items, mode == "drive")
     return self._placed
 
   def _save(self, pinned, hidden=None) -> None:
-    self._pinned, self._hidden = pinned, self._hidden if hidden is None else hidden
+    """Replace the edited layout and write both."""
+    self._layouts[self._layout] = (pinned, self._layouts[self._layout][1] if hidden is None else hidden)
     try:
-      self._layout_params.put(LAYOUT_PARAM, tiles.saved(self._pinned, self._hidden))
+      self._layout_params.put(LAYOUT_PARAM, {mode: tiles.saved(*layout) for mode, layout in self._layouts.items()})
     except Exception:
       cloudlog.exception("tile layout not saved")
 
   def _pin(self, tid: str) -> None:
-    self._save(*tiles.pin(self._pinned, self._hidden, tid, self._entries[tid].spec.sizes))
+    self._save(*tiles.pin(*self._layouts[self._layout], tid, self._entries[tid].spec.sizes))
     self._back()
 
   # pages
@@ -219,8 +222,8 @@ class BigScreenHost:
 
   def render(self) -> None:
     if self._mode == "onroad":
-      self._edit, self._drag, self._selected = False, None, None
-      self._draw_tiles(self._place(True))
+      self._edit, self._drag, self._selected, self._layout = False, None, None, "park"
+      self._draw_tiles(self._place("drive"))
       self._draw_overlays()
     elif self._mode != "onboarding":
       self._draw_offroad()
@@ -328,7 +331,7 @@ class BigScreenHost:
 
   def _draw_start(self, events) -> None:
     now = time.monotonic()
-    placed = self._place(False)
+    placed = self._place(self._layout)
     for ev in events:
       if ev.slot != 0:
         continue
@@ -341,11 +344,17 @@ class BigScreenHost:
         self._on_gesture(self._gesture.start, self._gesture.move(x, y, ev.t), x, y, placed)
     if self._gesture.start is not None:
       self._on_gesture(self._gesture.start, self._gesture.tick(now), *self._gesture.pos, placed)
-    placed = self._place(False)
+    placed = self._place(self._layout)
+    drive = self._layout == "drive"
+    if drive:
+      rl.draw_rectangle_rec(rl.Rectangle(*VIEW), rl.Color(40, 42, 50, 255))
+      label = "Driving view"
+      width = rl.measure_text_ex(gui_app.font(FontWeight.MEDIUM), label, 48, 0).x
+      rl.draw_text_ex(gui_app.font(FontWeight.MEDIUM), label, rl.Vector2(VIEW[0] + (VIEW[2] - width) / 2, VIEW[1] + VIEW[3] / 2 - 24), 48, 0, DIM)
     self._draw_tiles(placed, now)
     if not self._edit:
       return
-    cell = tiles.add_cell(placed, False)
+    cell = tiles.add_cell(placed, drive)
     if cell is not None:
       x, y, w, h = tiles.cell_rect(*cell)
       rl.draw_rectangle_lines_ex(rl.Rectangle(x, y, w, h), 3, DIM)
@@ -359,6 +368,16 @@ class BigScreenHost:
       dx, dy = self._gesture.pos[0] - self._gesture.start[0], self._gesture.pos[1] - self._gesture.start[1]
       if self._face(e, placed[self._drag][2], now):
         self._blit(e, rl.Rectangle(x + dx, y + dy, w, h))
+    self._draw_bar()
+
+  def _draw_bar(self) -> None:
+    medium = gui_app.font(FontWeight.MEDIUM)
+    for name, (x, y, w, h) in tiles.bar_buttons().items():
+      active = name == self._layout
+      rl.draw_rectangle(x, y, w, h, ACCENT if active else rl.Color(40, 42, 50, 240))
+      label = name.capitalize()
+      width = rl.measure_text_ex(medium, label, 40, 0).x
+      rl.draw_text_ex(medium, label, rl.Vector2(x + (w - width) / 2, y + (h - 40) / 2), 40, 0, rl.WHITE)
 
   @staticmethod
   def _draw_corner_buttons(rect) -> None:
@@ -381,6 +400,10 @@ class BigScreenHost:
     if event is None or start is None:
       return
     sx, sy = start[:2]
+    if self._edit and any(x0 <= sx < x0 + w and y0 <= sy < y0 + h for x0, y0, w, h in tiles.bar_buttons().values()):
+      if event == "tap":
+        self._bar_tap(sx, sy)
+      return
     tid = tiles.hit(placed, sx, sy)
     if event == "long" and not self._edit:
       self._edit, self._selected = True, tid
@@ -389,7 +412,7 @@ class BigScreenHost:
     elif event == "drop" and self._drag is not None:
       cell = tiles.cell_at(x, y)
       if cell is not None:
-        self._save(tiles.move(self._pinned, placed, self._drag, cell))
+        self._save(tiles.move(self._layouts[self._layout][0], placed, self._drag, cell, self._layout == "drive"))
       self._drag = None
     elif event == "tap" and not self._edit:
       if tid is not None:
@@ -397,28 +420,34 @@ class BigScreenHost:
     elif event == "tap":
       self._edit_tap(sx, sy, tid, placed)
 
+  def _bar_tap(self, x, y) -> None:
+    for name, (x0, y0, w, h) in tiles.bar_buttons().items():
+      if x0 <= x < x0 + w and y0 <= y < y0 + h:
+        self._selected = None
+        if name == "done":
+          self._edit, self._layout = False, "park"
+        else:
+          self._layout = name
+
   def _edit_tap(self, x, y, tid, placed) -> None:
     if self._selected in placed:
       for name, (cx, cy, r) in tiles.corner_buttons(tiles.tile_rect(placed[self._selected])).items():
         if (x - cx) ** 2 + (y - cy) ** 2 <= (r + 12) ** 2:
           if name == "unpin":
-            self._save(*tiles.unpin(self._pinned, self._hidden, self._selected))
+            self._save(*tiles.unpin(*self._layouts[self._layout], self._selected))
             self._selected = None
           else:
-            self._save(tiles.resize(self._pinned, self._selected, self._entries[self._selected].spec.sizes))
+            self._save(tiles.resize(self._layouts[self._layout][0], self._selected, self._entries[self._selected].spec.sizes))
           return
     if tid is not None:
-      if tid == self._selected:
-        self._edit, self._selected = False, None
-      else:
-        self._selected = tid
+      self._selected = None if tid == self._selected else tid
       return
-    if tiles.cell_at(x, y) is not None and tiles.cell_at(x, y) == tiles.add_cell(placed, False):
-      visible = [(i, s) for i, s, _ in self._visible(False)]
-      ids = tiles.addable(visible, [i for i in self._hidden if tiles.shows(self._entries[i].spec, False)], placed)
+    drive = self._layout == "drive"
+    if tiles.cell_at(x, y) is not None and tiles.cell_at(x, y) == tiles.add_cell(placed, drive):
+      ids = tiles.addable(self._visible(self._layout), self._layouts[self._layout][1], placed)
       self._open("add tiles", AddTilesPage([self._entries[i] for i in ids], self._pin))
       return
-    self._edit, self._selected = False, None
+    self._selected = None
 
   # detail pages
 

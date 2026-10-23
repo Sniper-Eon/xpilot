@@ -6,17 +6,23 @@ Failure cases listed before implementation:
 - T1  grid cells overlap, the gap is not GAP px, or the grid leaves the screen / is not centered
 - T2  two placed tiles overlap
 - T3  a tile is placed outside the grid or on a cell the drive view blocks
-- T4  a tile is left out while a position (in column-major first-fit order) still fits it, or is placed after a free
-      position that fits it (placement is not first-fit column-major, or depends on anything but the list)
+- T4  a tile is left out while a position (in first-fit scan order) still fits it, or is placed after a free position that
+      fits it (placement is not first-fit, or depends on anything but the list); a tile with a valid fixed position is not
+      placed there, or a fixed position that is off the grid, on a drive view cell or on an earlier tile is not ignored
+- T16 onroad the free cells are not scanned row by row from both edges inward (left and right columns fill alternately);
+      offroad not column by column
 - T5  offroad a tile is placed at another size than its saved size; onroad at a larger size than saved, or a size it does
       not support
 - T6  the drive VIEW leaves the blocked cells, is not 536:240, is not centered in them, or onroad free cells are not 14
 - T7  offroad-only tiles show onroad or onroad-only tiles show offroad
-- T8  loading a saved layout: garbage gives no defaults, unknown ids or unsupported sizes survive, an id appears twice,
-      new tiles are not appended in (order, id) order at their default size, hidden tiles show, or save/load does not
-      round-trip
-- T9  edit ops: resize does not cycle through the tile's sizes, unpin/pin do not move between pinned and hidden, move does
-      not insert before the first tile placed after the drop cell (or at the end), or dropping a tile on itself reorders
+- T8  loading a saved layout: garbage gives no defaults, unknown ids, unsupported sizes or bad positions survive, an id
+      appears twice, new tiles are not appended in (order, id) order at their default size, hidden tiles show, the park
+      and drive layouts are not kept apart, the v1 format ({"tiles": [[id, size]]}) is not read as the park layout, or
+      save/load does not round-trip
+- T9  edit ops: resize does not cycle through the tile's sizes or drops the position, unpin/pin do not move between pinned
+      and hidden, a drop does not fix the tile at the drop cell (pulled back inside the grid), does not free other fixed
+      tiles it now overlaps, moves a tile onto the drive view, or reorders the list
+- T17 edit bar: Park, Drive and Done buttons overlap, leave the screen, or are not at the bottom center
 - T10 hit tests: a gap hits a tile, a cell center does not map back to its cell, corner buttons leave their tile or
       overlap each other
 - T11 gestures: a short press without movement is not a tap, a held press is not one long press, a moved press still
@@ -89,48 +95,76 @@ def check_view(errors):
 
 
 def first_fit_ok(errors, items, out, started, tag):
-  """Replays first-fit and compares; also checks overlaps, bounds and sizes."""
+  """Independent replay: fixed tiles first, then first fit in scan order; also checks overlaps, bounds and sizes."""
+  grid = {(c, r) for c in range(T.COLS) for r in range(T.ROWS)}
   taken = set(T.blocked(started))
-  for tid, saved, sizes in items:
-    tries = [saved] if not started else [s for s in sorted(sizes, key=lambda s: -T.area(s)) if T.area(s) <= T.area(saved)]
-    want = None
-    for size in tries:
-      w, h = T.SIZES[size]
-      pos = next(((c, r) for c in range(T.COLS - w + 1) for r in range(T.ROWS - h + 1) if not cells(c, r, size) & taken), None)
-      if pos is not None:
-        want = (*pos, size)
-        break
-    got = out.get(tid)
-    if got != want:
-      errors.append(f"T4 {tag} {tid}: placed {got}, first fit {want}")
-      return
-    if got is not None:
-      if not cells(*got) <= {(c, r) for c in range(T.COLS) for r in range(T.ROWS)}:
-        errors.append(f"T3 {tag} {tid} outside the grid {got}")
-      if cells(*got) & T.blocked(started):
-        errors.append(f"T3 {tag} {tid} on a drive view cell {got}")
-      if cells(*got) & (taken - T.blocked(started)):
-        errors.append(f"T2 {tag} {tid} overlaps {got}")
-      if got[2] not in sizes or (not started and got[2] != saved) or T.area(got[2]) > T.area(saved):
-        errors.append(f"T5 {tag} {tid} size {got[2]} saved {saved} sizes {sizes}")
+  want = {}
+
+  def tries(saved, sizes):
+    return [saved] if not started else [s for s in sorted(sizes, key=lambda s: -T.area(s)) if T.area(s) <= T.area(saved)]
+  flowing = []
+  for tid, saved, sizes, anchor in items:
+    got = None
+    if anchor is not None:
+      got = next(((*anchor, s) for s in tries(saved, sizes) if cells(*anchor, s) <= grid and not cells(*anchor, s) & taken), None)
+    if got is None:
+      flowing.append((tid, saved, sizes))
+    else:
+      want[tid] = got
       taken |= cells(*got)
+  order = scan_order(started)
+  for tid, saved, sizes in flowing:
+    for size in tries(saved, sizes):
+      pos = next((p for p in order if cells(*p, size) <= grid and not cells(*p, size) & taken), None)
+      if pos is not None:
+        want[tid] = (*pos, size)
+        taken |= cells(*pos, size)
+        break
+  if out != want:
+    errors.append(f"T4 {tag}: placed {out}, expected {want}")
+    return
+  for tid, saved, sizes, _ in items:
+    got = out.get(tid)
+    if got is not None and (got[2] not in sizes or (not started and got[2] != saved) or T.area(got[2]) > T.area(saved)):
+      errors.append(f"T5 {tag} {tid} size {got[2]} saved {saved} sizes {sizes}")
+  used = [cells(*p) for p in out.values()]
+  if any(a & b for a, b in itertools.combinations(used, 2)):
+    errors.append(f"T2 {tag} overlap")
+  if any(u & T.blocked(started) or not u <= grid for u in used):
+    errors.append(f"T3 {tag} off grid or on the drive view")
+
+
+def scan_order(started):
+  if not started:
+    return [(c, r) for c in range(T.COLS) for r in range(T.ROWS)]
+  edges = [c for pair in zip(range(T.COLS // 2), range(T.COLS - 1, T.COLS // 2 - 1, -1)) for c in pair]  # 0,7,1,6,...
+  return [(c, r) for r in range(T.ROWS) for c in edges]
 
 
 def check_place(errors):
   rng = random.Random(4)
-  for n in range(300):
+  for n in range(400):
     items = []
     for i in range(rng.randint(0, 20)):
       sizes = tuple(rng.sample(ALL, rng.randint(1, len(ALL))))
-      items.append((f"t{i}", rng.choice(sizes), sizes))
+      anchor = (rng.randint(-1, T.COLS), rng.randint(-1, T.ROWS)) if rng.random() < 0.4 else None
+      items.append((f"t{i}", rng.choice(sizes), sizes, anchor))
     for started in (False, True):
       out = T.place(items, started)
       first_fit_ok(errors, items, out, started, f"n={n} started={started}")
       if T.place(list(items), started) != out:
         errors.append("T4 placement not deterministic")
-  onroad = T.place([(f"s{i}", "small", ("small",)) for i in range(20)], True)
+  onroad = T.place([(f"s{i}", "small", ("small",), None) for i in range(20)], True)
   if len(onroad) != 14:
     errors.append(f"T6 {len(onroad)} small tiles onroad, expected 14")
+  if [onroad[f"s{i}"][:2] for i in range(5)] != [(0, 0), (7, 0), (0, 1), (7, 1), (0, 2)]:
+    errors.append(f"T16 onroad fill order {[onroad[f's{i}'][:2] for i in range(5)]}")
+  park = T.place([(f"s{i}", "small", ("small",), None) for i in range(5)], False)
+  if [park[f"s{i}"][:2] for i in range(5)] != [(0, 0), (0, 1), (0, 2), (0, 3), (1, 0)]:
+    errors.append(f"T16 offroad fill order {[park[f's{i}'][:2] for i in range(5)]}")
+  fixed = T.place([("a", "small", ("small",), None), ("b", "medium", ("medium",), (6, 2)), ("c", "small", ("small",), (6, 2))], False)
+  if fixed.get("b") != (6, 2, "medium") or fixed.get("a") != (0, 0, "small") or fixed.get("c") != (0, 1, "small"):
+    errors.append(f"T4 fixed positions {fixed}")
 
 
 def check_show(errors):
@@ -156,50 +190,59 @@ def specs():
 
 def check_layout(errors):
   sp = specs()
-  default = T.arrange(sp, None)
-  if default != ([("d", "small"), ("a", "medium"), ("b", "small"), ("c", "wide")], []):
+  default = T.arrange(sp, None, "park")
+  if default != ([("d", "small", None), ("a", "medium", None), ("b", "small", None), ("c", "wide", None)], []):
     errors.append(f"T8 defaults {default}")
-  for garbage in ("x", 5, [1], {"tiles": "x"}, {"tiles": [[1, 2], ["a"]], "hidden": 3}):
-    if T.arrange(sp, garbage) != default:
-      errors.append(f"T8 garbage {garbage!r} gives {T.arrange(sp, garbage)}")
-  saved = {"tiles": [["c", "small"], ["zz", "small"], ["a", "large"], ["c", "wide"]], "hidden": ["b", "zz"]}
-  pinned, hidden = T.arrange(sp, saved)
-  if pinned != [("c", "small"), ("a", "medium"), ("d", "small")] or hidden != ["b"]:
+  for garbage in ("x", 5, [1], {"park": "x"}, {"park": {"tiles": [[1, 2], ["a"]], "hidden": 3}}, {"tiles": "x"}):
+    if T.arrange(sp, garbage, "park") != default:
+      errors.append(f"T8 garbage {garbage!r} gives {T.arrange(sp, garbage, 'park')}")
+  saved = {"park": {"tiles": [["c", "small", 3, 1], ["zz", "small", 0, 0], ["a", "large", None, None], ["c", "wide", 0, 0], ["d", "small", "x", 2]],
+                    "hidden": ["b", "zz"]},
+           "drive": {"tiles": [["b", "medium", 7, 3]], "hidden": []}}
+  pinned, hidden = T.arrange(sp, saved, "park")
+  if pinned != [("c", "small", (3, 1)), ("a", "medium", None), ("d", "small", None)] or hidden != ["b"]:
     errors.append(f"T8 load {pinned} {hidden}")
-  if T.arrange(sp, json.loads(json.dumps(T.saved(pinned, hidden)))) != (pinned, hidden):
+  drive = T.arrange(sp, saved, "drive")
+  if drive != ([("b", "medium", (7, 3)), ("d", "small", None), ("a", "medium", None), ("c", "wide", None)], []):
+    errors.append(f"T8 drive layout {drive}")
+  if T.arrange(sp, {"tiles": [["c", "small"]], "hidden": ["b"]}, "park") != ([("c", "small", None), ("d", "small", None), ("a", "medium", None)], ["b"]):
+    errors.append(f"T8 v1 format {T.arrange(sp, {'tiles': [['c', 'small']], 'hidden': ['b']}, 'park')}")
+  if T.arrange(sp, {"tiles": [["c", "small"]]}, "drive") != default:
+    errors.append("T8 v1 format leaks into the drive layout")
+  both = {"park": T.saved(pinned, hidden), "drive": T.saved(*drive)}
+  if T.arrange(sp, json.loads(json.dumps(both)), "park") != (pinned, hidden) or T.arrange(sp, json.loads(json.dumps(both)), "drive") != drive:
     errors.append("T8 save/load does not round trip")
 
 
 def check_edit(errors):
   sizes = {s.id: s.sizes for s in specs()}
-  pinned, hidden = [("a", "medium"), ("b", "small"), ("c", "wide")], []
+  pinned, hidden = [("a", "medium", None), ("b", "small", None), ("c", "wide", (4, 0))], []
   seen = []
   p = pinned
   for _ in range(4):
     p = T.resize(p, "c", sizes["c"])
-    seen.append(dict(p)["c"])
-  if seen != ["medium", "small", "wide", "medium"] or [i for i, _ in p] != ["a", "b", "c"]:
+    seen.append([e for e in p if e[0] == "c"][0][1:])
+  if seen != [("medium", (4, 0)), ("small", (4, 0)), ("wide", (4, 0)), ("medium", (4, 0))] or [e[0] for e in p] != ["a", "b", "c"]:
     errors.append(f"T9 resize cycle {seen}")
   p, h = T.unpin(pinned, hidden, "b")
-  if p != [("a", "medium"), ("c", "wide")] or h != ["b"]:
+  if p != [("a", "medium", None), ("c", "wide", (4, 0))] or h != ["b"]:
     errors.append(f"T9 unpin {p} {h}")
   p, h = T.pin(p, h, "b", sizes["b"])
-  if p != [("a", "medium"), ("c", "wide"), ("b", "small")] or h:
+  if p != [("a", "medium", None), ("c", "wide", (4, 0)), ("b", "small", None)] or h:
     errors.append(f"T9 pin {p} {h}")
-  items = [(i, s, sizes[i]) for i, s in pinned]
-  placed = T.place(items, False)  # a (0,0) medium, b (0,2) small, c (1,2) wide
-  if T.move(pinned, placed, "c", (0, 3)) != [("a", "medium"), ("b", "small"), ("c", "wide")]:
-    errors.append(f"T9 move c to (0,3): {T.move(pinned, placed, 'c', (0, 3))}")
-  if T.move(pinned, placed, "c", (0, 0)) != [("c", "wide"), ("a", "medium"), ("b", "small")]:
-    errors.append(f"T9 move c to (0,0): {T.move(pinned, placed, 'c', (0, 0))}")
-  if T.move(pinned, placed, "a", (7, 3)) != [("b", "small"), ("c", "wide"), ("a", "medium")]:
-    errors.append(f"T9 move a to the end: {T.move(pinned, placed, 'a', (7, 3))}")
-  if T.move(pinned, placed, "b", (0, 2)) != pinned or T.move(pinned, placed, "a", (1, 1)) != pinned:
-    errors.append("T9 dropping a tile on its own cells reorders")
+  placed = T.place([(i, s, sizes[i], a) for i, s, a in pinned], False)  # a (0,0) medium, b (0,2) small, c (4,0) wide
+  got = T.move(pinned, placed, "a", (7, 3), False)
+  if got != [("a", "medium", (6, 2)), ("b", "small", None), ("c", "wide", (4, 0))]:
+    errors.append(f"T9 drop a at (7,3): {got}")
+  got = T.move(pinned, placed, "b", (5, 1), False)
+  if got != [("a", "medium", None), ("b", "small", (5, 1)), ("c", "wide", None)]:
+    errors.append(f"T9 drop b on fixed c: {got}")
+  if T.move(pinned, placed, "b", (2, 1), True) != pinned:
+    errors.append("T9 drop on the drive view changed the layout")
 
 
 def check_hits(errors):
-  placed = T.place([("a", "medium", ("medium",)), ("b", "small", ("small",))], False)
+  placed = T.place([("a", "medium", ("medium",), None), ("b", "small", ("small",), None)], False)
   ax, ay, aw, ah = T.tile_rect(placed["a"])
   if T.hit(placed, ax + aw + T.GAP / 2, ay + 10) is not None or T.hit(placed, ax + 10, ay + 10) != "a":
     errors.append("T10 hit in a gap or miss inside a tile")
@@ -212,12 +255,24 @@ def check_hits(errors):
     (ux, uy, ur), (sx, sy, sr) = buttons["unpin"], buttons["resize"]
     if (ux - sx) ** 2 + (uy - sy) ** 2 < (ur + sr) ** 2:
       errors.append(f"T10 corner buttons overlap on a {size} tile")
-  if T.add_cell(placed, False) != (0, 3) or T.add_cell(T.place([("x", "large", ("large",)), ("y", "large", ("large",))], False), False) is not None:
+  if T.add_cell(placed, False) != (0, 3) or T.add_cell(T.place([("x", "large", ("large",), None), ("y", "large", ("large",), None)], False), False) is not None:
     errors.append("T14 add cell")
-  pinned = [("a", "medium"), ("big", "large"), ("big2", "large"), ("big3", "large")]
-  items = [(i, s, (s,)) for i, s in pinned]
+  pinned = [("a", "medium", None), ("big", "large", None), ("big2", "large", None), ("big3", "large", None)]
+  items = [(i, s, (s,), a) for i, s, a in pinned]
   if T.addable(pinned, ["h"], T.place(items, False)) != ["h", "big2", "big3"]:
     errors.append(f"T14 addable {T.addable(pinned, ['h'], T.place(items, False))}")
+
+
+def check_bar(errors):
+  b = T.bar_buttons()
+  rects = list(b.values())
+  if set(b) != {"park", "drive", "done"} or any(overlap(x, y) for x, y in itertools.combinations(rects, 2)):
+    errors.append(f"T17 bar buttons {b}")
+  if any(not inside(r, (0, 0, *T.SCREEN)) for r in rects) or min(r[1] for r in rects) < T.SCREEN[1] * 0.8:
+    errors.append(f"T17 bar not at the bottom {b}")
+  left, right = min(r[0] for r in rects), max(r[0] + r[2] for r in rects)
+  if abs(left - (T.SCREEN[0] - right)) > 1:
+    errors.append(f"T17 bar not centered {b}")
 
 
 def check_gesture(errors):
@@ -276,7 +331,7 @@ def check_text(errors):
 
 def main() -> int:
   errors: list[str] = []
-  for check in (check_grid, check_view, check_place, check_show, check_spec, check_layout, check_edit, check_hits, check_gesture,
+  for check in (check_grid, check_view, check_place, check_show, check_spec, check_layout, check_edit, check_hits, check_bar, check_gesture,
                 check_poll, check_text):
     try:
       check(errors)

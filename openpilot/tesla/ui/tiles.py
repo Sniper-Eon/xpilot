@@ -3,7 +3,9 @@ the saved layout, edit operations, touch gestures and the redraw decision. No py
 tools/sp_tesla_e2e/tile_layout_check.py runs it on any host.
 
 Grid: COLS x ROWS cells of CELL px with GAP px between them, centered on the 2160x1080 screen. A tile covers SIZES[size]
-cells (cols, rows). Tiles go, in list order, to the first position that fits, scanning column by column (Win 8 landscape).
+cells (cols, rows). There are two layouts, "park" and "drive", each a list of (id, size, fixed position or None).
+Tiles with a fixed position go there first; the rest go, in list order, to the first position that fits: parked scanning
+column by column (Win 8 landscape), driving row by row from both edges inward (left and right fill alternately).
 Onroad the cells under the mici driving view (DRIVE_CELLS) are blocked and a tile shrinks to a smaller supported size
 when its saved size does not fit."""
 from dataclasses import dataclass
@@ -87,21 +89,43 @@ def shows(spec: TileSpec, started: bool) -> bool:
   return spec.show == "always" or (spec.show == "onroad") == started
 
 
-def place(items: list[tuple[str, str, tuple[str, ...]]], started: bool) -> dict[str, tuple[int, int, str]]:
-  """items: (id, saved size, supported sizes) in list order. Returns id -> (col, row, size) for every tile that fits;
-  onroad a tile tries its saved size, then each smaller supported size, largest first."""
+def scan(started: bool) -> list[tuple[int, int]]:
+  """Cell order for tiles without a fixed position."""
+  if not started:
+    return [(c, r) for c in range(COLS) for r in range(ROWS)]
+  edges = [c for i in range(COLS // 2) for c in (i, COLS - 1 - i)]  # 0, 7, 1, 6, ...
+  return [(c, r) for r in range(ROWS) for c in edges]
+
+
+def _cells(col: int, row: int, size: str) -> set[tuple[int, int]] | None:
+  w, h = SIZES[size]
+  if col < 0 or row < 0 or col + w > COLS or row + h > ROWS:
+    return None
+  return {(col + i, row + j) for i in range(w) for j in range(h)}
+
+
+def place(items: list[tuple[str, str, tuple[str, ...], tuple[int, int] | None]], started: bool) -> dict[str, tuple[int, int, str]]:
+  """items: (id, saved size, supported sizes, fixed position or None) in list order. Returns id -> (col, row, size) for
+  every tile that fits. Fixed tiles first (a position off the grid, on the drive view or on an earlier tile is ignored),
+  then the rest in scan order. Onroad a tile tries its saved size, then each smaller supported size, largest first."""
   taken = set(blocked(started))
   out = {}
-  for tid, saved, sizes in items:
-    tries = [saved] if not started else sorted((s for s in sizes if area(s) <= area(saved)), key=lambda s: -area(s))
-    for size in tries:
-      w, h = SIZES[size]
-      pos = next(((c, r) for c in range(COLS - w + 1) for r in range(ROWS - h + 1)
-                  if not any((c + i, r + j) in taken for i in range(w) for j in range(h))), None)
-      if pos is not None:
-        taken |= {(pos[0] + i, pos[1] + j) for i in range(w) for j in range(h)}
-        out[tid] = (*pos, size)
-        break
+
+  def sizes_for(saved, sizes):
+    return [saved] if not started else sorted((s for s in sizes if area(s) <= area(saved)), key=lambda s: -area(s))
+
+  def take(tid, pos, size) -> bool:
+    cells = _cells(*pos, size)
+    if cells is None or cells & taken:
+      return False
+    taken.update(cells)
+    out[tid] = (*pos, size)
+    return True
+  flowing = [(tid, saved, sizes) for tid, saved, sizes, fixed in items
+             if fixed is None or not any(take(tid, fixed, s) for s in sizes_for(saved, sizes))]
+  order = scan(started)
+  for tid, saved, sizes in flowing:
+    any(take(tid, pos, size) for size in sizes_for(saved, sizes) for pos in order)
   return out
 
 
@@ -117,6 +141,13 @@ def hit(placed: dict[str, tuple[int, int, str]], x: float, y: float) -> str | No
     if rx <= x < rx + rw and ry <= y < ry + rh:
       return tid
   return None
+
+
+def bar_buttons() -> dict[str, tuple[int, int, int, int]]:
+  """Edit mode bar at the bottom center: switch to the park / drive layout, leave edit mode."""
+  w, h, gap = 220, 76, 12
+  x0, y = (SCREEN[0] - 3 * w - 2 * gap) // 2, SCREEN[1] - h - 16
+  return {name: (x0 + i * (w + gap), y, w, h) for i, name in enumerate(("park", "drive", "done"))}
 
 
 def corner_buttons(rect) -> dict[str, tuple[float, float, float]]:
@@ -135,69 +166,78 @@ def add_cell(placed: dict[str, tuple[int, int, str]], started: bool) -> tuple[in
   return next(((c, r) for c in range(COLS) for r in range(ROWS) if (c, r) not in taken), None)
 
 
-# saved layout: {"tiles": [[id, size], ...], "hidden": [id, ...]}
+# saved layout: {"park": {"tiles": [[id, size, col, row], ...], "hidden": [id, ...]}, "drive": {...}}; col/row None = not fixed.
+# v1 {"tiles": [[id, size]], "hidden": [...]} is the park layout.
 
-def arrange(specs: list[TileSpec], saved) -> tuple[list[tuple[str, str]], list[str]]:
-  """(pinned [(id, size)] in order, hidden ids) from the saved layout. Unknown ids, unsupported sizes, duplicates and
-  malformed entries are dropped; tiles in neither list are appended in (order, id) order at their default size."""
+def arrange(specs: list[TileSpec], saved, mode: str) -> tuple[list[tuple[str, str, tuple[int, int] | None]], list[str]]:
+  """(pinned [(id, size, fixed)] in order, hidden ids) of one layout ("park"/"drive") from the saved layout; specs are the
+  tiles that belong to it. Unknown ids, unsupported sizes, bad positions, duplicates and malformed entries are dropped;
+  tiles in neither list are appended in (order, id) order at their default size."""
   by_id = {s.id: s for s in specs}
   saved = saved if isinstance(saved, dict) else {}
-  tiles = saved.get("tiles") if isinstance(saved.get("tiles"), list) else []
-  hidden_in = saved.get("hidden") if isinstance(saved.get("hidden"), list) else []
+  layout = saved.get(mode) if mode in saved else (saved if mode == "park" and "tiles" in saved else {})
+  layout = layout if isinstance(layout, dict) else {}
+  tiles = layout.get("tiles") if isinstance(layout.get("tiles"), list) else []
+  hidden_in = layout.get("hidden") if isinstance(layout.get("hidden"), list) else []
   pinned, seen = [], set()
   for entry in tiles:
-    if not (isinstance(entry, list) and len(entry) == 2 and entry[0] in by_id) or entry[0] in seen:
+    if not (isinstance(entry, list) and len(entry) in (2, 4) and entry[0] in by_id) or entry[0] in seen:
       continue
-    tid, size = entry
+    tid, size = entry[:2]
+    fixed = tuple(entry[2:]) if len(entry) == 4 and all(type(v) is int for v in entry[2:]) else None
     seen.add(tid)
-    pinned.append((tid, size if size in by_id[tid].sizes else by_id[tid].sizes[0]))
+    pinned.append((tid, size if size in by_id[tid].sizes else by_id[tid].sizes[0], fixed))
   hidden = []
   for tid in hidden_in:
     if isinstance(tid, str) and tid in by_id and tid not in seen:
       seen.add(tid)
       hidden.append(tid)
-  pinned += [(s.id, s.sizes[0]) for s in sorted(specs, key=lambda s: (s.order, s.id)) if s.id not in seen]
+  pinned += [(s.id, s.sizes[0], None) for s in sorted(specs, key=lambda s: (s.order, s.id)) if s.id not in seen]
   return pinned, hidden
 
 
-def saved(pinned: list[tuple[str, str]], hidden: list[str]) -> dict:
-  return {"tiles": [[tid, size] for tid, size in pinned], "hidden": list(hidden)}
+def saved(pinned, hidden: list[str]) -> dict:
+  return {"tiles": [[tid, size, *(fixed or (None, None))] for tid, size, fixed in pinned], "hidden": list(hidden)}
 
 
 def resize(pinned, tid: str, sizes: tuple[str, ...]):
-  """Next size in the tile's sizes, wrapping."""
-  return [(i, sizes[(sizes.index(s) + 1) % len(sizes)] if s in sizes else sizes[0]) if i == tid else (i, s) for i, s in pinned]
+  """Next size in the tile's sizes, wrapping; the position stays."""
+  return [(i, sizes[(sizes.index(s) + 1) % len(sizes)] if s in sizes else sizes[0], f) if i == tid else (i, s, f) for i, s, f in pinned]
 
 
 def unpin(pinned, hidden, tid: str):
-  return [(i, s) for i, s in pinned if i != tid], [*hidden, tid]
+  return [e for e in pinned if e[0] != tid], [*hidden, tid]
 
 
 def pin(pinned, hidden, tid: str, sizes: tuple[str, ...]):
-  """Hidden or left-out tile to the end of the list at its smallest size, so it fits wherever a cell is free."""
+  """Hidden or left-out tile to the end of the list at its smallest size, not fixed, so it fits wherever a cell is free."""
   smallest = min(sizes, key=area)
-  return [(i, s) for i, s in pinned if i != tid] + [(tid, smallest)], [i for i in hidden if i != tid]
+  return [e for e in pinned if e[0] != tid] + [(tid, smallest, None)], [i for i in hidden if i != tid]
 
 
-def move(pinned, placed: dict[str, tuple[int, int, str]], tid: str, cell: tuple[int, int]):
-  """Drop tid on cell: it goes before the first other placed tile anchored at or after the cell (column-major), else to
-  the end. Dropping inside its own cells changes nothing."""
-  if tid in placed:
-    col, row, size = placed[tid]
-    w, h = SIZES[size]
-    if col <= cell[0] < col + w and row <= cell[1] < row + h:
-      return list(pinned)
-  key = (cell[0], cell[1])
-  before = next((i for i, _ in pinned if i != tid and i in placed and placed[i][:2] >= key), None)
-  entry = next(e for e in pinned if e[0] == tid)
-  rest = [e for e in pinned if e[0] != tid]
-  index = next((n for n, e in enumerate(rest) if e[0] == before), len(rest))
-  return rest[:index] + [entry] + rest[index:]
+def move(pinned, placed: dict[str, tuple[int, int, str]], tid: str, cell: tuple[int, int], started: bool):
+  """Drop tid on cell: its top left is fixed there (pulled back inside the grid); other fixed tiles it overlaps are no
+  longer fixed. A drop that would cover the drive view changes nothing. List order stays."""
+  size = placed[tid][2] if tid in placed else next(s for i, s, _ in pinned if i == tid)
+  w, h = SIZES[size]
+  pos = (min(max(cell[0], 0), COLS - w), min(max(cell[1], 0), ROWS - h))
+  cells = _cells(*pos, size)
+  if cells & blocked(started):
+    return list(pinned)
+  out = []
+  for i, s, f in pinned:
+    if i == tid:
+      out.append((i, s, pos))
+    elif f is not None and i in placed and placed[i][:2] == f and _cells(*placed[i]) & cells:
+      out.append((i, s, None))
+    else:
+      out.append((i, s, f))
+  return out
 
 
 def addable(pinned, hidden, placed) -> list[str]:
   """The "Add tiles" list: hidden tiles, then visible pinned tiles left out for lack of room."""
-  return list(hidden) + [i for i, _ in pinned if i not in placed]
+  return list(hidden) + [e[0] for e in pinned if e[0] not in placed]
 
 
 class Gesture:
