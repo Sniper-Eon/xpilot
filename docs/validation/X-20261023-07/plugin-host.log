@@ -1,0 +1,9 @@
+Traceback (most recent call last):
+  File "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07/tools/sp_tesla_e2e/plugin_host_check.py", line 46, in <module>
+    from openpilot.tesla import plugins  # noqa: E402
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07/openpilot/tesla/plugins/__init__.py", line 21, in <module>
+    from openpilot.common.swaglog import cloudlog
+  File "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07/openpilot/common/swaglog.py", line 8, in <module>
+    import zmq
+ModuleNotFoundError: No module named 'zmq'

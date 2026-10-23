@@ -1,0 +1,4 @@
+Using Python 3.12.13 environment at: opendbc_repo/.venv
+Resolved 1 package in 493ms
+Installed 1 package in 6ms
+ + pyzmq==27.2.0

@@ -1,0 +1,14 @@
+Traceback (most recent call last):
+  File "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07/tools/sp_tesla_e2e/manifest_check.py", line 167, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07/tools/sp_tesla_e2e/manifest_check.py", line 156, in main
+    for proc in cls.processes():
+                ^^^^^^^^^^^^^^^
+  File "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07/openpilot/tesla/plugins/external_compute/plugin.py", line 15, in processes
+    from openpilot.system.manager.process import PythonProcess
+  File "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07/openpilot/system/manager/process.py", line 14, in <module>
+    import openpilot.cereal.messaging as messaging
+  File "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07/openpilot/cereal/messaging/__init__.py", line 2, in <module>
+    from msgq import fake_event_handle, drain_sock_raw, MultiplePublishersError, IpcError, \
+ModuleNotFoundError: No module named 'msgq'

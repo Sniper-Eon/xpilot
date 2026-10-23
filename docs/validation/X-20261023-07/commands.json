@@ -1,0 +1,74 @@
+[
+  {
+    "name": "libsafety-build",
+    "command": [
+      "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07/opendbc_repo/.venv/bin/python3",
+      "-c",
+      "from opendbc.safety.tests.libsafety.libsafety_py import _build_libsafety; import hashlib; from pathlib import Path; [(print(\"release=\" + str(release), p, \"sha256=\" + hashlib.sha256(Path(p).read_bytes()).hexdigest())) for release in (False, True) for p in [_build_libsafety(release=release)]]"
+    ],
+    "cwd": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07",
+    "exit_code": 0,
+    "log": "libsafety-build.log",
+    "sha256": "79c6914b3f0da555b6b56a52cb9e2b1843161f7170e22f9ccbe9f5e5280fa5cd"
+  },
+  {
+    "name": "tesla",
+    "command": [
+      "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07/opendbc_repo/.venv/bin/python3",
+      "-m",
+      "unittest",
+      "opendbc.safety.tests.test_tesla"
+    ],
+    "cwd": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07",
+    "exit_code": 0,
+    "log": "tesla.log",
+    "sha256": "7eca041f7d497e92730b83c907bd9c9e48d2288baf441d008c3e8f6c4d946714"
+  },
+  {
+    "name": "defaults",
+    "command": [
+      "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07/opendbc_repo/.venv/bin/python3",
+      "-m",
+      "unittest",
+      "opendbc.safety.tests.test_defaults"
+    ],
+    "cwd": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07",
+    "exit_code": 0,
+    "log": "defaults.log",
+    "sha256": "223f46f832ff97b989e93549b99510bb7377decb4f2f4e7ad44b24402c1dfe76"
+  },
+  {
+    "name": "manifest",
+    "command": [
+      "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07/opendbc_repo/.venv/bin/python3",
+      "tools/sp_tesla_e2e/manifest_check.py"
+    ],
+    "cwd": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07",
+    "exit_code": 1,
+    "log": "manifest.log",
+    "sha256": "fa2ffcd8b5025e03e54d8c67262f8acc40644f3979365600b4ddff070cf15875"
+  },
+  {
+    "name": "plugin-host",
+    "command": [
+      "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07/opendbc_repo/.venv/bin/python3",
+      "tools/sp_tesla_e2e/plugin_host_check.py"
+    ],
+    "cwd": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07",
+    "exit_code": 1,
+    "log": "plugin-host.log",
+    "sha256": "50ef7339064e54c21d0e9fc94d3cd123cae47f97ef38aa9464b15ab57d1f3b76"
+  },
+  {
+    "name": "venv-packages",
+    "command": [
+      "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07/opendbc_repo/.venv/bin/python3",
+      "-c",
+      "import importlib.metadata as m; print(\"\n\".join(sorted(f\"{d.metadata[\"Name\"]}=={d.version}\" for d in m.distributions())))"
+    ],
+    "cwd": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07",
+    "exit_code": 1,
+    "log": "venv-packages.log",
+    "sha256": "bfa43b999300ff126040eb092e6a6703da9759dbb85506850629650a37bb83b3"
+  }
+]
