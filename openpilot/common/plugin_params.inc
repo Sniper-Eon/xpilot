@@ -10,10 +10,14 @@
     {"XpilotBlindspotEdges", {PERSISTENT | BACKUP, BOOL, "1"}},
 // car_tile
     {"XpilotCarTile", {PERSISTENT | BACKUP, BOOL, "1"}},
+// clock_tile
+    {"XpilotClockTile", {PERSISTENT | BACKUP, BOOL, "1"}},
 // external_compute
     {"XpilotExternalEnabled", {PERSISTENT | BACKUP, BOOL, "0"}},
     {"XpilotExternalPort", {PERSISTENT | BACKUP, INT, "8770"}},
     {"XpilotExternalToken", {PERSISTENT | DONT_LOG, STRING}},
+// ip_tile
+    {"XpilotIpTile", {PERSISTENT | BACKUP, BOOL, "1"}},
 // lead_card
     {"XpilotLeadCard", {PERSISTENT | BACKUP, BOOL, "1"}},
 // map_tile
