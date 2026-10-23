@@ -1,0 +1,13 @@
+F
+======================================================================
+FAIL: test_session_frame_cap (opendbc.safety.tests.test_tesla_plugins.TestTeslaAmbientLight.test_session_frame_cap)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07/opendbc_repo/opendbc/safety/tests/test_tesla_plugins.py", line 121, in test_session_frame_cap
+    self.assertFalse(self._tx(self._msg(self.FRAME)))
+AssertionError: True is not false
+
+----------------------------------------------------------------------
+Ran 1 test in 0.168s
+
+FAILED (failures=1)

@@ -1,0 +1,264 @@
+[
+  {
+    "name": "protected-files",
+    "command": [
+      "git",
+      "diff",
+      "--exit-code",
+      "00f7924ca05272103dd7cd2063cd5c66d1767b87",
+      "--",
+      "opendbc_repo/opendbc/safety/safety.h",
+      "opendbc_repo/opendbc/safety/modes/tesla.h",
+      "opendbc_repo/opendbc/car/tesla",
+      "opendbc_repo/opendbc/sunnypilot/car/tesla",
+      "opendbc_repo/opendbc/dbc/tesla_model3_*.dbc"
+    ],
+    "cwd": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07",
+    "exit_code": 0,
+    "expected_exit_code": 0,
+    "log": "protected-files.log",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "name": "libsafety-build",
+    "command": [
+      "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07/opendbc_repo/.venv/bin/python3",
+      "-m",
+      "unittest",
+      "opendbc.safety.tests.test_release_build"
+    ],
+    "cwd": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07",
+    "exit_code": 0,
+    "expected_exit_code": 0,
+    "log": "libsafety-build.log",
+    "sha256": "cdaf96ad34881d14fd92655d4c920e7ccb306398be386c8b2b112c505dd44b54"
+  },
+  {
+    "name": "tesla",
+    "command": [
+      "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07/opendbc_repo/.venv/bin/python3",
+      "-m",
+      "unittest",
+      "opendbc.safety.tests.test_tesla"
+    ],
+    "cwd": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07",
+    "exit_code": 0,
+    "expected_exit_code": 0,
+    "log": "tesla.log",
+    "sha256": "4119a3823c32edfadf4d4b3eab98f4f95afb492f4b7dbe7272983349a14ff89b"
+  },
+  {
+    "name": "defaults",
+    "command": [
+      "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07/opendbc_repo/.venv/bin/python3",
+      "-m",
+      "unittest",
+      "opendbc.safety.tests.test_defaults"
+    ],
+    "cwd": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07",
+    "exit_code": 0,
+    "expected_exit_code": 0,
+    "log": "defaults.log",
+    "sha256": "11e856289fe116544231564ebc03cd8b31b353ccd1bca3ed6cfe7c274b9ae413"
+  },
+  {
+    "name": "tesla-plugins",
+    "command": [
+      "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07/opendbc_repo/.venv/bin/python3",
+      "-m",
+      "unittest",
+      "opendbc.safety.tests.test_tesla_plugins"
+    ],
+    "cwd": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07",
+    "exit_code": 0,
+    "expected_exit_code": 0,
+    "log": "tesla-plugins.log",
+    "sha256": "c281853909d1c5cf5a3305c56c631e227c0347578699187079ead04733708ccb"
+  },
+  {
+    "name": "gen-safety",
+    "command": [
+      "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07/opendbc_repo/.venv/bin/python3",
+      "openpilot/tesla/plugins/gen_safety.py"
+    ],
+    "cwd": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07",
+    "exit_code": 0,
+    "expected_exit_code": 0,
+    "log": "gen-safety.log",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "name": "gen-safety-check",
+    "command": [
+      "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07/opendbc_repo/.venv/bin/python3",
+      "openpilot/tesla/plugins/gen_safety.py",
+      "--check"
+    ],
+    "cwd": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07",
+    "exit_code": 0,
+    "expected_exit_code": 0,
+    "log": "gen-safety-check.log",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "name": "gen-params-check",
+    "command": [
+      "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07/opendbc_repo/.venv/bin/python3",
+      "openpilot/tesla/plugins/gen_params.py",
+      "--check"
+    ],
+    "cwd": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07",
+    "exit_code": 0,
+    "expected_exit_code": 0,
+    "log": "gen-params-check.log",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "name": "safety-manifest",
+    "command": [
+      "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07/opendbc_repo/.venv/bin/python3",
+      "tools/sp_tesla_e2e/safety_manifest_check.py"
+    ],
+    "cwd": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07",
+    "exit_code": 0,
+    "expected_exit_code": 0,
+    "log": "safety-manifest.log",
+    "sha256": "92f4119e15d892577390dae30028f66155544e0dd4432ebbdf9816aee64e7301"
+  },
+  {
+    "name": "manifest",
+    "command": [
+      "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07/opendbc_repo/.venv/bin/python3",
+      "tools/sp_tesla_e2e/manifest_check.py"
+    ],
+    "cwd": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07",
+    "exit_code": 0,
+    "expected_exit_code": 0,
+    "log": "manifest.log",
+    "sha256": "7e0e085649810c5126c82057300dd3da616b6afa01044af436a644f0d3fb1456"
+  },
+  {
+    "name": "plugin-host",
+    "command": [
+      "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07/opendbc_repo/.venv/bin/python3",
+      "tools/sp_tesla_e2e/plugin_host_check.py"
+    ],
+    "cwd": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07",
+    "exit_code": 0,
+    "expected_exit_code": 0,
+    "log": "plugin-host.log",
+    "sha256": "7e0e085649810c5126c82057300dd3da616b6afa01044af436a644f0d3fb1456"
+  },
+  {
+    "name": "mutations",
+    "command": [
+      "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07/opendbc_repo/.venv/bin/python3",
+      "docs/validation/X-20261023-07/mutations.py"
+    ],
+    "cwd": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07",
+    "exit_code": 0,
+    "expected_exit_code": 0,
+    "log": "mutations.log",
+    "sha256": "c198525fa32c46e554c5b00d55fc097b37ccb368de696e8d6c2d2d27f346ed1a"
+  },
+  {
+    "name": "full-safety",
+    "command": [
+      "bash",
+      "opendbc/safety/tests/test.sh"
+    ],
+    "cwd": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07/opendbc_repo",
+    "exit_code": 1,
+    "expected_exit_code": 1,
+    "log": "full-safety.log",
+    "sha256": "dca5148863acdab291e33b146c7da77c4b7916f022d2cb0da6c184cdb186a43d"
+  },
+  {
+    "name": "plugin-coverage-tests",
+    "command": [
+      "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07/opendbc_repo/.venv/bin/python3",
+      "-m",
+      "unittest",
+      "opendbc.safety.tests.test_tesla_plugins"
+    ],
+    "cwd": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07",
+    "exit_code": 0,
+    "expected_exit_code": 0,
+    "log": "plugin-coverage-tests.log",
+    "sha256": "142ede03294646e79511d5db7d22658ea7723c5ff38845e0c0e572aeb7b38857"
+  },
+  {
+    "name": "plugin-coverage",
+    "command": [
+      "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07/opendbc_repo/.venv/bin/gcovr",
+      "-r",
+      "../",
+      "--gcov-executable",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/llvm-cov gcov",
+      "--filter",
+      ".*/plugins/.*",
+      "--fail-under-line=100",
+      "--txt"
+    ],
+    "cwd": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07/opendbc_repo/opendbc/safety/tests",
+    "exit_code": 0,
+    "expected_exit_code": 0,
+    "log": "plugin-coverage.log",
+    "sha256": "1d488f89a4aeb54f7f1ca07d49d759a6fd7c0dcf9c422cdc6f17e609bcbbe145"
+  },
+  {
+    "name": "coverage-json",
+    "command": [
+      "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07/opendbc_repo/.venv/bin/gcovr",
+      "-r",
+      "../",
+      "--gcov-executable",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/llvm-cov gcov",
+      "--json",
+      "/private/tmp/X-20261023-07-final/coverage.json"
+    ],
+    "cwd": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07/opendbc_repo/opendbc/safety/tests",
+    "exit_code": 0,
+    "expected_exit_code": 0,
+    "log": "coverage-json.log",
+    "sha256": "b3cf371091aefd26cb5f88f884b0f358b5eb507d591130aa459d9876f899beda"
+  },
+  {
+    "name": "source-unchanged",
+    "command": [
+      "git",
+      "diff",
+      "--exit-code",
+      "--",
+      "opendbc_repo/opendbc/safety/plugins/ambient_light.h",
+      "opendbc_repo/opendbc/safety/plugins/auto_speed.h",
+      "opendbc_repo/opendbc/safety/plugins/registry.h",
+      "opendbc_repo/opendbc/safety/tests/test_tesla_plugins.py",
+      "openpilot/tesla/manifest.py",
+      "openpilot/tesla/plugins/ambient_light/plugin.json",
+      "openpilot/tesla/plugins/ambient_light/plugin.py",
+      "openpilot/tesla/plugins/auto_speed/plugin.json",
+      "openpilot/tesla/plugins/auto_speed/plugin.py",
+      "openpilot/tesla/plugins/gen_safety.py",
+      "tools/sp_tesla_e2e/safety_manifest_check.py"
+    ],
+    "cwd": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07",
+    "exit_code": 0,
+    "expected_exit_code": 0,
+    "log": "source-unchanged.log",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "name": "dependency-versions",
+    "command": [
+      "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07/opendbc_repo/.venv/bin/python3",
+      "-c",
+      "import importlib.metadata as m; print(*sorted(d.metadata[\"Name\"]+\"==\"+d.version for d in m.distributions()), sep=chr(10))"
+    ],
+    "cwd": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07",
+    "exit_code": 0,
+    "expected_exit_code": 0,
+    "log": "dependency-versions.log",
+    "sha256": "77a5b6a97ae132f2a1d08789455452c7977b557ff50a9c00eb30e38f887e5dcb"
+  }
+]

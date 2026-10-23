@@ -1,0 +1,13 @@
+F
+======================================================================
+FAIL: test_content (opendbc.safety.tests.test_tesla_plugins.TestTeslaAmbientLight.test_content)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07/opendbc_repo/opendbc/safety/tests/test_tesla_plugins.py", line 204, in test_content
+    self.assertFalse(self._tx(self._msg(data)), (index, bit))
+AssertionError: True is not false : (0, 0)
+
+----------------------------------------------------------------------
+Ran 1 test in 0.172s
+
+FAILED (failures=1)

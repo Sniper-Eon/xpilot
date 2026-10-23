@@ -1,0 +1,16 @@
+{
+  "commit": "f6da24032cd1c33b8dcff3742b76f6ffb487810e",
+  "sha256": {
+    "opendbc_repo/opendbc/safety/plugins/ambient_light.h": "4e0f83a263736aa9fa85332eaa2d8c167a3f3491cf6fd4463b49f599d8916efe",
+    "opendbc_repo/opendbc/safety/plugins/auto_speed.h": "c57627c8b53df7aa756d659107335a6a0482f30c1b449088557c847cc3425e64",
+    "opendbc_repo/opendbc/safety/plugins/registry.h": "ca1fbe517a94c93b55b607b8d34ba1076b9e5ad5f7ac0bc9c3964216f6b8e74e",
+    "opendbc_repo/opendbc/safety/tests/test_tesla_plugins.py": "688767e19c15ec80db0169bc7a29216f4a70ee5b8eb9c2230f168d3b424ad9f2",
+    "openpilot/tesla/manifest.py": "181175f302d5c07794387a8d31715e3ca0d009f2e39deeed214ea777af2fff5c",
+    "openpilot/tesla/plugins/ambient_light/plugin.json": "8d1050eeae9075e6cad9fc14bcfc75831264ca67517a58762459f9ca423949c7",
+    "openpilot/tesla/plugins/ambient_light/plugin.py": "0411bcce32d547a699ee2cd06ddfd18550285b4aecd333895eeedcea803ce60c",
+    "openpilot/tesla/plugins/auto_speed/plugin.json": "1c4e59103d76e91e245dcff32326ef202ed1ca6acaa4a0d125a9cc06b7c4f993",
+    "openpilot/tesla/plugins/auto_speed/plugin.py": "7d67ed4368c4efa67d77c0629a4b62cc6111669bcf3613c9d542b6b7a875a3b6",
+    "openpilot/tesla/plugins/gen_safety.py": "69cde0143576b6a283283aa204547026264a58cffd968f86ee1583739a96544a",
+    "tools/sp_tesla_e2e/safety_manifest_check.py": "011fad6fbda39727ccf9e65190c151ccca16eb891c3543278a98252f88f94ea3"
+  }
+}

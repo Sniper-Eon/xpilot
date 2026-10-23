@@ -1,0 +1,19 @@
+protected-files exit=0
+libsafety-build exit=0
+tesla exit=0
+defaults exit=0
+tesla-plugins exit=0
+gen-safety exit=0
+gen-safety-check exit=0
+gen-params-check exit=0
+safety-manifest exit=0
+manifest exit=0
+plugin-host exit=0
+mutations exit=0
+full-safety exit=1
+plugin-coverage-tests exit=0
+plugin-coverage exit=0
+coverage-json exit=0
+source-unchanged exit=0
+dependency-versions exit=0
+118/118 plugin lines; 7/7 executable integration lines covered; all expected exits verified.

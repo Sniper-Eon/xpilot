@@ -1,0 +1,13 @@
+F
+======================================================================
+FAIL: test_content (opendbc.safety.tests.test_tesla_plugins.TestTeslaAmbientLight.test_content)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07/opendbc_repo/opendbc/safety/tests/test_tesla_plugins.py", line 217, in test_content
+    self.assertEqual(brightness <= 100, self._tx(self._msg(data)), brightness)
+AssertionError: False != True : 101
+
+----------------------------------------------------------------------
+Ran 1 test in 0.193s
+
+FAILED (failures=1)

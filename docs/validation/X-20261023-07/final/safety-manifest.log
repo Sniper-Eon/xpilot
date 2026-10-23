@@ -1,0 +1,55 @@
+[
+  {
+    "label": "generate",
+    "exit_code": 0,
+    "output": ""
+  },
+  {
+    "label": "current-check",
+    "exit_code": 0,
+    "output": ""
+  },
+  {
+    "label": "stale-check",
+    "exit_code": 1,
+    "output": "/private/var/folders/h4/f23gh_151sqfn4k3y8_fdx940000gn/T/tmpr1rdui7v/opendbc_repo/opendbc/safety/plugins/registry.h is stale: run python3 openpilot/tesla/plugins/gen_safety.py\n"
+  },
+  {
+    "label": "regenerate",
+    "exit_code": 0,
+    "output": ""
+  },
+  {
+    "label": "duplicate-bit",
+    "exit_code": 1,
+    "output": "Traceback (most recent call last):\n  File \"/var/folders/h4/f23gh_151sqfn4k3y8_fdx940000gn/T/tmpr1rdui7v/openpilot/tesla/plugins/gen_safety.py\", line 88, in <module>\n    text = render()\n           ^^^^^^^^\n  File \"/var/folders/h4/f23gh_151sqfn4k3y8_fdx940000gn/T/tmpr1rdui7v/openpilot/tesla/plugins/gen_safety.py\", line 62, in render\n    raise ValueError(f\"{path}: duplicate param_bit {bit:#x}\")\nValueError: /private/var/folders/h4/f23gh_151sqfn4k3y8_fdx940000gn/T/tmpr1rdui7v/openpilot/tesla/plugins/auto_speed/plugin.json: duplicate param_bit 0x4000\n"
+  },
+  {
+    "label": "missing-header",
+    "exit_code": 1,
+    "output": "Traceback (most recent call last):\n  File \"/var/folders/h4/f23gh_151sqfn4k3y8_fdx940000gn/T/tmpr1rdui7v/openpilot/tesla/plugins/gen_safety.py\", line 88, in <module>\n    text = render()\n           ^^^^^^^^\n  File \"/var/folders/h4/f23gh_151sqfn4k3y8_fdx940000gn/T/tmpr1rdui7v/openpilot/tesla/plugins/gen_safety.py\", line 68, in render\n    raise ValueError(f\"{path}: missing safety header {header}\")\nValueError: /private/var/folders/h4/f23gh_151sqfn4k3y8_fdx940000gn/T/tmpr1rdui7v/openpilot/tesla/plugins/ambient_light/plugin.json: missing safety header missing.h\n"
+  },
+  {
+    "label": "claim-without-safety-tx",
+    "exit_code": 1,
+    "output": "Traceback (most recent call last):\n  File \"/var/folders/h4/f23gh_151sqfn4k3y8_fdx940000gn/T/tmpr1rdui7v/openpilot/tesla/plugins/gen_safety.py\", line 88, in <module>\n    text = render()\n           ^^^^^^^^\n  File \"/var/folders/h4/f23gh_151sqfn4k3y8_fdx940000gn/T/tmpr1rdui7v/openpilot/tesla/plugins/gen_safety.py\", line 52, in render\n    raise ValueError(f\"{path}: can.tx claim without safety tx: {claims - tx}\")\nValueError: /private/var/folders/h4/f23gh_151sqfn4k3y8_fdx940000gn/T/tmpr1rdui7v/openpilot/tesla/plugins/ambient_light/plugin.json: can.tx claim without safety tx: {'0x679:1'}\n"
+  },
+  {
+    "label": "safety-tx-without-claim",
+    "exit_code": 1,
+    "output": "Traceback (most recent call last):\n  File \"/var/folders/h4/f23gh_151sqfn4k3y8_fdx940000gn/T/tmpr1rdui7v/openpilot/tesla/plugins/gen_safety.py\", line 88, in <module>\n    text = render()\n           ^^^^^^^^\n  File \"/var/folders/h4/f23gh_151sqfn4k3y8_fdx940000gn/T/tmpr1rdui7v/openpilot/tesla/plugins/gen_safety.py\", line 54, in render\n    raise ValueError(f\"{path}: safety tx without can.tx claim: {tx - claims}\")\nValueError: /private/var/folders/h4/f23gh_151sqfn4k3y8_fdx940000gn/T/tmpr1rdui7v/openpilot/tesla/plugins/ambient_light/plugin.json: safety tx without can.tx claim: {'0x679:1'}\n"
+  },
+  {
+    "label": "undeclared-header",
+    "exit_code": 1,
+    "output": "Traceback (most recent call last):\n  File \"/var/folders/h4/f23gh_151sqfn4k3y8_fdx940000gn/T/tmpr1rdui7v/openpilot/tesla/plugins/gen_safety.py\", line 88, in <module>\n    text = render()\n           ^^^^^^^^\n  File \"/var/folders/h4/f23gh_151sqfn4k3y8_fdx940000gn/T/tmpr1rdui7v/openpilot/tesla/plugins/gen_safety.py\", line 81, in render\n    raise ValueError(f\"undeclared safety header: {sorted(orphaned)}\")\nValueError: undeclared safety header: ['orphan.h']\n"
+  },
+  {
+    "label": "auto_speed-manifest-bit-setup",
+    "exit_code": 0
+  },
+  {
+    "label": "ambient_light-manifest-bit-setup",
+    "exit_code": 0
+  }
+]

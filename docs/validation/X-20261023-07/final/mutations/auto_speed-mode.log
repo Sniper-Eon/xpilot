@@ -1,0 +1,29 @@
+FFF
+======================================================================
+FAIL: test_mode_gate (opendbc.safety.tests.test_tesla_plugins.TestTeslaAutoSpeed.test_mode_gate) (mode=19, param=0)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07/opendbc_repo/opendbc/safety/tests/test_tesla_plugins.py", line 59, in test_mode_gate
+    self.assertFalse(self._tx(self._msg(self.FRAME)))
+AssertionError: True is not false
+
+======================================================================
+FAIL: test_mode_gate (opendbc.safety.tests.test_tesla_plugins.TestTeslaAutoSpeed.test_mode_gate) (mode=19, param=1)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07/opendbc_repo/opendbc/safety/tests/test_tesla_plugins.py", line 59, in test_mode_gate
+    self.assertFalse(self._tx(self._msg(self.FRAME)))
+AssertionError: True is not false
+
+======================================================================
+FAIL: test_mode_gate (opendbc.safety.tests.test_tesla_plugins.TestTeslaAutoSpeed.test_mode_gate) (mode=0, param=0)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07/opendbc_repo/opendbc/safety/tests/test_tesla_plugins.py", line 59, in test_mode_gate
+    self.assertFalse(self._tx(self._msg(self.FRAME)))
+AssertionError: True is not false
+
+----------------------------------------------------------------------
+Ran 1 test in 0.191s
+
+FAILED (failures=3)
