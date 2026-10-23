@@ -180,13 +180,16 @@ class BigScreenHost:
       self._pages[tid] = page
     if e.tile.MICI:
       gui_app.push_widget(self._pages[tid])
-      self._open(e.spec.title, None)
+      self._stack.append((e.spec.title, None))  # shown by mici in FALLBACK_VIEW
     else:
       self._open(e.spec.title, self._pages[tid])
 
   def _open(self, title, page) -> None:
-    """Push a detail page; ListPage.open(title, sub) of the open page lands here too. page None: a mici page above main."""
-    self._stack.append((title, page))
+    """Push a detail page; ListPage.open(title, sub) of the open page lands here too. page None: back one level."""
+    if page is not None:
+      self._stack.append((title, page))
+    elif self._stack:
+      self._stack.pop()
 
   def _back(self) -> None:
     if self._mode == "mici":
