@@ -116,6 +116,25 @@ class Plugin:
     """None, or an object with publisher(pm, sm) returning a pm-like sink that may only tighten the plan."""
     return None
 
+  # ---- selfdrived (claims "role:engagement.state" / "role:safety.fallback", exclusive; openpilot/tesla/core_host.py) ----
+  @classmethod
+  def engagement(cls, selfdrive):
+    """None, or an object with state_machine (SP StateMachine interface: update(events) -> (enabled, active), state,
+    current_alert_types, soft_disable_timer) and mads (ModularAssistiveDrivingSystem interface: update(CS), enabled,
+    active, state_machine.state, read_params(); None keeps SP's MADS bound to this state machine). Replaces SP's whole
+    engagement. The host clamps the outputs: floor disables win, an engage needs SP's driver ENABLE event (MADS: the
+    LKAS button), active implies enabled, soft disable ends within 4 s, ET.PERMANENT always shows. Raising or an
+    invalid output latches both axes off for the rest of the drive."""
+    return None
+
+  @classmethod
+  def safety_fallback(cls, selfdrive):
+    """None, or an object with update(selfdrive, CS), called every selfdrived cycle after SP's update_events. It
+    replaces SP's fallback policy by editing selfdrive.events / events_sp in place (it may clear them and add its own);
+    the host puts back every floor event (pedals, cancel, FCW, stock AEB, panda/CAN faults, core-data liveness,
+    selfdrivedLagging, DM). Raising or replacing the event objects latches both axes off for the rest of the drive."""
+    return None
+
   @classmethod
   def radar_interface(cls, CP, CP_SP, params):
     """None, or a RadarInterfaceBase (update(can_list) -> RadarData or None) replacing the port's radar in card; needs

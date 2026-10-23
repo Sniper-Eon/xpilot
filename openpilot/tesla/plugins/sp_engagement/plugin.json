@@ -1,0 +1,16 @@
+{
+  "id": "sp_engagement",
+  "name": "SP Engagement",
+  "version": "1.0.0",
+  "api": 1,
+  "category": "engagement",
+  "entry": "plugin:SpEngagement",
+  "author": "sunnypilot",
+  "description": "Default engagement: SP's ordinary state machine and MADS. Always on; a plugin that claims role:engagement.state replaces it behind the host floor (core_host.py).",
+  "priority": 10000,
+  "enable_param": null,
+  "claims": [
+    "role:engagement.state"
+  ],
+  "params": {}
+}

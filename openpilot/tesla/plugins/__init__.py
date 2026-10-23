@@ -127,8 +127,11 @@ class CarPlugins:
 
   def __init__(self, CP, params):
     self.plugins = []
+    self._gate = None
     if CP.brand != "tesla":
       return
+    from openpilot.tesla.core_host import CardGate
+    self._gate = CardGate(params)
     params = view(params)
     for cls in active(params):
       try:
@@ -176,6 +179,16 @@ class CarPlugins:
 
   def service_params(self, params) -> None:
     self._each("service_params", view(params))
+
+  def core_alive(self) -> bool:
+    """False while a replaced engagement or fallback has no live selfdriveState: card then sends nothing."""
+    return self._gate is None or self._gate.alive()
+
+
+def install_core(selfdrive) -> None:
+  """selfdrived: replaceable engagement and safety fallback (openpilot/tesla/core_host.py); no-op with SP's defaults."""
+  from openpilot.tesla.core_host import install
+  install(selfdrive)
 
 
 def processes() -> list:

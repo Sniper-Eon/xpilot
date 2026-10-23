@@ -1,9 +1,9 @@
 """Plugin alerts in selfdrived: three SP events whose text comes from the plugins (plugins.update_alerts fills
 `current`). They show regardless of engagement, never disengage, and rank at most MID so SP's own disengage and
-critical alerts always win."""
+critical alerts always win. xpilotPluginFault is the host's own: a replaced engagement or fallback failed (core_host.py)."""
 from openpilot.cereal import custom, log
 from opendbc.car.structs import car
-from openpilot.sunnypilot.selfdrive.selfdrived.events_base import ET, Alert, Priority
+from openpilot.sunnypilot.selfdrive.selfdrived.events_base import ET, Alert, ImmediateDisableAlert, NoEntryAlert, Priority
 
 AlertSize = log.SelfdriveState.AlertSize
 AlertStatus = log.SelfdriveState.AlertStatus
@@ -33,3 +33,9 @@ def _callback(severity: str):
 
 
 EVENTS = {name: {ET.PERMANENT: _callback(sev)} for sev, name in EVENT_NAMES.items()}
+EVENTS[EventNameSP.xpilotPluginFault] = {  # core_host.py: never part of the plugin alert text
+  ET.IMMEDIATE_DISABLE: ImmediateDisableAlert("xpilot Plugin Fault"),
+  ET.NO_ENTRY: NoEntryAlert("xpilot Plugin Fault"),
+  ET.PERMANENT: Alert("xpilot Plugin Fault", "Take control. Engagement is off until the car is parked",
+                      AlertStatus.critical, AlertSize.mid, Priority.MID, VisualAlert.none, AudibleAlert.none, 0.2),
+}

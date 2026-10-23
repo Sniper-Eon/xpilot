@@ -65,7 +65,7 @@ PLUGIN_KEYS = dict(re.findall(KEY_RE, INC.read_text())) if INC.exists() else {}
 KEYS = {**CORE_KEYS, **PLUGIN_KEYS}
 
 
-DEFAULT_CORE = {"sp_models"}
+DEFAULT_CORE = {"sp_models", "sp_engagement", "sp_safety_fallback"}
 
 
 class FakeParams:

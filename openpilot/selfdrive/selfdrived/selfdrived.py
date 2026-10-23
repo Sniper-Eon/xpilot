@@ -186,6 +186,7 @@ class SelfdriveD:
     self.car_events_sp = CarSpecificEventsSP(self.CP, self.CP_SP)
 
     self.button_state_tracker = ButtonStateTracker()
+    plugins.install_core(self)  # xpilot: replaceable engagement / safety fallback (openpilot/tesla/core_host.py)
 
   def update_events(self, CS):
     """Compute onroadEvents from carState"""

@@ -386,6 +386,7 @@ struct OnroadEventSP @0xda96579883444c35 {
     xpilotPluginInfo @26;      # xpilot plugin alerts (openpilot/tesla/alerts.py); never disengage
     xpilotPluginWarning @27;
     xpilotPluginCritical @28;
+    xpilotPluginFault @29;     # a replaced engagement / safety fallback plugin failed: both axes off (openpilot/tesla/core_host.py)
   }
 }
 

@@ -258,7 +258,7 @@ class Car:
       # signal pandad to switch to car safety mode
       self.params.put_bool("ControlsReady", True)
 
-    if self.sm.all_alive(['carControl']):
+    if self.sm.all_alive(['carControl']) and self.plugins.core_alive():  # xpilot: stop on a hung replaced selfdrived
       # send car controls over can
       now_nanos = self.can_log_mono_time if REPLAY else int(time.monotonic() * 1e9)
       self.last_actuators_output, can_sends = self.CI.apply(CC, convert_carControlSP(CC_SP), now_nanos)
