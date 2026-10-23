@@ -200,7 +200,7 @@ typedef struct {
 ## 8c. 插件商店（`openpilot/tesla/store.py`）
 
 - **仓库**：`github.com/onemiless/xpilot-plugins`。`plugins/<id>/` 是源码，`tools/build_index.py` 生成可复现的 `dist/<id>-<版本>.tar.gz` 和 `index.json`（每个插件的 url 和 sha256）。第三方提 PR，维护者审核后合并。**暂不签名**：sha256 只防下载损坏或被替换，可信度来自审核过的仓库。
-- **设备端**：设置 → Plugins → Plugin Store → Refresh。只能停车时安装、更新、删除，重启后生效。
+- **设备端**：Plugins 磁贴就是插件市场（见第 9 节），左下角 Refresh 拉取索引（第一次打开时自动拉一次）。只能停车时安装、更新、删除，重启后生效。
 - **安装位置**：`/data/xpilot_plugins/<id>/`（可用环境变量 `XPILOT_PLUGINS_DIR` 改），系统更新不会动它。安装过程：限制大小下载 → 校验 sha256 → 只解出普通文件（拒绝 `../`、绝对路径、链接）→ 校验清单（id、api、入口模块、不能和内置插件同 id、参数名不能重复）→ 用改名的方式整体替换。任何一步失败，原来装的版本保持不变。
 - **下载插件的代码**：作为包 `xpilot_ext.<id>` 导入，插件内部要用相对导入（`from .controller import X`）。
 - **下载插件的参数**：不编译进 Params，而是存在 `/data/xpilot_plugins/.params/<key>`，支持 BOOL、INT、FLOAT、STRING、JSON。宿主把交给插件、开关判断和设置页的 params 都包了一层（`plugin_params.ParamsView`），插件照常用 `params.get/get_bool/put`。删除插件时参数值保留，重装后设置还在。
@@ -217,13 +217,16 @@ typedef struct {
 - **停车时**：显示停车布局。点一下磁贴打开它的详情页（有 `PAGE` 的）；长按（0.6 s）磁贴或空格进入编辑模式。
 - **编辑模式**（只在停车时）：三个按钮 `Park | Drive | Done`（`tiles.bar_buttons(placed, started)`）：编辑停车布局时竖排放进最后一个空格（第一个空格是"+"），只剩不到两个空格时才横排压在底部居中；编辑行驶布局时横排在 mici 画面占位的底部：Park/Drive 切换正在编辑的布局（编辑行驶布局时 mici 画面的位置画成一块灰色占位），Done 退出。其他磁贴变暗，选中的磁贴右上角是"取消固定"圆钮、右下角是"改尺寸"圆钮（图形用线画，不用字符）。点改尺寸按 `sizes` 的顺序循环；点取消固定把它移到隐藏列表；按住拖动磁贴，松手处的格子成为它的固定位置（磁贴左上角落在这格，超出网格就往回挪；压到 mici 画面则不动），和它重叠的其他固定磁贴变回不固定；点别的磁贴改选它；第一个空格显示"+"，点它打开"Add tiles"页，列出隐藏和放不下的磁贴，点一个就以它最小的尺寸固定到最后（不固定位置）；点其他空格或再点一次选中的磁贴取消选中。
 - **保存**：布局存在 `XpilotTileLayout`（JSON `{"park": {"tiles": [[id, 尺寸, 列, 行], ...], "hidden": [id, ...]}, "drive": {...}}`，列/行为 `null` 表示不固定；旧格式 `{"tiles": [[id, 尺寸]], "hidden": [...]}` 读作停车布局），不进 `params_keys.h`，由 `plugin_params.ParamsView` 存成文件 `/data/xpilot_plugins/.params/XpilotTileLayout`。读取时丢掉不认识的 id、不属于这套布局的磁贴和不支持的尺寸；新出现的磁贴按 (`order`, `id`) 用默认尺寸排到最后；插件关闭时它的磁贴不显示但位置保留。
-- **加磁贴**：插件的写在 `plugins/<名字>/ui.py`；不属于插件的放 `openpilot/tesla/ui/slots/`。继承 `Tile`，写 `SPEC = TileSpec(id, title, sizes, services, show, hz, order, color)`，会被自动发现。
+- **加磁贴**：插件的写在 `plugins/<名字>/ui.py`；不属于插件的放 `openpilot/tesla/ui/slots/`。继承 `Tile`，写 `SPEC = TileSpec(id, title, sizes, services, show, hz, order)`，会被自动发现。磁贴没有自己的颜色：都画成 `Tile.COLOR`。
   - `sizes`：支持的尺寸，第一个是默认；要在行驶时显示必须包含 `small`。
   - `state(sm)`：读数据，返回这块磁贴要显示的内容（可比较的值）。最多每秒调用 `hz` 次；**只有返回值变了（或尺寸变了）才重画**，其余帧画缓存的纹理。`draw(rect, size, state)` 画磁贴正面。
   - 外观用 `Tile.face(rect, ...)`（底色、左下角标题）、`draw_value`（大数字、单位、灰色副行）或 `draw_lines`，保持统一。文字只用 ASCII（设备字体缺 `‹ › · —` 等字，会显示成 `?`；`tile_layout_check.py` 检查）。
   - 连续出错 3 次停止绘制，不影响其他磁贴。
+- **配色**：`tiles.THEMES`（Cobalt、Teal、Emerald、Crimson、Violet、Graphite），在 Toggles 页的"Tile color"里选，存在 `XpilotTileTheme`（STRING，和布局一样存成 `.params` 文件，不进 `params_keys.h`）。宿主启动时和每次回到磁贴屏时读取，设置 `Tile.COLOR` 并让所有磁贴重画；编辑栏的选中按钮也用这个颜色。
+- **插件市场**（Plugins 磁贴，`pages/plugins.py`）：左边一列是 `manifest.CATEGORIES` 里有插件的分类（加载失败时最前面多一个 "Failed"），左下角是商店的 Refresh；右边是选中分类的列表：每个插件一行开关，标题下是版本、作者和简介，后面是商店里有、这次没加载的插件（Install）。点插件行（开关以外）打开插件页：开关、设置项、Version/Author/Category/Claims/Priority，商店下载的插件还有 Update/Remove。分类和行由 `offroad.market_sections` 生成（`offroad_pages_check.py` O12），分类未知的商店插件归到 tools。原来单独的 Store 子页已删除。
+- **Tesla 页**（`pages/tesla.py`）：Vehicle 组第一行是 "Car model"，打开子页选 Auto 或 sunnypilot 车型列表（`car_list.json`）里的某一款 Tesla。选车型写 `CarPlatformBundle`（`{**car_list[名字], "name": 名字}`，和 params_migration 一样），card 下次启动时把 `platform` 当作固定指纹；Auto 删除这个参数，恢复自动识别。只在停车时可用。列表由 `offroad.tesla_models` 生成（O13 检查平台都在 opendbc 里）。
 - **设置磁贴（内置）**：Status（原 Home）、Toggles、Models、Plugins、Tesla、Network、Device、Software、Developer，放在 `ui/slots/settings.py`，`show="offroad"`。`PAGE` 是 `ui/pages/` 里对应的原生页面（Models 是 `pages/models.py` 的 `ModelsPage`：当前模型和下载状态、小模型/大模型列表子页（默认模型，再按文件夹分组，收藏在前，按钮 CURRENT/QUEUED/SELECT）、取消下载、刷新列表、清除缓存；选择、刷新、清缓存只在停车时可用）。设置磁贴不再打开 mici 页面（`offroad_pages_check.py` O1 不允许 `MICI`）。
-- **详情页（WP 风格）**：整屏。左上角是返回圆钮（线画的箭头，点击区 `BACK=(0,0,140,230)`），右边小号大写的上级名（`XPILOT` 或父页面名），下面是大号小写标题；内容区 `CONTENT=(140,230,1920,850)`，由宿主按屏幕像素直接画 `ui/pages/` 里的原生列表页（tici 的 `list_view`/`scroller_tici` 控件）。页面打开的子页（如 Plugins 的 Store）压栈，返回一层层退回，退到底回到磁贴屏。
+- **详情页（WP 风格）**：整屏。左上角是返回圆钮（线画的箭头，点击区 `BACK=(0,0,140,230)`），右边小号大写的上级名（`XPILOT` 或父页面名），下面是大号小写标题；内容区 `CONTENT=(140,230,1920,850)`，由宿主按屏幕像素直接画 `ui/pages/` 里的原生列表页（tici 的 `list_view`/`scroller_tici` 控件）。页面打开的子页（如 Plugins 的插件页、Tesla 的 Car model）压栈，返回一层层退回，退到底回到磁贴屏。
   - 每页一个模块：`openpilot/tesla/ui/pages/<页>.py`，带 `show_event` 的 Widget（`show_event` 时从 params 重新读状态）。共用部分在 `pages/base.py`。不画图的逻辑在 `ui/offroad.py`（视口模式、触摸映射、插件行、商店任务 `StoreJobs`、停车提示），`offroad_pages_check.py` 在本机测。
   - 页面内容和 mici 一致（同样的参数、动作和可用条件，行驶中或接合时不能改）。重置校准、重启、关机、卸载用 `ConfirmDialog`；这些 tici 弹窗压在导航栈上，在 mici 那一遍里隐藏，由宿主全屏画（弹窗打开时页面不接收触摸）。
   - Device 的子页都是原生页面（`pages/training.py`、`terms.py`、`regulatory.py`、`driver_camera.py`），用 `ListPage.open()` 打开；法规信息（`mici_fcc.html` 是 comma four 的标签）只在 mici 硬件上显示；训练指南和车内摄像头只在停车时可用，在 `hide_event` 和息屏超时时清掉 `IsDriverViewEnabled`（息屏后不再渲染；这个参数开着时 hardwared 不会进入 onroad）。`pages.base.back()` 调宿主的 `back()` 关闭当前页。
@@ -234,7 +237,7 @@ typedef struct {
 - **整屏叠加层**：`ScreenOverlay`（`update(sm)`、`draw(zones)`），行驶时在磁贴之后绘制；`zones` 是 `VIEW` 四周的 left/right/top/bottom 和 view 本身的屏幕矩形。出错隔离同上，插件关闭时隐藏。例：`blindspot_edges`。
 - 已知：`NetworkUI` 自己建一个 `WifiManager`，mici 的 `NetworkLayoutMici` 只在 mici 设置里构造（大屏不构造），所以大屏进程里只有 Network 页那一个。
 - 主机检查只验证逻辑和静态结构，**没有渲染过**；字号、间距、弹窗位置要在设备上用 `big_screen_e2e.py` 截图确认。
-- 检查：`tools/sp_tesla_e2e/tile_layout_check.py`（网格、排布、行驶避让、编辑操作、手势、保存格式、ASCII）、`offroad_pages_check.py`（本机）；渲染和触摸：`tools/sp_tesla_e2e/big_screen_e2e.py`（只能在设备上跑，截图磁贴屏、编辑模式、每个设置详情页和 Store，检查停车时除 Models 外不画 mici 纹理）。
+- 检查：`tools/sp_tesla_e2e/tile_layout_check.py`（网格、排布、行驶避让、编辑操作、手势、保存格式、ASCII）、`offroad_pages_check.py`（本机）；渲染和触摸：`tools/sp_tesla_e2e/big_screen_e2e.py`（只能在设备上跑，截图磁贴屏、编辑模式、每个设置详情页、插件市场的分类和插件页，检查停车时除 Models 外不画 mici 纹理）。
 
 ## 10. 现有插件
 
@@ -250,6 +253,9 @@ typedef struct {
 | `car_tile` | 大屏磁贴：仪表车速、挡位、转向灯、盲区；默认开启 | `XpilotCarTile` | 无发送 |
 | `map_tile` | 大屏磁贴：限速、路名、下一个转弯（liveMapDataSP、navInstruction，任何地图或导航来源）；默认开启 | `XpilotMapTile` | 无发送 |
 | `blindspot_edges` | 大屏：盲区有车时画面左/右侧显示红色渐变边框（ScreenOverlay）；默认开启 | `XpilotBlindspotEdges` | 无发送 |
+| `clock_tile` | 大屏磁贴：本地时间和日期（设备时区）；默认开启 | `XpilotClockTile` | 无发送 |
+| `ip_tile` | 大屏磁贴：设备 IP（默认路由的源地址）和网络类型；默认开启 | `XpilotIpTile` | 无发送 |
+| `bms` | 电池：card 从 vehicle bus 解 0x132（电压、电流）和 0x292（SOC），写到 `carStateSP.teslaBattery`；Battery 磁贴显示电量、电压、电流、功率。信号定义来自社区 Model 3/Y DBC，还没在车上核对；默认关闭（需要 vehicle bus 线束） | `XpilotBms` | 无发送 |
 
 ## 11. 本机可以跑的检查
 
