@@ -1,0 +1,13 @@
+F
+======================================================================
+FAIL: test_rx_template_gate (opendbc.safety.tests.test_tesla_plugins.TestTeslaAmbientLight.test_rx_template_gate) (data=b'\xd1\x124V\x80\x06\xa4', bus=1, addr=1658)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07/opendbc_repo/opendbc/safety/tests/test_tesla_plugins.py", line 96, in test_rx_template_gate
+    self.assertFalse(self._tx(self._msg(frame)))
+AssertionError: True is not false
+
+----------------------------------------------------------------------
+Ran 1 test in 0.184s
+
+FAILED (failures=1)

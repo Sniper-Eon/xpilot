@@ -1,0 +1,61 @@
+FFFFFFF
+======================================================================
+FAIL: test_rx_template_gate (opendbc.safety.tests.test_tesla_plugins.TestTeslaAutoSpeed.test_rx_template_gate) (data=b'\xa5\x124\xc0Vx\x9a\xbc', bus=0, addr=962)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07/opendbc_repo/opendbc/safety/tests/test_tesla_plugins.py", line 96, in test_rx_template_gate
+    self.assertFalse(self._tx(self._msg(frame)))
+AssertionError: True is not false
+
+======================================================================
+FAIL: test_rx_template_gate (opendbc.safety.tests.test_tesla_plugins.TestTeslaAutoSpeed.test_rx_template_gate) (data=b'\xa5\x124\xc0Vx\x9a\xbc', bus=2, addr=962)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07/opendbc_repo/opendbc/safety/tests/test_tesla_plugins.py", line 96, in test_rx_template_gate
+    self.assertFalse(self._tx(self._msg(frame)))
+AssertionError: True is not false
+
+======================================================================
+FAIL: test_rx_template_gate (opendbc.safety.tests.test_tesla_plugins.TestTeslaAutoSpeed.test_rx_template_gate) (data=b'\xa5\x124\xc0Vx\x9a\xbc', bus=3, addr=962)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07/opendbc_repo/opendbc/safety/tests/test_tesla_plugins.py", line 96, in test_rx_template_gate
+    self.assertFalse(self._tx(self._msg(frame)))
+AssertionError: True is not false
+
+======================================================================
+FAIL: test_rx_template_gate (opendbc.safety.tests.test_tesla_plugins.TestTeslaAutoSpeed.test_rx_template_gate) (data=b'\xa5\x124\xc0Vx\x9a\xbc', bus=4, addr=962)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07/opendbc_repo/opendbc/safety/tests/test_tesla_plugins.py", line 96, in test_rx_template_gate
+    self.assertFalse(self._tx(self._msg(frame)))
+AssertionError: True is not false
+
+======================================================================
+FAIL: test_rx_template_gate (opendbc.safety.tests.test_tesla_plugins.TestTeslaAutoSpeed.test_rx_template_gate) (data=b'\xa5\x124\xc0Vx\x9a\xbc', bus=5, addr=962)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07/opendbc_repo/opendbc/safety/tests/test_tesla_plugins.py", line 96, in test_rx_template_gate
+    self.assertFalse(self._tx(self._msg(frame)))
+AssertionError: True is not false
+
+======================================================================
+FAIL: test_rx_template_gate (opendbc.safety.tests.test_tesla_plugins.TestTeslaAutoSpeed.test_rx_template_gate) (data=b'\xa5\x124\xc0Vx\x9a\xbc', bus=6, addr=962)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07/opendbc_repo/opendbc/safety/tests/test_tesla_plugins.py", line 96, in test_rx_template_gate
+    self.assertFalse(self._tx(self._msg(frame)))
+AssertionError: True is not false
+
+======================================================================
+FAIL: test_rx_template_gate (opendbc.safety.tests.test_tesla_plugins.TestTeslaAutoSpeed.test_rx_template_gate) (data=b'\xa5\x124\xc0Vx\x9a\xbc', bus=7, addr=962)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07/opendbc_repo/opendbc/safety/tests/test_tesla_plugins.py", line 96, in test_rx_template_gate
+    self.assertFalse(self._tx(self._msg(frame)))
+AssertionError: True is not false
+
+----------------------------------------------------------------------
+Ran 1 test in 0.182s
+
+FAILED (failures=7)

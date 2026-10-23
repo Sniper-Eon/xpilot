@@ -1,0 +1,13 @@
+F
+======================================================================
+FAIL: test_template_freshness (opendbc.safety.tests.test_tesla_plugins.TestTeslaAmbientLight.test_template_freshness)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07/opendbc_repo/opendbc/safety/tests/test_tesla_plugins.py", line 106, in test_template_freshness
+    self.assertEqual(age == self.FRESH, self._tx(self._msg(self.FRAME)))
+AssertionError: False != True
+
+----------------------------------------------------------------------
+Ran 1 test in 0.169s
+
+FAILED (failures=1)

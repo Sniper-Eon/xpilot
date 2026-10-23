@@ -90,9 +90,14 @@ class TeslaPluginBase(common.SafetyTestBase):
       with self.subTest(data=data, bus=bus, addr=addr):
         self._mode()
         self.assertTrue(self._rx(self._msg(data, bus, addr)))
-        self.assertFalse(self._tx(self._msg(self.FRAME)))
+        frame = self.FRAME
+        if self.ADDR == 0x3C2 and len(data) == 8:
+          frame = data[:3] + bytes([(data[3] & 0xC0) | 1]) + data[4:]
+        self.assertFalse(self._tx(self._msg(frame)))
 
   def test_template_freshness(self):
+    self._template()
+    self._mode()
     self.assertFalse(self._tx(self._msg(self.FRAME)))
     for age in (self.FRESH, self.FRESH + 1):
       self._mode()
@@ -132,8 +137,12 @@ class TeslaPluginBase(common.SafetyTestBase):
       self.assertTrue(self._tx(self._msg(self.FRAME)))
       self._mode(other)
       self._mode()
+      self.safety.set_timer(self.RATE)
       self.assertFalse(self._tx(self._msg(self.FRAME)))
-      self._template()
+      self._template(self.RATE)
+      self.assertTrue(self._tx(self._msg(self.FRAME)))
+      self._mode()
+      self._template(self.RATE)
       self.assertTrue(self._tx(self._msg(self.FRAME)))
 
   def test_timer_wrap(self):

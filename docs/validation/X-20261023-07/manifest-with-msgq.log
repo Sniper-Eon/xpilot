@@ -1,0 +1,13 @@
+{
+ "plugins": [
+  "auto_speed",
+  "traffic_light",
+  "external_compute",
+  "ambient_light",
+  "blindspot_edges",
+  "lead_card",
+  "speed_card",
+  "speed_limit_card"
+ ],
+ "errors": []
+}

@@ -1,0 +1,45 @@
+s.........F.FF..................FF.........s..............sss..ss..............s.........s......s.......................s...............sss..ss..............s.........s......s..................
+======================================================================
+FAIL: test_mode_gate (opendbc.safety.tests.test_tesla_plugins.TestTeslaAmbientLight.test_mode_gate) (mode=19, param=1)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07/opendbc_repo/opendbc/safety/tests/test_tesla_plugins.py", line 59, in test_mode_gate
+    self.assertFalse(self._tx(self._msg(self.FRAME)))
+AssertionError: True is not false
+
+======================================================================
+FAIL: test_own_param_bit (opendbc.safety.tests.test_tesla_plugins.TestTeslaAmbientLight.test_own_param_bit) (bit=0)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07/opendbc_repo/opendbc/safety/tests/test_tesla_plugins.py", line 51, in test_own_param_bit
+    self.assertFalse(self._tx(self._msg(self.FRAME)))
+AssertionError: True is not false
+
+======================================================================
+FAIL: test_own_param_bit (opendbc.safety.tests.test_tesla_plugins.TestTeslaAmbientLight.test_own_param_bit) (bit=16384)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07/opendbc_repo/opendbc/safety/tests/test_tesla_plugins.py", line 51, in test_own_param_bit
+    self.assertFalse(self._tx(self._msg(self.FRAME)))
+AssertionError: True is not false
+
+======================================================================
+FAIL: test_session_frame_cap (opendbc.safety.tests.test_tesla_plugins.TestTeslaAutoSpeed.test_session_frame_cap)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07/opendbc_repo/opendbc/safety/tests/test_tesla_plugins.py", line 116, in test_session_frame_cap
+    self.assertFalse(self._tx(self._msg(self.FRAME)))
+AssertionError: True is not false
+
+======================================================================
+FAIL: test_session_time_cap (opendbc.safety.tests.test_tesla_plugins.TestTeslaAutoSpeed.test_session_time_cap)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07/opendbc_repo/opendbc/safety/tests/test_tesla_plugins.py", line 126, in test_session_time_cap
+    self.assertFalse(self._tx(self._msg(self.FRAME)))
+AssertionError: True is not false
+
+----------------------------------------------------------------------
+Ran 189 tests in 0.940s
+
+FAILED (failures=5, skipped=19)

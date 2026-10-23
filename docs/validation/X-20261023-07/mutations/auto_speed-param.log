@@ -1,0 +1,21 @@
+FF
+======================================================================
+FAIL: test_own_param_bit (opendbc.safety.tests.test_tesla_plugins.TestTeslaAutoSpeed.test_own_param_bit) (bit=0)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07/opendbc_repo/opendbc/safety/tests/test_tesla_plugins.py", line 51, in test_own_param_bit
+    self.assertFalse(self._tx(self._msg(self.FRAME)))
+AssertionError: True is not false
+
+======================================================================
+FAIL: test_own_param_bit (opendbc.safety.tests.test_tesla_plugins.TestTeslaAutoSpeed.test_own_param_bit) (bit=32768)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07/opendbc_repo/opendbc/safety/tests/test_tesla_plugins.py", line 51, in test_own_param_bit
+    self.assertFalse(self._tx(self._msg(self.FRAME)))
+AssertionError: True is not false
+
+----------------------------------------------------------------------
+Ran 1 test in 0.169s
+
+FAILED (failures=2)

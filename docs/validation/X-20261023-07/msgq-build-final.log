@@ -1,0 +1,13 @@
+scons: Reading SConscript files ...
+scons: done reading SConscript files.
+scons: Building targets ...
+cythonize msgq/ipc_pyx.pyx
+g++ -o msgq/impl_fake.os -c -std=c++1z -g -fPIC -O2 -Wunused -Werror -Wshadow -Wno-vla-cxx-extension -Wno-unknown-warning-option -fPIC -I. -Imsgq -I/usr/lib/include -I/Users/mile/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/include/python3.12 msgq/impl_fake.cc
+g++ -o msgq/msgq.os -c -std=c++1z -g -fPIC -O2 -Wunused -Werror -Wshadow -Wno-vla-cxx-extension -Wno-unknown-warning-option -fPIC -I. -Imsgq -I/usr/lib/include -I/Users/mile/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/include/python3.12 msgq/msgq.cc
+ar rc libmsgq.a msgq/ipc.os msgq/event.os msgq/impl_msgq.os msgq/impl_fake.os msgq/msgq.os
+ranlib libmsgq.a
+Compiling /Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07/msgq_repo/msgq/ipc_pyx.pyx because it changed.
+[1/1] Cythonizing /Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07/msgq_repo/msgq/ipc_pyx.pyx
+g++ -o msgq/ipc_pyx.o -c -std=c++1z -g -fPIC -O2 -Wunused -Wshadow -Wno-vla-cxx-extension -Wno-unknown-warning-option -Wno-#warnings -Wno-cpp -Wno-shadow -Wno-deprecated-declarations -I. -Imsgq -I/usr/lib/include -I/Users/mile/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/include/python3.12 msgq/ipc_pyx.cpp
+g++ -o msgq/ipc_pyx.so -bundle -undefined dynamic_lookup msgq/ipc_pyx.o libmsgq.a
+scons: done building targets.

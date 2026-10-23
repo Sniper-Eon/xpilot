@@ -1,0 +1,61 @@
+FFFFFFF
+======================================================================
+FAIL: test_tx_bus_and_length (opendbc.safety.tests.test_tesla_plugins.TestTeslaAutoSpeed.test_tx_bus_and_length) (bus=1, length=12)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07/opendbc_repo/opendbc/safety/tests/test_tesla_plugins.py", line 80, in test_tx_bus_and_length
+    self.assertFalse(self._tx(self._msg(data, bus)))
+AssertionError: True is not false
+
+======================================================================
+FAIL: test_tx_bus_and_length (opendbc.safety.tests.test_tesla_plugins.TestTeslaAutoSpeed.test_tx_bus_and_length) (bus=1, length=16)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07/opendbc_repo/opendbc/safety/tests/test_tesla_plugins.py", line 80, in test_tx_bus_and_length
+    self.assertFalse(self._tx(self._msg(data, bus)))
+AssertionError: True is not false
+
+======================================================================
+FAIL: test_tx_bus_and_length (opendbc.safety.tests.test_tesla_plugins.TestTeslaAutoSpeed.test_tx_bus_and_length) (bus=1, length=20)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07/opendbc_repo/opendbc/safety/tests/test_tesla_plugins.py", line 80, in test_tx_bus_and_length
+    self.assertFalse(self._tx(self._msg(data, bus)))
+AssertionError: True is not false
+
+======================================================================
+FAIL: test_tx_bus_and_length (opendbc.safety.tests.test_tesla_plugins.TestTeslaAutoSpeed.test_tx_bus_and_length) (bus=1, length=24)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07/opendbc_repo/opendbc/safety/tests/test_tesla_plugins.py", line 80, in test_tx_bus_and_length
+    self.assertFalse(self._tx(self._msg(data, bus)))
+AssertionError: True is not false
+
+======================================================================
+FAIL: test_tx_bus_and_length (opendbc.safety.tests.test_tesla_plugins.TestTeslaAutoSpeed.test_tx_bus_and_length) (bus=1, length=32)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07/opendbc_repo/opendbc/safety/tests/test_tesla_plugins.py", line 80, in test_tx_bus_and_length
+    self.assertFalse(self._tx(self._msg(data, bus)))
+AssertionError: True is not false
+
+======================================================================
+FAIL: test_tx_bus_and_length (opendbc.safety.tests.test_tesla_plugins.TestTeslaAutoSpeed.test_tx_bus_and_length) (bus=1, length=48)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07/opendbc_repo/opendbc/safety/tests/test_tesla_plugins.py", line 80, in test_tx_bus_and_length
+    self.assertFalse(self._tx(self._msg(data, bus)))
+AssertionError: True is not false
+
+======================================================================
+FAIL: test_tx_bus_and_length (opendbc.safety.tests.test_tesla_plugins.TestTeslaAutoSpeed.test_tx_bus_and_length) (bus=1, length=64)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07/opendbc_repo/opendbc/safety/tests/test_tesla_plugins.py", line 80, in test_tx_bus_and_length
+    self.assertFalse(self._tx(self._msg(data, bus)))
+AssertionError: True is not false
+
+----------------------------------------------------------------------
+Ran 1 test in 0.167s
+
+FAILED (failures=7)

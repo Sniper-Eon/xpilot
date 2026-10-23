@@ -1,0 +1,11 @@
+Using Python 3.12.13 environment at: /Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07/opendbc_repo/.venv
+Resolved 3 packages in 1.06s
+Downloading cython (3.0MiB)
+Downloading scons (3.9MiB)
+ Downloaded cython
+ Downloaded scons
+Prepared 2 packages in 1.07s
+Installed 3 packages in 26ms
+ + cython==3.3.0
+ + scons==4.11.1
+ + setuptools==84.2.1
