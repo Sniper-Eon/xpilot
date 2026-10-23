@@ -1,0 +1,176 @@
+kj/filesystem-disk-unix.c++:1734: warning: PWD environment variable doesn't match current directory; pwd = /data/openpilot
+gbm_create_device(156): Info: backend name is: msm_drm
+raylib: COMMA: Failed to initialize color correction
+raylib: FONT: Requested codepoints glyphs found: [117/122]
+raylib: FONT: Requested codepoints glyphs found: [117/122]
+raylib: FONT: Requested codepoints glyphs found: [117/122]
+raylib: FONT: Requested codepoints glyphs found: [107/122]
+raylib: FONT: Requested codepoints glyphs found: [117/122]
+FPS dropped below 60: 9
+{
+  "passed": true,
+  "head": "cc129b8829c8fd6d170ef75d9857840cb25ed726",
+  "scope": "real GPU and production BigScreenHost edit/resize/done callbacks; service stopped for exclusive DRM; no CAN",
+  "cases": [
+    {
+      "tile": "speed_card",
+      "title": "Speed",
+      "size": "small",
+      "path": "tile-speed_card-small.png",
+      "placement": [
+        0,
+        0,
+        "small"
+      ],
+      "resize_taps_in_edit_mode": 0,
+      "state": "('0', 'km/h', 'SET -')",
+      "draws": [
+        {
+          "text": "Speed",
+          "x": 16.0,
+          "y": 202.0,
+          "size": 34,
+          "width": 85.68
+        },
+        {
+          "text": "0",
+          "x": 43.26,
+          "y": 12.0,
+          "size": 114,
+          "width": 64.41
+        },
+        {
+          "text": "km/h",
+          "x": 115.66,
+          "y": 66.32,
+          "size": 46,
+          "width": 91.08
+        },
+        {
+          "text": "SET -",
+          "x": 79.75,
+          "y": 134.0,
+          "size": 42,
+          "width": 90.51
+        }
+      ],
+      "edge_cut": [],
+      "overlap": [],
+      "too_small": [],
+      "ellipsis": []
+    },
+    {
+      "tile": "speed_card",
+      "title": "Speed",
+      "size": "medium",
+      "path": "tile-speed_card-medium.png",
+      "placement": [
+        0,
+        0,
+        "medium"
+      ],
+      "resize_taps_in_edit_mode": 1,
+      "state": "('0', 'km/h', 'SET -')",
+      "draws": [
+        {
+          "text": "Speed",
+          "x": 16.0,
+          "y": 447.0,
+          "size": 51,
+          "width": 128.52
+        },
+        {
+          "text": "0",
+          "x": 71.37,
+          "y": 12.0,
+          "size": 317,
+          "width": 179.11
+        },
+        {
+          "text": "km/h",
+          "x": 258.47,
+          "y": 198.96,
+          "size": 92,
+          "width": 182.16
+        },
+        {
+          "text": "SET -",
+          "x": 165.49,
+          "y": 337.0,
+          "size": 84,
+          "width": 181.02
+        }
+      ],
+      "edge_cut": [],
+      "overlap": [],
+      "too_small": [],
+      "ellipsis": []
+    },
+    {
+      "tile": "speed_card",
+      "title": "Speed",
+      "size": "wide",
+      "path": "tile-speed_card-wide.png",
+      "placement": [
+        0,
+        0,
+        "wide"
+      ],
+      "resize_taps_in_edit_mode": 1,
+      "state": "('0', 'km/h', 'SET -')",
+      "draws": [
+        {
+          "text": "Speed",
+          "x": 16.0,
+          "y": 447.0,
+          "size": 51,
+          "width": 128.52
+        },
+        {
+          "text": "0",
+          "x": 333.37,
+          "y": 12.0,
+          "size": 317,
+          "width": 179.11
+        },
+        {
+          "text": "km/h",
+          "x": 520.47,
+          "y": 198.96,
+          "size": 92,
+          "width": 182.16
+        },
+        {
+          "text": "SET -",
+          "x": 427.49,
+          "y": 337.0,
+          "size": 84,
+          "width": 181.02
+        }
+      ],
+      "edge_cut": [],
+      "overlap": [],
+      "too_small": [],
+      "ellipsis": []
+    }
+  ],
+  "original_sha256": {
+    "layout": "7d2e2f182f08e9cf92ab14d444b42078cf45f96fafcc693cfa1519149b7f3d46",
+    "theme": "1d261a8554d2da69b2e13445a8ee2a94dd10912a2bf5a0f3d3fe0698e5540f84",
+    "bms": "6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b",
+    "car": "dfcc84df24862d499db2c9a7572af713b81f9592a740eb53b4f393f213722519"
+  },
+  "final_sha256": {
+    "layout": "7d2e2f182f08e9cf92ab14d444b42078cf45f96fafcc693cfa1519149b7f3d46",
+    "theme": "1d261a8554d2da69b2e13445a8ee2a94dd10912a2bf5a0f3d3fe0698e5540f84",
+    "bms": "6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b",
+    "car": "dfcc84df24862d499db2c9a7572af713b81f9592a740eb53b4f393f213722519"
+  },
+  "restored": {
+    "layout": true,
+    "theme": true,
+    "bms": true,
+    "car": true
+  },
+  "errors": []
+}

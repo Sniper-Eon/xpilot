@@ -1,0 +1,530 @@
+{
+  "passed": true,
+  "method": "FFmpeg format=yuv444p; last-column crop; signalstats.YMAX; Graphite=64",
+  "v6_reference": [
+    {
+      "path": "tile-clock-small.png",
+      "YMAX": 235,
+      "expected": 235,
+      "sha256": "97aa48296e75aea43734b52be05e440943578cb243d94bd8aba647fa3a6966a7"
+    },
+    {
+      "path": "tile-clock-medium.png",
+      "YMAX": 235,
+      "expected": 235,
+      "sha256": "52625e84928cfbf541cb8d4ed1e905c9004b46c5293f9b71393b119403ae0b89"
+    },
+    {
+      "path": "tile-clock-wide.png",
+      "YMAX": 64,
+      "expected": 64,
+      "sha256": "e8c8291a3989f88669527b4e18588a34a851220a2f16a04b31622b801debba3c"
+    },
+    {
+      "path": "tile-ip-small.png",
+      "YMAX": 120,
+      "expected": 120,
+      "sha256": "2b849cfaa8e31751126d45f337dab5d44fa5e870fab1894b9b8ee4ffac4dd692"
+    },
+    {
+      "path": "tile-ip-medium.png",
+      "YMAX": 235,
+      "expected": 235,
+      "sha256": "91e0baf1e1a95f9e3f94b0c3dfca8ad258825c147d709c1761a695590472e290"
+    },
+    {
+      "path": "tile-ip-wide.png",
+      "YMAX": 64,
+      "expected": 64,
+      "sha256": "172ddbdad3ab2b9d2661d98c13b99c7f6af696d117c2435985f7b6e86fe8580b"
+    }
+  ],
+  "cases": [
+    {
+      "tile": "bms",
+      "size": "small",
+      "path": "tile-bms-small.png",
+      "rect": [
+        38,
+        22,
+        250,
+        250
+      ],
+      "rightmost_column_YMAX": 64,
+      "clipping": false,
+      "overlap": [],
+      "too_small": [],
+      "ellipsis": [],
+      "minimum_font_px": 34,
+      "sha256": "17dad5e0f68b150b6baf1be1a18ef2c7a933c763ea325cfe5fa8b9ed1e205fef"
+    },
+    {
+      "tile": "bms",
+      "size": "medium",
+      "path": "tile-bms-medium.png",
+      "rect": [
+        38,
+        22,
+        512,
+        512
+      ],
+      "rightmost_column_YMAX": 64,
+      "clipping": false,
+      "overlap": [],
+      "too_small": [],
+      "ellipsis": [],
+      "minimum_font_px": 51,
+      "sha256": "74b47335874d332171e3f6e26f24e447a85b0f0541c295346a38b6106c1e30e7"
+    },
+    {
+      "tile": "bms",
+      "size": "wide",
+      "path": "tile-bms-wide.png",
+      "rect": [
+        38,
+        22,
+        1036,
+        512
+      ],
+      "rightmost_column_YMAX": 64,
+      "clipping": false,
+      "overlap": [],
+      "too_small": [],
+      "ellipsis": [],
+      "minimum_font_px": 51,
+      "sha256": "aee391611af012a8209adf7a66f418e642eb8dd8ebc81e47ac888ea32746c287"
+    },
+    {
+      "tile": "car",
+      "size": "small",
+      "path": "tile-car-small.png",
+      "rect": [
+        38,
+        22,
+        250,
+        250
+      ],
+      "rightmost_column_YMAX": 64,
+      "clipping": false,
+      "overlap": [],
+      "too_small": [],
+      "ellipsis": [],
+      "minimum_font_px": 34,
+      "sha256": "9be4a4b37a0cd3a0838dea36ed3c89a29c02055692569bf0f96117cadce8f9de"
+    },
+    {
+      "tile": "car",
+      "size": "medium",
+      "path": "tile-car-medium.png",
+      "rect": [
+        38,
+        22,
+        512,
+        512
+      ],
+      "rightmost_column_YMAX": 64,
+      "clipping": false,
+      "overlap": [],
+      "too_small": [],
+      "ellipsis": [],
+      "minimum_font_px": 51,
+      "sha256": "6d45c7086cdbada8903459325e5f103463b190fd085fa0eb66705dda53a08e93"
+    },
+    {
+      "tile": "car",
+      "size": "wide",
+      "path": "tile-car-wide.png",
+      "rect": [
+        38,
+        22,
+        1036,
+        512
+      ],
+      "rightmost_column_YMAX": 64,
+      "clipping": false,
+      "overlap": [],
+      "too_small": [],
+      "ellipsis": [],
+      "minimum_font_px": 51,
+      "sha256": "f51c5537297086baa33b50fa93fcafe99df9ce5b3e4fbb1f821224de88173954"
+    },
+    {
+      "tile": "clock",
+      "size": "small",
+      "path": "tile-clock-small.png",
+      "rect": [
+        38,
+        22,
+        250,
+        250
+      ],
+      "rightmost_column_YMAX": 64,
+      "clipping": false,
+      "overlap": [],
+      "too_small": [],
+      "ellipsis": [],
+      "minimum_font_px": 34,
+      "sha256": "da86295ef01c1cf6a1115f0ec3fd2ad31d4d51d57d24b45483f4061d1e9ca691"
+    },
+    {
+      "tile": "clock",
+      "size": "medium",
+      "path": "tile-clock-medium.png",
+      "rect": [
+        38,
+        22,
+        512,
+        512
+      ],
+      "rightmost_column_YMAX": 64,
+      "clipping": false,
+      "overlap": [],
+      "too_small": [],
+      "ellipsis": [],
+      "minimum_font_px": 51,
+      "sha256": "6e82e8d69d4849a77956bc15064dc1c57e80516c9d7aa2defd42192eb12aac98"
+    },
+    {
+      "tile": "clock",
+      "size": "wide",
+      "path": "tile-clock-wide.png",
+      "rect": [
+        38,
+        22,
+        1036,
+        512
+      ],
+      "rightmost_column_YMAX": 64,
+      "clipping": false,
+      "overlap": [],
+      "too_small": [],
+      "ellipsis": [],
+      "minimum_font_px": 51,
+      "sha256": "5102459bfb677c0a5c4f33fa59d3fff47b144bd1ce0cd30f787adf4b98bae051"
+    },
+    {
+      "tile": "ip",
+      "size": "small",
+      "path": "tile-ip-small.png",
+      "rect": [
+        38,
+        22,
+        250,
+        250
+      ],
+      "rightmost_column_YMAX": 64,
+      "clipping": false,
+      "overlap": [],
+      "too_small": [],
+      "ellipsis": [],
+      "minimum_font_px": 34,
+      "sha256": "f1c8f986aa554541ce0d5294d0d75eff5723b8d1a306986a7fa1dab86a5a0169"
+    },
+    {
+      "tile": "ip",
+      "size": "medium",
+      "path": "tile-ip-medium.png",
+      "rect": [
+        38,
+        22,
+        512,
+        512
+      ],
+      "rightmost_column_YMAX": 64,
+      "clipping": false,
+      "overlap": [],
+      "too_small": [],
+      "ellipsis": [],
+      "minimum_font_px": 51,
+      "sha256": "2f93d30a64b671f797298a9728f5e0317ce910f9410c92fc1479531910c6463a"
+    },
+    {
+      "tile": "ip",
+      "size": "wide",
+      "path": "tile-ip-wide.png",
+      "rect": [
+        38,
+        22,
+        1036,
+        512
+      ],
+      "rightmost_column_YMAX": 64,
+      "clipping": false,
+      "overlap": [],
+      "too_small": [],
+      "ellipsis": [],
+      "minimum_font_px": 51,
+      "sha256": "13c0fcaa63aae0cb1e7d2ccbca6f8a16af3a46f883cf29709645e2b91835a3fc"
+    },
+    {
+      "tile": "lead_card",
+      "size": "small",
+      "path": "tile-lead_card-small.png",
+      "rect": [
+        38,
+        22,
+        250,
+        250
+      ],
+      "rightmost_column_YMAX": 64,
+      "clipping": false,
+      "overlap": [],
+      "too_small": [],
+      "ellipsis": [],
+      "minimum_font_px": 34,
+      "sha256": "6c435d3bddfeeec49fa39f315605ea7c46d9888b179db7aa4959f33849d75aad"
+    },
+    {
+      "tile": "lead_card",
+      "size": "medium",
+      "path": "tile-lead_card-medium.png",
+      "rect": [
+        38,
+        22,
+        512,
+        512
+      ],
+      "rightmost_column_YMAX": 64,
+      "clipping": false,
+      "overlap": [],
+      "too_small": [],
+      "ellipsis": [],
+      "minimum_font_px": 51,
+      "sha256": "c355ccf3e1b3cb313d418f487525de34db86bbcb7616a5d8e9ba3aacd4fd79a1"
+    },
+    {
+      "tile": "lead_card",
+      "size": "wide",
+      "path": "tile-lead_card-wide.png",
+      "rect": [
+        38,
+        22,
+        1036,
+        512
+      ],
+      "rightmost_column_YMAX": 64,
+      "clipping": false,
+      "overlap": [],
+      "too_small": [],
+      "ellipsis": [],
+      "minimum_font_px": 51,
+      "sha256": "25ec5fa961c6c35b49001d702b3e81b7390398a8ce9a77a28426242e1eb1c3bf"
+    },
+    {
+      "tile": "map",
+      "size": "small",
+      "path": "tile-map-small.png",
+      "rect": [
+        38,
+        22,
+        250,
+        250
+      ],
+      "rightmost_column_YMAX": 64,
+      "clipping": false,
+      "overlap": [],
+      "too_small": [],
+      "ellipsis": [],
+      "minimum_font_px": 34,
+      "sha256": "f94e6f3222b3ece24fe44f177e9c6dc5b39c914788d240b6385b143710ab4957"
+    },
+    {
+      "tile": "map",
+      "size": "medium",
+      "path": "tile-map-medium.png",
+      "rect": [
+        38,
+        22,
+        512,
+        512
+      ],
+      "rightmost_column_YMAX": 64,
+      "clipping": false,
+      "overlap": [],
+      "too_small": [],
+      "ellipsis": [],
+      "minimum_font_px": 51,
+      "sha256": "b0e2d2e4bb659b7bb4b047e6b393fca9a4bb7b5cdf57ccfdd77a9b1ef0fd2e24"
+    },
+    {
+      "tile": "map",
+      "size": "wide",
+      "path": "tile-map-wide.png",
+      "rect": [
+        38,
+        22,
+        1036,
+        512
+      ],
+      "rightmost_column_YMAX": 64,
+      "clipping": false,
+      "overlap": [],
+      "too_small": [],
+      "ellipsis": [],
+      "minimum_font_px": 51,
+      "sha256": "3670aa15dc2cff306d2713e1775cade2054d96a0c8c3498e17e6c2daf5f01a47"
+    },
+    {
+      "tile": "plugins",
+      "size": "small",
+      "path": "tile-plugins-small.png",
+      "rect": [
+        38,
+        22,
+        250,
+        250
+      ],
+      "rightmost_column_YMAX": 64,
+      "clipping": false,
+      "overlap": [],
+      "too_small": [],
+      "ellipsis": [],
+      "minimum_font_px": 34,
+      "sha256": "7cb3cda00d534f53c7ca91af610ee1e757e2d496ac61ac7512894e503b1cf001"
+    },
+    {
+      "tile": "plugins",
+      "size": "medium",
+      "path": "tile-plugins-medium.png",
+      "rect": [
+        38,
+        22,
+        512,
+        512
+      ],
+      "rightmost_column_YMAX": 64,
+      "clipping": false,
+      "overlap": [],
+      "too_small": [],
+      "ellipsis": [],
+      "minimum_font_px": 51,
+      "sha256": "55ede4b5b8d352607e753e13ad1c25da84b1d124ebf5e3941d38d16358ab45e9"
+    },
+    {
+      "tile": "plugins",
+      "size": "wide",
+      "path": "tile-plugins-wide.png",
+      "rect": [
+        38,
+        22,
+        1036,
+        512
+      ],
+      "rightmost_column_YMAX": 64,
+      "clipping": false,
+      "overlap": [],
+      "too_small": [],
+      "ellipsis": [],
+      "minimum_font_px": 51,
+      "sha256": "316bc057d5596f3059d0ef86f2040272c663eb61122fb6a61d9e1c6e62fdda95"
+    },
+    {
+      "tile": "speed_card",
+      "size": "small",
+      "path": "tile-speed_card-small.png",
+      "rect": [
+        38,
+        22,
+        250,
+        250
+      ],
+      "rightmost_column_YMAX": 64,
+      "clipping": false,
+      "overlap": [],
+      "too_small": [],
+      "ellipsis": [],
+      "minimum_font_px": 34,
+      "sha256": "748c821cc6fc83cd4cb4e390d286b5f20ca6a404b2251882f24fbc4a349bd10c"
+    },
+    {
+      "tile": "speed_card",
+      "size": "medium",
+      "path": "tile-speed_card-medium.png",
+      "rect": [
+        38,
+        22,
+        512,
+        512
+      ],
+      "rightmost_column_YMAX": 64,
+      "clipping": false,
+      "overlap": [],
+      "too_small": [],
+      "ellipsis": [],
+      "minimum_font_px": 51,
+      "sha256": "cb87724c8fb640f1591ca84d1c9b88543c4b0ecc97e1ff8ce9363abc2cc6cb3b"
+    },
+    {
+      "tile": "speed_card",
+      "size": "wide",
+      "path": "tile-speed_card-wide.png",
+      "rect": [
+        38,
+        22,
+        1036,
+        512
+      ],
+      "rightmost_column_YMAX": 64,
+      "clipping": false,
+      "overlap": [],
+      "too_small": [],
+      "ellipsis": [],
+      "minimum_font_px": 51,
+      "sha256": "ad6689b9a7d15e1b0702a570c3dc77e78ba7a3d6acb02d289bcdf79dd56a394e"
+    },
+    {
+      "tile": "tesla",
+      "size": "small",
+      "path": "tile-tesla-small.png",
+      "rect": [
+        38,
+        22,
+        250,
+        250
+      ],
+      "rightmost_column_YMAX": 64,
+      "clipping": false,
+      "overlap": [],
+      "too_small": [],
+      "ellipsis": [],
+      "minimum_font_px": 34,
+      "sha256": "3ad9080cf4974b8a9b2969965b7a91d350ce879822ff0235d2d20ddf3e947d9a"
+    },
+    {
+      "tile": "tesla",
+      "size": "medium",
+      "path": "tile-tesla-medium.png",
+      "rect": [
+        38,
+        22,
+        512,
+        512
+      ],
+      "rightmost_column_YMAX": 64,
+      "clipping": false,
+      "overlap": [],
+      "too_small": [],
+      "ellipsis": [],
+      "minimum_font_px": 51,
+      "sha256": "ecd6196a443eec6da909cc7990d4fca4493c94e4f65cce2585f75a8075acc601"
+    },
+    {
+      "tile": "tesla",
+      "size": "wide",
+      "path": "tile-tesla-wide.png",
+      "rect": [
+        38,
+        22,
+        1036,
+        512
+      ],
+      "rightmost_column_YMAX": 64,
+      "clipping": false,
+      "overlap": [],
+      "too_small": [],
+      "ellipsis": [],
+      "minimum_font_px": 51,
+      "sha256": "d23ee81c03ae47124bfb4c796275eabd2fa2c5bab6ec780f9976111a8252a12a"
+    }
+  ]
+}

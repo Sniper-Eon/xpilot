@@ -1,0 +1,8 @@
+cc129b8 Remove ui_smoke.py, a stale mici-only smoke test
+f41c908 big_screen_e2e: derive the drive tiles from the host instead of a fixed list
+6a1c129 plugin_host_check: accept store plugin params in P9
+333bd99 manifest_check: count only built-in plugin classes in M8
+b313000 plugins: load a store plugin's ui.py from xpilot_ext
+5b979e2 ui: draw tile text at its real pixel size
+784485f ui: show on the plugin page whether a plugin is built-in or from the store
+9b58afa plugins: split UI into Tiles and Driving Overlays categories

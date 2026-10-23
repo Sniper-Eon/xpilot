@@ -1,0 +1,57 @@
+{
+  "task": "X-20261023-10",
+  "status": "DONE",
+  "source_head": "cc129b8829c8fd6d170ef75d9857840cb25ed726",
+  "device_head": "cc129b8829c8fd6d170ef75d9857840cb25ed726",
+  "device_ip": "172.16.1.202",
+  "items": {
+    "1": "PASS",
+    "2": "PASS",
+    "3": "PASS",
+    "4": "PASS",
+    "5": "PASS",
+    "6": "PASS"
+  },
+  "checks": {
+    "external_bridge_check.py": 0,
+    "manifest_check.py": 0,
+    "offroad_pages_check.py": 0,
+    "phase2_check.py": 0,
+    "phase3_check.py": 0,
+    "plugin_host_check.py": 0,
+    "store_check.py": 0,
+    "tile_layout_check.py": 0
+  },
+  "e2e": {
+    "passed": true,
+    "errors": []
+  },
+  "tile_screenshots": 27,
+  "pixel_passed": true,
+  "params_exact": 5,
+  "store_files_exact": 7,
+  "existing_dirty_files_exact": 287,
+  "problems": [
+    {
+      "id": 1,
+      "summary": "Production model-index download: Network is unreachable; expired cache used",
+      "resolved": false
+    },
+    {
+      "id": 2,
+      "summary": "Initial final gate raced manager CLEAR_ON_MANAGER_START; stable gate passed",
+      "resolved": true
+    },
+    {
+      "id": 3,
+      "summary": "Driver-view existence cleared on manager start; exact original bytes restored after startup",
+      "resolved": true
+    }
+  ],
+  "final_service": "active",
+  "final_panda_samples": 51,
+  "production_panda_samples": 601,
+  "test_runner_first_exit": 1,
+  "panda_version_match": true,
+  "panda_signature_match": true
+}

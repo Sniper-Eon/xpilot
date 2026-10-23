@@ -1,0 +1,15 @@
+{
+  "passed": true,
+  "source_head": "cc129b8829c8fd6d170ef75d9857840cb25ed726",
+  "scope": "report artifacts and cross-artifact assertions; no unit tests or source edits",
+  "checks": 8,
+  "e2e_cases": 24,
+  "tile_cases": 27,
+  "v6_pixel_reference_matches": true,
+  "png_count": 49,
+  "png_max_bytes": 394836,
+  "params_byte_equal": 5,
+  "store_files_byte_equal": 7,
+  "existing_dirty_files_byte_equal": 287,
+  "initial_runner_failure_preserved": true
+}
