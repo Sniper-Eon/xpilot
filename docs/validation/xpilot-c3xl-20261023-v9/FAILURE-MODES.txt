@@ -1,0 +1,7 @@
+a native build or cereal/C++ consumer failure
+b default install_core changes selfdrived or CardGate.sm is not None
+c phase4_check fails in real device environment
+d any other *_check.py or big_screen/store E2E regresses
+e Plugins categories lack SP Engagement / SP Safety Fallback or expose an operable switch
+f UI/manager traceback or plugin load error in 60 s production log
+Gate failures: unreachable SSH, wrong hostname/profile/head, unsafe offroad/engagement/ignition/control/fault state, Panda firmware/signature mismatch, dirty-file overlap or preservation drift. Stop before device mutation.

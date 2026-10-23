@@ -1,0 +1,16 @@
+{
+  "passed": true,
+  "scope": "Host evidence consistency only; no device validation",
+  "checks": {
+    "all_nine_device_check_rcs_unavailable": true,
+    "six_acceptance_failures_marked_not_run": true,
+    "device_head_unknown": true,
+    "ssh_attempts_3_4_rc_255": true,
+    "ssh_same_authorized_target_strict_host_key": true,
+    "head_is_target": true,
+    "branch_is_task_branch": true,
+    "tracked_source_diff_empty": true,
+    "no_fabricated_screenshots": true,
+    "v8_report_matches_origin_task_branch": true
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "task": "X-20261023-13",
+  "checkout": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/source",
+  "initial_head": "e656a13f8d228fd61b144a59bf6145f10ac1c45d",
+  "initial_branch": "task/X-20261023-11",
+  "initial_dirty": false,
+  "branch": "task/X-20261023-13",
+  "head": "e60f99c0d9cb14e39711d2716b2ba694b28ce9d3",
+  "target_head": "e60f99c0d9cb14e39711d2716b2ba694b28ce9d3",
+  "origin_xpilot": "e60f99c0d9cb14e39711d2716b2ba694b28ce9d3",
+  "remote": "ssh://git@ssh.github.com:443/onemiless/openpilot.git",
+  "expected_device_start_head": "f7af016516db4043bec0af24e6d3133fd864dfc9",
+  "device_head_observed": null,
+  "v8_report_ref": "task/X-20261023-11",
+  "v8_report_sha256": "4fb68103dd8d8a1f1863df5c840d8c3495851fc6399cf67931d5cf4d8da2679a",
+  "read_files_sha256": {
+    "AGENTS.md": "b0ab1402148cd27f6bc98a6613ed557823baa686200bc0277f0362b827164be0",
+    "XPILOT.md": "c2d37e0b880431d08e031936e01d4282a70c62d7c05a3be3d1021a5acc2b9742",
+    "openpilot/tesla/core_host.py": "d6b8ee1c3ecb30a2fdbc4078b2547c692e6d099a52a07b628469911e20e9f2d9",
+    "tools/sp_tesla_e2e/phase4_check.py": "7e26197068cfbdaadff8b2add9bd399e1e655f1b9b487ee6887bed0daae0eac3"
+  },
+  "bundle": {
+    "path": "/private/tmp/xpilot-X-20261023-13.bundle",
+    "size": 15269,
+    "sha256": "9a3ba2573031cdd4045491c1689e4619aece2450a88c7dced737255fda24afd7",
+    "host_verify_rc": 0,
+    "uploaded": false
+  },
+  "v8_report_origin_verified_head": "e656a13f8d228fd61b144a59bf6145f10ac1c45d"
+}
