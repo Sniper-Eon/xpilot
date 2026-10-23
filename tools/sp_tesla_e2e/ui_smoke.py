@@ -14,19 +14,16 @@ from openpilot.cereal import messaging
 from openpilot.common.hardware import HARDWARE
 from openpilot.selfdrive.ui.ui_state import ui_state
 from openpilot.system.ui.lib.application import gui_app
-from openpilot.system.ui.lib.multilang import multilang
 from openpilot.tesla.plugins.traffic_light.ui import TrafficControlRenderer, traffic_card_rect
 from openpilot.tesla.ui.settings_page import TeslaSettingsMici
 from openpilot.selfdrive.ui.mici.layouts.settings.toggles import TogglesLayoutMici
 from openpilot.system.ui.widgets.scroller import NavScroller
 
 out=Path('artifacts/sp-tesla-migration/ui');out.mkdir(parents=True,exist_ok=True)
-ui_state.params.put('LanguageSetting','zh-CHS',block=True)
 ui_state.params.put_bool('IsOffroad',True,block=True)
 ui_state.started=False
 renderer=TrafficControlRenderer(compact=True)
 pm=messaging.PubMaster(['longitudinalPlanSP'])
-multilang.change_language('zh-CHS')
 gui_app.init_window('Tesla migration mici E2E',fps=30)
 assert (gui_app.width,gui_app.height)==(536,240)
 rect=rl.Rectangle(0,0,536,240);card=traffic_card_rect(rect,compact=True)
