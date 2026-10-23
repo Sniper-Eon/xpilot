@@ -4,24 +4,29 @@
 Failure modes (listed before implementation):
 1. Offroad tile screen has a viewport, draws mici, or omits a settings tile.
 2. A mapped tap at a settings tile's center opens the wrong title/PAGE; Models
-   is not ModelsLayoutMici, has the wrong FALLBACK_VIEW, or never draws mici.
+   or its Small models sub-page is not native, or BACK loses the parent page.
 3. A native detail page draws mici or grows the application nav stack beyond 1.
 4. BACK does not return to tiles; Plugins -> Store does not push a second detail
    level, or BACK from Store does not return to the same Plugins page.
 5. Holding Toggles for LONG_PRESS+0.2 s does not select it in edit mode; its
    resize corner does not change size; + does not open "add tiles"; tapping the
-   selected tile or an empty non-add cell does not leave edit mode.
+   selected tile or an empty non-add cell does not deselect while staying in
+   edit mode; Done does not leave edit mode and return to the park layout.
 6. Editing permanently changes XpilotTileLayout bytes (including absence),
-   _pinned or _hidden; restore all three even when the run raises.
+   or either of the deep-copied park/drive layouts; restore even on failure.
 7. More than 2 tile faces redraw over 60 idle, touch-free tile-screen frames.
 8. Synthetic onroad has the wrong tiles.VIEW, a tile overlaps VIEW/blocked
    cells, settings remain placed, a required data tile is missing, or the
    forced blind-spot overlay is absent, never draws, or raises.
+9. Drive in the edit bar does not show only data tiles outside blocked cells;
+   the default layout does not alternate left/right; a 20-move drag to (7,3)
+   does not save that fixed cell (clamped for size) or persist into onroad.
 
 Run with comma service stopped and native libraries built. No CAN transmission,
 settings actions, store refresh/install, or reboot/reset/uninstall confirmation.
 """
 import argparse
+from copy import deepcopy
 import json
 import subprocess
 import tempfile
@@ -33,9 +38,10 @@ import pyray as rl
 from openpilot.common.params import Params
 from openpilot.system.ui.lib.application import gui_app, MouseEvent, MousePos
 from openpilot.selfdrive.ui.mici.layouts.main import MiciMainLayout
+from openpilot.selfdrive.ui.sunnypilot.model_info import bundles_for_source
 from openpilot.selfdrive.ui.ui_state import ui_state
 from openpilot.tesla.ui import tiles
-from openpilot.tesla.ui.offroad import BACK, FALLBACK_VIEW
+from openpilot.tesla.ui.offroad import BACK
 from openpilot.tesla.ui.screen import BigScreenHost
 
 parser = argparse.ArgumentParser()
@@ -47,6 +53,7 @@ gui_app.init_window('xpilot big screen E2E', host=BigScreenHost)
 main = MiciMainLayout()
 host = gui_app.host
 SETTINGS = ('status', 'toggles', 'plugins', 'tesla', 'models', 'network', 'device', 'software', 'developer')
+DATA = ('speed_card', 'lead_card', 'speed_limit_card', 'car', 'map')
 errors, cases = [], []
 original_render = host.render
 original_draw_texture_pro = rl.draw_texture_pro
@@ -122,11 +129,11 @@ def screenshot(name):
 
 
 def tap(x, y, phase):
-  """Queue screen press/release for the next host frame through the real touch mapping."""
+  """Queue screen press (0), release (1) or move (2) through the real touch mapping."""
   global pending_events
   lx, ly = host.to_logical(x, y)
   check(not (0 <= lx <= 536 and 0 <= ly <= 240) or host.viewport() is not None, f'tap ({x},{y}) maps inside mici ({lx},{ly})')
-  pending_events = [MouseEvent(MousePos(lx, ly), 0, phase == 0, phase == 1, phase == 0, time.monotonic())]
+  pending_events = [MouseEvent(MousePos(lx, ly), 0, phase == 0, phase == 1, phase != 1, time.monotonic())]
 
 
 def touch(point):
@@ -159,8 +166,8 @@ def layout_bytes():
 def restore_layout():
   if layout_backup is None:
     return
-  pinned, hidden, raw = layout_backup
-  host._pinned, host._hidden = list(pinned), list(hidden)
+  layouts, raw = layout_backup
+  host._layouts, host._layout = deepcopy(layouts), 'park'
   host._edit, host._selected, host._drag = False, None, None
   if layout_bytes() != raw:
     if raw is None:
@@ -169,7 +176,7 @@ def restore_layout():
       with tempfile.NamedTemporaryFile(dir=layout_path.parent, delete=False) as saved:
         saved.write(raw)
       Path(saved.name).replace(layout_path)
-  check(layout_bytes() == raw and host._pinned == pinned and host._hidden == hidden, 'saved layout was not restored exactly')
+  check(layout_bytes() == raw and host._layouts == layouts, 'saved park/drive layouts were not restored exactly')
 
 
 def steps():
@@ -196,14 +203,9 @@ def steps():
     assert len(host._stack) == 1 and host._stack[-1][0] == tile.SPEC.title, f'tile {tid}: detail stack {host._stack}'
     page = host._stack[-1][1]
     active = gui_app.get_active_widget()
-    if tile.MICI:
-      check(type(active) is tile.PAGE and type(active).__name__ == 'ModelsLayoutMici' and page is None, f'tile {tid}: active {type(active).__name__}')
-      check(rect(host.viewport()) == list(FALLBACK_VIEW) and mici_draws > before, f'tile {tid}: mici fallback not drawn in FALLBACK_VIEW')
-      check(len(gui_app._nav_stack) == 2, f'tile {tid}: application stack depth {len(gui_app._nav_stack)}')
-    else:
-      assert type(page) is tile.PAGE, f'tile {tid}: page {type(page).__name__}, expected {tile.PAGE.__name__}'
-      check(host._shown is page and active is main and len(gui_app._nav_stack) == 1, f'tile {tid}: native page/application stack mismatch')
-      check(host.viewport() is None and mici_draws == before, f'tile {tid}: native page drew mici')
+    assert not tile.MICI and type(page) is tile.PAGE, f'tile {tid}: page {type(page).__name__}, expected native {tile.PAGE.__name__}'
+    check(host._shown is page and active is main and len(gui_app._nav_stack) == 1, f'tile {tid}: native page/application stack mismatch')
+    check(host.viewport() is None and mici_draws == 0, f'tile {tid}: native page drew mici')
     screenshot('page-' + tid)
     cases.append({'name': tid, 'title': host._stack[-1][0], 'page': type(page).__name__, 'active': type(active).__name__,
                   'stack': len(host._stack), 'nav_stack': len(gui_app._nav_stack), 'mici_draws': mici_draws - before})
@@ -217,11 +219,24 @@ def steps():
       yield from touch(center(BACK))
       assert host._stack == [(tile.SPEC.title, page)] and host._shown is page, 'BACK from Store did not return to Plugins'
       cases.append({'name': 'Plugins > Store > BACK', 'page': type(page).__name__, 'stack': len(host._stack)})
+    if tid == 'models':
+      if bundles_for_source('qcom'):
+        page._choose('qcom')
+        yield 4
+        check(len(host._stack) == 2 and host._stack[-1][0] == 'Small models' and type(host._stack[-1][1]).__name__ == 'BundlesPage', 'Models -> Small models did not push the native bundle list')
+        check(host._shown is host._stack[-1][1] and host.viewport() is None and mici_draws == 0, 'Small models did not show natively')
+        check(len(gui_app._nav_stack) == 1, 'Small models grew the application nav stack')
+        screenshot('page-models-small')
+        yield from touch(center(BACK))
+        assert host._stack == [(tile.SPEC.title, page)] and host._shown is page, 'BACK from Small models did not return to Models'
+        cases.append({'name': 'Models > Small models > BACK', 'page': 'BundlesPage', 'skipped': False})
+      else:
+        cases.append({'name': 'Models > Small models > BACK', 'skipped': True, 'reason': 'no qcom bundles available'})
     yield from touch(center(BACK))
     tile_screen()
-    check(mici_draws == before or tile.MICI, f'BACK from {tid} drew mici')
+    check(mici_draws == 0, f'BACK from {tid} drew mici')
 
-  layout_backup = (list(host._pinned), list(host._hidden), layout_bytes())
+  layout_backup = (deepcopy(host._layouts), layout_bytes())
   yield from hold_toggles()
   screenshot('edit')
   old_size = host._placed['toggles'][2]
@@ -239,17 +254,50 @@ def steps():
   tile_screen()
   assert host._edit and host._selected == 'toggles', 'BACK from add tiles lost edit mode'
   yield from touch(center(tiles.tile_rect(host._placed['toggles'])))
-  check(not host._edit and host._selected is None and not host._stack, 'selected tile tap did not leave edit mode')
-  yield from hold_toggles()
+  check(host._edit and host._selected is None and not host._stack, 'selected tile tap did not deselect in edit mode')
+  yield from touch(center(tiles.tile_rect(host._placed['toggles'])))
+  check(host._edit and host._selected == 'toggles', 'tile tap did not reselect Toggles')
   add = tiles.add_cell(host._placed, False)
   empty = next(((c, r) for c in range(tiles.COLS) for r in range(tiles.ROWS)
                 if (c, r) != add and tiles.hit(host._placed, *center(tiles.cell_rect(c, r))) is None), None)
   assert empty is not None, 'no empty non-add cell to test edit exit'
   yield from touch(center(tiles.cell_rect(*empty)))
-  check(not host._edit and host._selected is None and not host._stack, 'empty cell tap did not leave edit mode')
+  check(host._edit and host._selected is None and not host._stack, 'empty cell tap did not deselect in edit mode')
   cases.append({'name': 'edit', 'old_size': old_size, 'new_size': host._placed['toggles'][2], 'empty_cell': empty})
-  restore_layout()
+
+  host._layouts['drive'] = tiles.arrange([e.tile.SPEC for e in host._entries.values() if tiles.shows(e.tile.SPEC, True)], None, 'drive')
+  yield from touch(center(tiles.bar_buttons()['drive']))
+  assert host._edit and host._layout == 'drive', 'Drive bar button did not select the drive layout'
+  check(set(host._placed) == set(DATA), f'drive edit tiles: {list(host._placed)}')
+  default_order = [tid for tid, _, _ in host._layouts['drive'][0] if tid in DATA]
+  for tid, cell in zip(default_order, ((0, 0), (7, 0), (0, 1), (7, 1), (0, 2))):
+    check(tid in host._placed and host._placed[tid][:2] == cell, f'default drive tile {tid}: {host._placed.get(tid)}, expected {cell}')
+  for tid, (col, row, size) in host._placed.items():
+    cols, rows = tiles.SIZES[size]
+    check(not {(col + c, row + r) for c in range(cols) for r in range(rows)} & tiles.blocked(True), f'drive edit tile {tid} overlaps blocked cells')
+  screenshot('edit-drive')
+  cases.append({'name': 'edit drive default', 'order': default_order, 'placed': dict(host._placed)})
+
+  moved = next((tid for tid in DATA if tid in host._placed), None)
+  assert moved is not None, 'no data tile to drag'
+  sx, sy = center(tiles.tile_rect(host._placed[moved]))
+  ex, ey = center(tiles.cell_rect(7, 3))
+  cols, rows = tiles.SIZES[host._placed[moved][2]]
+  drop_cell = (min(7, tiles.COLS - cols), min(3, tiles.ROWS - rows))
+  tap(sx, sy, 0)
+  yield 1
+  for step in range(1, 21):
+    tap(sx + (ex - sx) * step / 20, sy + (ey - sy) * step / 20, 2)
+    yield 1
+  tap(ex, ey, 1)
   yield 4
+  fixed = next(fixed for tid, _, fixed in host._layouts['drive'][0] if tid == moved)
+  check(fixed == drop_cell, f'dragged {moved}: saved fixed cell {fixed}, expected {drop_cell}')
+  check(moved in host._placed and host._placed[moved][:2] == drop_cell, f'dragged {moved} not placed at {drop_cell}')
+  screenshot('edit-drive-moved')
+  cases.append({'name': 'edit drive moved', 'tile': moved, 'fixed': fixed, 'expected': drop_cell, 'moves': 20})
+  yield from touch(center(tiles.bar_buttons()['done']))
+  check(not host._edit and host._layout == 'park', 'Done did not leave edit mode and restore the park layout')
   tile_screen()
 
   gui_app.pop_widgets_to(main, instant=True)
@@ -280,14 +328,18 @@ def steps():
     cells = {(col + c, row + r) for c in range(cols) for r in range(rows)}
     check(not cells & tiles.blocked(True), f'onroad tile {tid} overlaps blocked cells')
     check(tid not in SETTINGS and host._entries[tid].tile.SPEC.show != 'offroad', f'onroad settings tile {tid} placed')
-  for tid in ('speed_card', 'lead_card', 'speed_limit_card', 'car', 'map'):
+  for tid in DATA:
     check(tid in host._placed, f'onroad data tile {tid} not placed')
+  check(moved in host._placed and host._placed[moved][:2] == drop_cell, f'onroad lost fixed position of {moved}: {host._placed.get(moved)}')
   check(len(drawn) == len(forced), 'blindspot overlay did not draw successfully')
   screenshot('onroad-blindspot')
   check(all(e[2] == 0 for e in forced), 'blindspot overlay raised')
   cases.append({'name': 'onroad', 'viewport': rect(host.viewport()), 'placed': dict(host._placed), 'blindspot_draws': len(drawn)})
   ui_state.started = False
   host.viewport()
+  restore_layout()
+  yield 4
+  tile_screen()
   completed = True
   gui_app.request_close()
   yield 1
@@ -319,8 +371,8 @@ finally:
   try:
     restore_layout()
     if layout_backup is not None:
-      cases.append({'name': 'layout restored', 'file_matches': layout_bytes() == layout_backup[2],
-                    'pinned_matches': host._pinned == layout_backup[0], 'hidden_matches': host._hidden == layout_backup[1]})
+      cases.append({'name': 'layout restored', 'file_matches': layout_bytes() == layout_backup[1],
+                    'layouts_match': host._layouts == layout_backup[0]})
   except Exception:
     errors.append('layout restore failed:\n' + traceback.format_exc())
   rl.draw_texture_pro = original_draw_texture_pro
