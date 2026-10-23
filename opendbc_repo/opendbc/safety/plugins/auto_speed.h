@@ -2,7 +2,6 @@
 
 // xpilot plugin "auto_speed": one right scroll-wheel tick on VCLEFT_switchStatus (0x3C2, vehicle bus 1),
 // cloned from a fresh idle frame the car sent. Python side: openpilot/tesla/plugins/auto_speed/.
-#define XPILOT_PARAM_SP_AUTO_SPEED 0x4000U  // CarParamsSP.safetyParam bit set by the plugin when enabled
 
 static bool auto_speed_template_valid = false;
 static uint8_t auto_speed_template[8] = {0U};

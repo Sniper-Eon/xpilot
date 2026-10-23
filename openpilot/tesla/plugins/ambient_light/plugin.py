@@ -3,6 +3,7 @@ Panda side: opendbc_repo/opendbc/safety/plugins/ambient_light.h. Params: TeslaBl
 from opendbc.can import CANParser
 from opendbc.car import Bus
 from opendbc.car.tesla.values import CANBUS, DBC
+from opendbc.sunnypilot.car.tesla.values import TeslaFlagsSP
 from openpilot.tesla.plugin import Plugin
 from openpilot.tesla.plugins.ambient_light.controller import AmbientLightingController
 
@@ -22,6 +23,10 @@ class AmbientLight(Plugin):
     except KeyError:
       self.lighting = None
     self.ambient.service_params(params)
+
+  def setup(self, CP_SP) -> None:
+    if CP_SP.flags & TeslaFlagsSP.HAS_VEHICLE_BUS:
+      CP_SP.safetyParam |= int(self.MANIFEST.safety["param_bit"], 0)
 
   def _night(self, now_ns: int) -> bool:
     if self.lighting is None:

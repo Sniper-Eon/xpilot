@@ -49,7 +49,7 @@ openpilot/tesla/
   ui/offroad.py ui/pages/   大屏停车时的详情页（见第 9 节）
   ui/settings_page.py ui/settings_meta.py        Tesla 设置页（上游 Tesla 选项、DM、地图）
 opendbc_repo/opendbc/safety/plugins/
-  plugin.h registry.h auto_speed.h ambient_light.h   panda safety 插件（见第 6 节，已接入，未编译验证）
+  plugin.h registry.h auto_speed.h ambient_light.h   panda safety 插件（见第 6 节，已完成主机 libsafety 编译和测试）
 ```
 
 ## 4. Python 插件接口（`openpilot/tesla/plugin.py`）
@@ -144,7 +144,7 @@ class MyFeature(Plugin):   # 名字、开关、设置都来自 plugin.json，代
 
 2. 不用注册：插件会被自动发现，Plugins 页按类别显示它的开关和设置。
 3. 运行 `python3 openpilot/tesla/plugins/gen_params.py`，把 `params` 生成到 `common/plugin_params.inc`，一起提交。
-4. 有 CAN 发送的：写 `opendbc/safety/plugins/<名字>.h` 并加进 `registry.h`。`safetyParam` 位要和 Python 侧一致（auto_speed 用的是 `0x4000`）。
+4. 有 CAN 发送的：头文件保留在 `opendbc_repo/opendbc/safety/plugins/<名字>.h`（panda 编译需要），在自己的 `plugin.json` 声明，例如 `"safety": {"header": "auto_speed.h", "param_bit": "0x4000", "tx": ["0x3C2:1"]}`；`tx` 必须和自己的 `can.tx` claims 一致。运行 `python3 openpilot/tesla/plugins/gen_safety.py` 生成 `registry.h` 并一起提交，用 `--check` 检查是否过期。Python 插件通过 `self.MANIFEST.safety["param_bit"]` 读取同一声明，不能硬编码位值。
 5. 有 UI 的：写 `plugins/<名字>/ui.py`，里面的 `Tile` 子类（大屏磁贴，`SPEC = TileSpec(...)`，见第 9 节）、`HudOverlay` 子类（mici 行车画面叠加层，无参构造）和 `ScreenOverlay` 子类（大屏整屏叠加层，无参构造）会被自动加载；插件关闭时自动隐藏。不属于任何插件的磁贴放 `openpilot/tesla/ui/slots/`。
 6. 先写失败模式和检查，再写实现；能在本机跑的就跑（`plugin_host_check.py` 和 `manifest_check.py` 会检查清单、资源声明和参数）。
 
@@ -160,15 +160,37 @@ typedef struct {
 } safety_plugin;
 ```
 
-规则：一个插件只负责一个报文，原有 safety 模式的白名单和检查一律不改；校验内容至少包括报文模板、新鲜度、频率限制、`controls_allowed`、只在 Tesla 模式下生效，以及会话上限。
+规则：一个插件只负责一个报文，原有 safety 模式的白名单和检查一律不改；校验报文模板、新鲜度、频率、Tesla 模式、vehicle bus、自有 `safetyParam` 位和会话上限。`auto_speed` 必须有 `controls_allowed`；`ambient_light` 是车身盲区告警，允许未接管时告警。两个插件都不再允许在 `nooutput` 模式发报。
 
-**当前状态：已接入（实验性），未编译验证。** `safety.h` 里有 4 处调用：
+声明在各自 `plugin.json` 的 `safety` 字段：`header`、十六进制字符串 `param_bit`、唯一一条 `tx`（`0x地址:总线`）。`gen_safety.py` 只用标准库，生成注册表及 C 参数位宏，拒绝重复位、未声明的头文件、声明的头文件缺失，以及 `can.tx` claims 和 safety tx 的任一方向不一致；还检查位为单个 uint16 位、头文件名、重复头和头内 `.msg` 地址/总线。`plugin.h` 是公共接口，`registry.h` 是生成文件，其余头都必须由一个内置插件声明。panda safety 插件仍只能内置。
+
+| 插件 | 参数位 | TX | 模板最大年龄 | 最小间隔 | 会话上限 / 重开 |
+|---|---|---|---|---|---|
+| auto_speed | `0x4000` | `0x3C2:1`，8 字节 | 1500 ms | 250 ms | 最多 60 帧且小于 30 s；停发至少 2 s 重开 |
+| ambient_light | `0x8000` | `0x679:1`，7 字节 | 1000 ms | 80 ms | 最多 150 帧且小于 15 s；停发至少 1 s 重开 |
+
+**当前状态（X-20261023-07）：主机 libsafety debug/release 已编译，真实 RX/TX 钩子测试和突变验证已通过；仍为实验性。** `safety.h` 里有 4 处调用：
 1. include `opendbc/safety/plugins/registry.h`；
 2. `safety_rx_hook` 里，`valid` 为真时调用 `safety_plugins_rx(msg)`；
 3. `safety_tx_hook` 里，属于插件的报文交给 `plugin->tx(msg)` 校验，其余报文仍走原模式；
 4. `set_safety_hooks` 里调用 `safety_plugins_reset()`。
 
-上车前必须在 Mac 或设备上编译 panda 和 libsafety，跑 safety 测试，并补上插件的 safety 测试。
+主机证明：macOS arm64、Apple clang 16、CPython 3.12.13；`test_tesla_plugins.py` 189 项（170 通过、19 跳过），包含原有 Tesla stock/longitudinal 测试在插件位开启时的回归。45/45 个突变均编译成功，并被 RX/TX 断言检出。插件可执行行覆盖率 118/118 = 100%（auto 47/47、ambient 50/50、registry 21/21；`plugin.h` 无可执行行），`safety.h` 插件接入的可执行行全部命中，include 由编译证明。
+
+原始 `test.sh` 的基线两轮各 420 项（375 通过、45 跳过），测试无失败；全局行覆盖率 778/1094 = 71.1%，未达到脚本的 100% 门禁。非 Tesla 模式及其测试已删除，通用 helpers/lateral/longitudinal 仍有未覆盖代码；按协调决定记录为已知问题，不改上游测试或放宽脚本，单独要求插件和接入处 100%。`test.sh` 不运行 MISRA/cppcheck，此任务未声称通过它们。
+
+复现（任务 venv 内，仓库根目录，`PYTHONPATH=opendbc_repo:msgq_repo:.`）：
+```
+python3 -m unittest opendbc.safety.tests.test_release_build
+python3 -m unittest opendbc.safety.tests.test_tesla_plugins
+python3 openpilot/tesla/plugins/gen_safety.py --check
+python3 tools/sp_tesla_e2e/safety_manifest_check.py
+python3 tools/sp_tesla_e2e/manifest_check.py
+python3 tools/sp_tesla_e2e/plugin_host_check.py
+```
+完整记录和命令/哈希见 `docs/validation/X-20261023-07/`。
+
+**尚未验证：panda 固件交叉编译、设备运行/刷写、USB、真实 CAN 或 CAN replay。** libsafety 成功不等于 panda 固件可构建或上车安全；上车前仍必须完成固件构建及设备和 CAN 验证。本任务未部署，设备 active commit 未读取。
 
 ## 7. 雷达接入接口
 

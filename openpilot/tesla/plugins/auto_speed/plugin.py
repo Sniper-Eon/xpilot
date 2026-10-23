@@ -10,7 +10,6 @@ from opendbc.sunnypilot.car.tesla.values import TeslaFlagsSP
 from openpilot.tesla.plugin import Plugin
 from openpilot.tesla.plugins.auto_speed.controller import AutoSpeedController
 
-SAFETY_PARAM_SP = 0x4000  # must match XPILOT_PARAM_SP_AUTO_SPEED in opendbc/safety/plugins/auto_speed.h
 SWITCH_ADDRESS = 0x3C2
 RESUME_GESTURE_NS = 1_500_000_000  # opposite wheel ticks within this window resume auto speed
 KPH_TO_MS, MPH_TO_MS = 1 / 3.6, 0.44704
@@ -38,7 +37,7 @@ class AutoSpeed(Plugin):
     # openpilot longitudinal and the vehicle-bus harness are required to see and send the wheel frame
     if self.CP.openpilotLongitudinalControl and CP_SP.flags & TeslaFlagsSP.HAS_VEHICLE_BUS:
       self.controller.configured = True
-      CP_SP.safetyParam |= SAFETY_PARAM_SP
+      CP_SP.safetyParam |= int(self.MANIFEST.safety["param_bit"], 0)
 
   def _wheel_frame(self, data: bytes, now_ns: int) -> None:
     s = self.state
