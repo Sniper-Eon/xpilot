@@ -1,0 +1,37 @@
+{
+  "task": "X-20261023-02",
+  "record_kind": "operator_record_of_failed_e2e_attempt",
+  "script_generated_result": false,
+  "attempted": true,
+  "passed": false,
+  "head": "2f1cd51506716d70c21efee98b60959b82d216fc",
+  "command": "env -C /data/openpilot PATH=/usr/local/venv/bin:/usr/local/bin:/usr/bin:/bin PYTHONPATH=/data/openpilot:/data/openpilot/opendbc_repo:/data/openpilot/msgq_repo:/data/openpilot/tinygrad_repo:/data/openpilot/rednose_repo python3 tools/sp_tesla_e2e/big_screen_e2e.py --output /data/xpilot-ui-check-v3",
+  "exit_code": 1,
+  "output_dir_created": false,
+  "screenshots": [],
+  "expected_screenshots_not_created": [
+    "offroad.png",
+    "nav-0-home.png",
+    "nav-1-toggles.png",
+    "nav-2-models.png",
+    "nav-3-plugins.png",
+    "nav-4-tesla.png",
+    "nav-5-network.png",
+    "nav-6-device.png",
+    "nav-7-software.png",
+    "nav-8-developer.png",
+    "plugins-store.png",
+    "onroad-blindspot.png"
+  ],
+  "errors": [
+    "TypeError: unsupported operand type(s) for |: 'function' and 'NoneType'"
+  ],
+  "traceback": [
+    "File /data/xpilot-install-20261022/candidate/tools/sp_tesla_e2e/big_screen_e2e.py, line 27, in <module>",
+    "from openpilot.tesla.ui.screen import NATIVE, BigScreenHost, NAV_TOP, NAV_W, ROW_H",
+    "File /data/openpilot/openpilot/tesla/ui/screen.py, line 135, in BigScreenHost",
+    "def viewport(self) -> rl.Rectangle | None:",
+    "TypeError: unsupported operand type(s) for |: 'function' and 'NoneType'"
+  ],
+  "device_log": "/data/xpilot-ui-check-v3-e2e.log"
+}
