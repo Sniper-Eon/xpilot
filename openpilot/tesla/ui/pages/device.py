@@ -11,7 +11,7 @@ from openpilot.system.ui.lib.application import gui_app
 from openpilot.system.ui.widgets.list_view import button_item, text_item
 from openpilot.tesla.ui.pages.base import ListPage, confirm
 
-CALIB_DESC = "openpilot calibrates continuously; resetting is rarely needed. Mount within 4° left/right and 5° up/9° down."
+CALIB_DESC = "openpilot calibrates continuously; resetting is rarely needed. Mount within 4 degrees left/right and 5 up/9 down."
 
 
 def _reset_calibration() -> None:

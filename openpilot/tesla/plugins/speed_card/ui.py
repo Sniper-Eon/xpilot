@@ -12,7 +12,7 @@ class SpeedCardSlot(Slot):
 
   def __init__(self):
     super().__init__()
-    self._value, self._unit, self._sub = "–", "", ""
+    self._value, self._unit, self._sub = "-", "", ""
 
   def update(self, sm) -> None:
     cs = sm['carState']
@@ -20,7 +20,7 @@ class SpeedCardSlot(Slot):
     self._value = f"{max(0.0, cs.vEgoCluster) * (CV.MS_TO_KPH if metric else CV.MS_TO_MPH):.0f}"
     self._unit = "km/h" if metric else "mph"
     v_cruise = cs.vCruiseCluster
-    self._sub = f"SET {v_cruise * (1 if metric else CV.KPH_TO_MPH):.0f}" if 0 < v_cruise < SET_SPEED_NA else "SET –"
+    self._sub = f"SET {v_cruise * (1 if metric else CV.KPH_TO_MPH):.0f}" if 0 < v_cruise < SET_SPEED_NA else "SET -"
 
   def _render(self, rect):
     self.draw_value(rect, self._value, self._unit, self._sub)

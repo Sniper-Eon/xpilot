@@ -1,6 +1,6 @@
 """Plugins page (native): plugins that failed to load, then one section per manifest category with a switch per plugin
 (value "fault"/"conflict") and a row per Setting. Switching a plugin on switches off its conflicts (offroad.switch_plugin).
-"Plugin Store ›" opens the Store sub-page."""
+"Plugin Store" opens the Store sub-page."""
 from openpilot.selfdrive.ui.ui_state import ui_state
 from openpilot.system.ui.widgets.list_view import ListItem, TextAction, button_item, toggle_item
 from openpilot.tesla.plugins import FAULTS_PARAM, LOAD_ERRORS, is_enabled, resolve
@@ -11,14 +11,14 @@ from openpilot.tesla.ui.pages.store import StorePage
 
 def _details(plugin) -> str:
   m = plugin.MANIFEST
-  return (f"{plugin.DESCRIPTION} — {m.author or 'unknown'}, v{m.version}, priority {plugin.PRIORITY}, claims: {', '.join(plugin.CLAIMS) or 'none'}")
+  return (f"{plugin.DESCRIPTION} - {m.author or 'unknown'}, v{m.version}, priority {plugin.PRIORITY}, claims: {', '.join(plugin.CLAIMS) or 'none'}")
 
 
 class PluginsPage(ListPage):
   def __init__(self):
     super().__init__()
     self.store = None
-    self.add(button_item("Plugin Store ›", "OPEN", "Install third-party plugins (reviewed, not signed). Restart to apply.",
+    self.add(button_item("Plugin Store", "OPEN", "Install third-party plugins (reviewed, not signed). Restart to apply.",
                          callback=self._open_store))
     if LOAD_ERRORS:
       self.add(Header("Failed to load"))

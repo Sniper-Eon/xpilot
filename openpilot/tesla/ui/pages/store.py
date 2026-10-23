@@ -30,8 +30,8 @@ class StorePage(ListPage):
       self.ids.add(entry.id)
       pid = entry.id
       current = lambda pid=pid: jobs.current(pid)  # noqa: E731
-      self.add(ListItem(lambda c=current, e=entry: f"{e.name}  ·  {jobs.row_value(c() or e)}",
-                        description=f"{entry.description} — {entry.author}, {entry.category}, {entry.id}",
+      self.add(ListItem(lambda c=current, e=entry: f"{e.name} - {jobs.row_value(c() or e)}",
+                        description=f"{entry.description} - {entry.author}, {entry.category}, {entry.id}",
                         action_item=ButtonAction(lambda c=current, e=entry: jobs.action(c() or e), enabled=lambda pid=pid: jobs.can_act(pid)),
                         callback=lambda pid=pid: jobs.run(lambda: jobs.act(pid))))
 

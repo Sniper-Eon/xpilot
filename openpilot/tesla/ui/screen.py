@@ -264,8 +264,8 @@ class BigScreenHost:
           gui_app.pop_widgets_to(self._main, instant=True)
         else:
           self._sub = None
-      rl.draw_text_ex(medium, "\u2039 Back", rl.Vector2(x, 22), 40, 0, ACCENT if self._pressed != "back" else DIM)
-      rl.draw_text_ex(bold, f"{label} \u203a {sub}" if sub else label, rl.Vector2(x, 72), 60, 0, rl.WHITE)
+      rl.draw_text_ex(medium, "Back", rl.Vector2(x, 22), 40, 0, ACCENT if self._pressed != "back" else DIM)
+      rl.draw_text_ex(bold, f"{label} / {sub}" if sub else label, rl.Vector2(x, 72), 60, 0, rl.WHITE)
 
     if self._mode == "mici":
       return  # the mici page is drawn in FALLBACK_VIEW

@@ -10,16 +10,16 @@ class LeadCardSlot(Slot):
 
   def __init__(self):
     super().__init__()
-    self._value, self._sub = "–", ""
+    self._value, self._sub = "-", ""
 
   def update(self, sm) -> None:
     lead = sm['radarState'].leadOne
     if not sm.alive['radarState'] or not lead.status:
-      self._value, self._sub = "–", "no lead"
+      self._value, self._sub = "-", "no lead"
       return
     metric = ui_state.is_metric
     self._value = f"{lead.dRel:.0f}"
     self._sub = f"{lead.vRel * (CV.MS_TO_KPH if metric else CV.MS_TO_MPH):+.0f} {'km/h' if metric else 'mph'}"
 
   def _render(self, rect):
-    self.draw_value(rect, self._value, "m" if self._value != "–" else "", self._sub)
+    self.draw_value(rect, self._value, "m" if self._value != "-" else "", self._sub)
