@@ -1,0 +1,81 @@
+[
+  {
+    "line_number": 193,
+    "function_name": "safety_rx_hook",
+    "count": 89461,
+    "branches": [
+      {
+        "branchno": 0,
+        "count": 74,
+        "fallthrough": false,
+        "throw": false,
+        "source_block_id": 0
+      },
+      {
+        "branchno": 1,
+        "count": 89387,
+        "fallthrough": false,
+        "throw": false,
+        "source_block_id": 0
+      }
+    ],
+    "gcovr/md5": "18cb483855fcb8a3304f3ec1badceacb"
+  },
+  {
+    "line_number": 194,
+    "function_name": "safety_rx_hook",
+    "count": 89387,
+    "branches": [],
+    "gcovr/md5": "65c4cf27bf731cd6186f77947cc0e634"
+  },
+  {
+    "line_number": 231,
+    "function_name": "safety_tx_hook",
+    "count": 70870,
+    "branches": [],
+    "gcovr/md5": "f93532e6814ab8ff680b86cfacb379ee"
+  },
+  {
+    "line_number": 238,
+    "function_name": "safety_tx_hook",
+    "count": 70870,
+    "branches": [
+      {
+        "branchno": 0,
+        "count": 1473,
+        "fallthrough": false,
+        "throw": false,
+        "source_block_id": 0
+      },
+      {
+        "branchno": 1,
+        "count": 69397,
+        "fallthrough": false,
+        "throw": false,
+        "source_block_id": 0
+      }
+    ],
+    "gcovr/md5": "5bdf18935652f6f8b53003f41fe3e228"
+  },
+  {
+    "line_number": 240,
+    "function_name": "safety_tx_hook",
+    "count": 1473,
+    "branches": [],
+    "gcovr/md5": "53c3c9ee6e616c21513c3151a42ac788"
+  },
+  {
+    "line_number": 241,
+    "function_name": "safety_tx_hook",
+    "count": 1473,
+    "branches": [],
+    "gcovr/md5": "08935f4828424e551032a6a040f15a0e"
+  },
+  {
+    "line_number": 452,
+    "function_name": "set_safety_hooks",
+    "count": 5012,
+    "branches": [],
+    "gcovr/md5": "9fcd68f80b60cdb1ee0bece83704a2bd"
+  }
+]
