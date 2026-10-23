@@ -11,6 +11,16 @@
 - **已删除**：其他车型、comma 云、sunnylink、旧的大屏 UI、扭矩车用的横向控制、翻译（UI 只用英文）。
 - **硬件**：C3、C3X、C3XL、C4。大屏设备上整屏是磁贴，行驶时 mici 画面固定在中间、磁贴排在四周（见第 9 节）。
 
+## 1b. 核心理念
+
+1. **一切功能皆插件。** SP 是不改的主干；xpilot 的每个功能都是 `openpilot/tesla/plugins/<id>/` 下的一个目录，加功能就是加目录，删功能就是删目录。
+2. **宿主定规则，插件只填内容。** 合并、裁决、限幅、出错隔离都写在宿主（`openpilot/tesla/`）里，插件改不了；插件只实现钩子。
+3. **安全底线不可越过。** 车端检查、SP 的限幅和 panda safety 永远最后生效；插件再高的优先级也只能在这个范围内工作。
+4. **出错只影响自己。** 一个插件坏了，只有它被停用，SP 和其他插件照常运行。
+5. **先声明再使用。** 插件要用的 CAN 地址、进程、数据源和可替换环节都写进 `claims`；冲突由宿主按 `priority` 裁决，用户在插件市场里看得到。
+6. **够用就好。** 钩子、参数、抽象只在真有插件需要时才加；UI 低频刷新、只在内容变化时重画。
+7. **证据说话。** 先写失败模式和检查；本机检查、编译、safety 测试、设备实测分开报告，不能互相顶替。
+
 ## 2. 硬规则
 
 1. **不改 SP 主体逻辑。** SP 文件里每个钩子点只加一行插件调用（循环、出错隔离等逻辑放在 `openpilot/tesla/` 里）。功能逻辑全部写在 `openpilot/tesla/plugins/<功能名>/`。
@@ -28,6 +38,9 @@
 9. **提交**：在 `xpilot` 分支上，一个连贯改动一个提交，只包含这次改动的文件。只有在用户要求时才推送。
 10. **按插件拆分**：加功能就是加一个带 `plugin.json` 的插件目录，删功能就是删目录（然后重新运行 `gen_params.py`）。插件自动被发现，没有手写的注册表。
 11. **只用声明过的资源**：插件只能使用 `plugin.json` 里 `claims` 声明过的资源；宿主会拒绝未声明的 CAN 发送、钩子和进程。
+12. **车端数据只读、只经插件**：插件在 card 里用 `observe_can` 自己解析，再写进 `carStateSP` 里自己的字段（cereal 规则见第 7 条）；UI 和其他进程只读这些消息，不直接读 CAN。
+13. **UI**：文字只用英文和 ASCII（设备字体没有 `‹ › · —` 等字）；磁贴只读消息、不写参数（设置写在详情页）；`hz` 按需要取最低值。
+14. **不加新依赖**：只用标准库和仓库里已有的库。商店插件需要编译的部分以预编译二进制发布（见 8c）。
 
 ## 3. 目录
 
@@ -42,7 +55,8 @@ openpilot/tesla/
   plugins/traffic_light/    红绿灯停车
   plugins/ambient_light/    盲区氛围灯
   plugins/external_compute/ 外接算力桥接
-  plugins/speed_card/ lead_card/ speed_limit_card/ blindspot_edges/   大屏磁贴和盲区边框（只显示）
+  plugins/speed_card/ lead_card/ speed_limit_card/ car_tile/ map_tile/ clock_tile/ ip_tile/ blindspot_edges/   大屏磁贴和盲区边框（只显示）
+  plugins/bms/              电池数据（card 解析）和 Battery 磁贴
   ui/screen.py ui/tile.py ui/tiles.py ui/slots/   大屏磁贴宿主、磁贴基类、布局模型（无 pyray）、内置磁贴（slots/settings.py 设置页磁贴）
   ui/plugin_ui.py           UI 侧插件加载：找到 Tile、HudOverlay 和 ScreenOverlay，插件关闭时隐藏
   ui/plugins_page.py ui/store_page.py   mici 设置里的"Plugins"页和商店页（小屏用）
@@ -86,7 +100,20 @@ opendbc_repo/opendbc/safety/plugins/
 
 控制链路：`perception_model` 感知模型、`object_fusion` 前车和目标融合、`vehicle_params` 标定和车辆参数、`engagement` 接管状态机、`driver_monitoring` 驾驶员监控、`lateral_planning` 横向规划、`longitudinal_planning` 纵向规划、`lane_change` 变道、`navigation` 导航驾驶、`controller` 控制器、`actuation` 执行和车端报文、`safety_fallback` 安全兜底和 Autopilot 交接。
 
-暂无钩子的类别：`perception_model`、`object_fusion`、`vehicle_params`、`engagement`、`driver_monitoring`、`lateral_planning`、`navigation`、`safety_fallback`。这些类别现在只用于分组显示；插件可以用通用钩子（`processes`、`alert_source` 等），但还不能替换 SP 的对应环节。真有插件需要时再加钩子。
+暂无钩子的类别：`perception_model`、`object_fusion`、`vehicle_params`、`engagement`、`driver_monitoring`、`lateral_planning`、`navigation`、`safety_fallback`。这些类别现在只用于分组显示；插件可以用通用钩子（`processes`、`alert_source` 等），但还不能替换 SP 的对应环节。真有插件需要时再加钩子，不预先加。
+
+有插件要做时，按下面的顺序考虑加钩子（越靠前越可能先用到、风险越低）：
+
+| 顺序 | 类别 | 可能的钩子 | 理由 |
+|---|---|---|---|
+| 1 | `navigation` | 不需要新钩子：`source:map` + `processes()` 发布 `liveMapDataSP` / `navInstruction`（第 8 节） | 现有接口已够用，先写插件 |
+| 2 | `vehicle_params` | 只读的参数修正（例如转向比、质量），在 card 发布 CarParams 前调用 | 影响小、可在本机验证 |
+| 3 | `driver_monitoring` | 替换或补充 DM 的提醒策略（只能更严格） | Tesla 页已有 DM 选项，需求明确 |
+| 4 | `object_fusion` | 在 radard 之后修正前车（`radarState`），只能让前车更近 | `radar_interface` 只覆盖原始雷达 |
+| 5 | `lateral_planning` | 修正或替换模型给的路径 | 已有 `lat_correction` 和 `lat_controller`，多数需求可以先用它们 |
+| 6 | `engagement` | 接管条件（只能更严格） | 涉及 selfdrived 状态机，风险高 |
+| 7 | `perception_model` | 替换模型 | 需要模型管线和算力，变更最大 |
+| 8 | `safety_fallback` | 退出和 Autopilot 交接策略 | 安全相关，必须先有 panda 侧方案 |
 
 其他：`data_source` 数据源和外接算力、`alerts` 报警、`body_comfort` 车身和舒适、`ui` 界面、`tools` 工具和诊断。
 
@@ -137,21 +164,92 @@ SP 里的调用位置：`selfdrive/car/card.py`（`CarPlugins`、`radar_interfac
 
 ## 5. 写一个新插件
 
-1. 新建 `openpilot/tesla/plugins/<id>/`，放空的 `__init__.py`、`plugin.json`（见 4.1）和 `plugin.py`：
+### 5.1 步骤
+
+1. **先想清楚类型**，选最小的一种：
+   - 只显示：一个 `ui.py` 磁贴或叠加层，读已有的消息。`claims` 为空，可以默认开启。
+   - 读车端数据再显示：card 钩子 `observe_can` 解析 + `publish_state` 写到 `carStateSP` 的新字段，`ui.py` 磁贴订阅 `carStateSP`。参考 `plugins/bms/`。
+   - 影响驾驶：用第 4.4 节的规划/控制钩子，声明对应 claim；能"只收紧"的就不要"替换"。
+   - 发 CAN：`control_sends` + `can.tx` claim + panda safety 插件（第 6 节）。参考 `plugins/auto_speed/`、`plugins/ambient_light/`。
+   - 独立进程：`processes()` + `process:<名字>` claim。参考 `plugins/traffic_light/`、`plugins/external_compute/`。
+2. **写失败模式**（在检查脚本或模块 docstring 里列出），再写检查：纯逻辑放进 `tools/sp_tesla_e2e/` 里已有的 `*_check.py`（或插件自己的 `tests/`），渲染和触摸只能在设备上用 `big_screen_e2e.py` 确认。
+3. **建目录** `openpilot/tesla/plugins/<id>/`：空的 `__init__.py`、`plugin.json`（4.1）、`plugin.py`、可选的 `ui.py`：
 
 ```python
+# plugin.py
 from openpilot.tesla.plugin import Plugin
 
 class MyFeature(Plugin):   # 名字、开关、设置都来自 plugin.json，代码里不要写
-  def control_sends(self, CS, CC, now_ns):
-    return []   # 发送的地址必须在 claims 里，并且有 panda safety 插件
+  def observe_can(self, can_list, now_ns):
+    for mono_time, frames in can_list:
+      for address, data, bus in frames:
+        ...                # 只读解析，记下最新一帧和时间
+    return []
+
+  def publish_state(self, CS_SP):
+    CS_SP.myFeature.available = ...   # 过期就标成不可用，不要发旧值
+
+# ui.py
+from openpilot.tesla.ui.tile import Tile
+from openpilot.tesla.ui.tiles import TileSpec
+
+class MyTile(Tile):
+  SPEC = TileSpec("my_feature", "My Feature", sizes=("small", "medium"), services=("carStateSP",), hz=2)
+
+  def state(self, sm):              # 返回可比较的值；变了才重画
+    v = sm["carStateSP"].myFeature
+    return f"{v.value:.0f}" if v.available else None
+
+  def draw(self, rect, size, state):
+    self.draw_value(rect, state or "--", "unit")
 ```
 
-2. 不用注册：插件会被自动发现，Plugins 页按类别显示它的开关和设置。
-3. 运行 `python3 openpilot/tesla/plugins/gen_params.py`，把 `params` 生成到 `common/plugin_params.inc`，一起提交。
-4. 有 CAN 发送的：写 `opendbc/safety/plugins/<名字>.h` 并加进 `registry.h`。`safetyParam` 位要和 Python 侧一致（auto_speed 用 `0x4000`，ambient_light 用 `0x2000`，新插件从 `0x1000` 往下取）。
-5. 有 UI 的：写 `plugins/<名字>/ui.py`，里面的 `Tile` 子类（大屏磁贴，`SPEC = TileSpec(...)`，见第 9 节）、`HudOverlay` 子类（mici 行车画面叠加层，无参构造）和 `ScreenOverlay` 子类（大屏整屏叠加层，无参构造）会被自动加载；插件关闭时自动隐藏。不属于任何插件的磁贴放 `openpilot/tesla/ui/slots/`。
-6. 先写失败模式和检查，再写实现；能在本机跑的就跑（`plugin_host_check.py` 和 `manifest_check.py` 会检查清单、资源声明和参数）。
+4. **新消息字段**：加在 `cereal/custom.capnp`（只追加，见规则 7），设备上要重新编译（scons）。
+5. **参数**：写进 `plugin.json` 的 `params` 和 `settings`，运行 `python3 openpilot/tesla/plugins/gen_params.py`，把 `common/plugin_params.inc` 一起提交。
+6. **跑本机检查**（第 11 节），全部通过后按功能拆分提交；有 C 代码的再编译 panda、跑 safety 测试和 MISRA；最后上设备实测，报告设备上的 commit。
+7. **不用注册**：插件自动被发现，插件市场按类别显示它的开关、版本、作者、简介和设置。也可以放进插件商店仓库发布（8c）。
+
+### 5.2 API 一览
+
+**清单和元数据**（`openpilot/tesla/manifest.py`）：`plugin.json` 字段见 4.1；`CATEGORIES`（类别和显示名）；`API_VERSION`（现在 1）；claims 格式见 4.3。宿主从清单填好 `Plugin` 的类属性：`NAME`、`TITLE`、`DESCRIPTION`、`CATEGORY`、`PRIORITY`、`ENABLE_PARAM`、`CLAIMS`、`SETTINGS`、`MANIFEST`（含 `version`、`author`），插件只读。插件自己可以设 `SERVICES`（钩子要额外订阅的服务）。
+
+**Python 钩子**（`openpilot/tesla/plugin.py` 的 `Plugin`，全部有空的默认实现，详细规则见 4.4）：
+
+| 进程 | 钩子 | 需要的 claim |
+|---|---|---|
+| card | `__init__(CP, params)`、`setup(CP_SP)`、`observe_can(can_list, now_ns)`、`publish_state(CS_SP)`、`service_params(params)` | 无 |
+| card | `control_sends(CS, CC, now_ns) -> [CanData]` | `can.tx:...` |
+| card | `radar_interface(CP, CP_SP, params)` | `source:radar` |
+| manager | `processes() -> [ManagerProcess]` | `process:<名字>` |
+| plannerd | `long_target(CP, params)` | `long.target` |
+| plannerd | `plan_filter(CP, params)` | `plan.filter` |
+| plannerd | `long_planner(CP, CP_SP, params)` | `role:long.planner` |
+| controlsd | `lat_correction(CP, params)` | `lat.correction` |
+| controlsd | `lat_controller(CP, CP_SP, CI, params)` | `role:lateral.controller` |
+| modeld | `lane_change_policy(params)` | `role:lane_change.policy` |
+| selfdrived | `alert_source(CP, params)`，返回 `PluginAlert(severity, title, body)` | `alert` |
+| externald | `external_provider(params)`，返回 `Provider`（`poll`、`send`、`close`） | `external.provider` |
+
+`can_list` 每一项是 `(mono_time_ns, [(address, data, bus), ...])`；总线编号用 `opendbc.car.tesla.values.CANBUS`（`party`、`vehicle`、`autopilot_party`）。解析可以用位运算，也可以用 `opendbc.can.CANParser` 读 `opendbc/dbc/` 里的 DBC。
+
+**参数**：钩子拿到的 `params` 是 `openpilot.tesla.plugin_params.ParamsView`：`get(key)`、`get_bool(key)`、`put(key, value)`、`put_bool(key, value)`、`remove(key)`，内置和商店插件用法一样。
+
+**宿主工具**（`openpilot/tesla/plugins/__init__.py`，给宿主和页面用，插件一般不需要）：`PLUGINS`、`is_enabled(cls, params)`、`active(params)`、`resolve(params) -> (生效的插件, 冲突)`、`holds(params, claim)`、`FAULTS_PARAM`（`XpilotPluginFaults`）、`LOAD_ERRORS`。
+
+**UI**（插件的 `ui.py`，无参构造，插件关闭时自动隐藏，连续出错 3 次停止绘制）：
+
+| 类 | 接口 | 用途 |
+|---|---|---|
+| `ui.tile.Tile` | `SPEC`、`state(sm)`、`draw(rect, size, state)`；画图用 `face(rect)`、`draw_value(rect, value, unit, sub)`、`draw_lines(rect, lines, size)`，以及模块函数 `text(...)`、`text_w(...)` 和颜色 `DIM`；颜色只用 `Tile.COLOR` | 大屏磁贴 |
+| `ui.tiles.TileSpec` | `id, title, sizes, services, show, hz, order`（见第 9 节） | 磁贴声明 |
+| `ui.plugin_ui.ScreenOverlay` | `update(sm)`、`draw(zones)` | 大屏行驶时的整屏叠加层 |
+| `ui.plugin_ui.HudOverlay` | Widget：`update()`、`render(rect)`；读 `ui_state.sm` | mici 行驶画面叠加层 |
+
+**消息**（插件可以读或发布）：`carStateSP` 里插件自己的字段（例 `teslaBattery`）、`liveMapDataSP` 和 `navInstruction`（地图和导航，第 8 节）、`externalIn` / `externalOut`（外接算力，8b），以及 SP 的所有服务（`carState`、`radarState`、`longitudinalPlan`、`deviceState` 等）。
+
+**panda safety**（C，内置插件才可以）：`safety_plugin` 结构（`msg`、`active`、`rx`、`tx`、`reset`），见第 6 节。
+
+**商店**（8c）：插件包和内置插件同样格式；代码按 `xpilot_ext.<id>` 导入、内部用相对导入；参数存在 `.params` 文件里；二进制要在清单写 `platform`。
 
 ## 6. panda safety 插件接口（`opendbc/safety/plugins/`）
 
