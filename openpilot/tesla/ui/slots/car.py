@@ -1,23 +1,19 @@
-"""Car status slot: cluster speed, gear, blinkers and blind spots (validates carState-only slots)."""
+"""Car status tile: cluster speed, gear, blinkers and blind spots (validates carState-only tiles)."""
 from openpilot.common.constants import CV
 from openpilot.selfdrive.ui.ui_state import ui_state
-from openpilot.tesla.ui.grid import SlotSpec
-from openpilot.tesla.ui.slot import Slot
+from openpilot.tesla.ui.tile import Tile
+from openpilot.tesla.ui.tiles import DARK, TileSpec
 
 
-class CarSlot(Slot):
-  SPEC = SlotSpec("car", "Car", zone="bottom", units=1, hz=10, order=50)
+class CarTile(Tile):
+  SPEC = TileSpec("car", "Car", sizes=("small", "medium", "wide"), hz=10, order=50, color=DARK)
 
-  def __init__(self):
-    super().__init__()
-    self._lines: list[str] = []
-
-  def update(self, sm) -> None:
+  def state(self, sm):
     cs = sm['carState']
     speed = cs.vEgoCluster * (CV.MS_TO_KPH if ui_state.is_metric else CV.MS_TO_MPH)
     blink = ("<" if cs.leftBlinker else " ") + (">" if cs.rightBlinker else " ")
     spots = ("L" if cs.leftBlindspot else "-") + ("R" if cs.rightBlindspot else "-")
-    self._lines = [f"{speed:.0f} {'km/h' if ui_state.is_metric else 'mph'}", f"{str(cs.gearShifter)[:1].upper()}  {blink}  {spots}"]
+    return f"{speed:.0f} {'km/h' if ui_state.is_metric else 'mph'}", f"{str(cs.gearShifter)[:1].upper()}  {blink}  {spots}"
 
-  def _render(self, rect):
-    self.draw_lines(rect, self._lines)
+  def draw(self, rect, size, state):
+    self.draw_lines(rect, list(state))

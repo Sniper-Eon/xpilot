@@ -3,7 +3,7 @@
 One feature = one package openpilot/tesla/plugins/<id>/, found automatically:
   plugin.json  manifest: id, category, priority, claims, enable switch, settings, params (openpilot/tesla/manifest.py)
   plugin.py    the Plugin subclass named by the manifest's "entry"
-  ui.py        optional: Slot subclasses (big-screen tiles) and HudOverlay subclasses (onroad HUD), found by the UI
+  ui.py        optional: Tile, HudOverlay (onroad HUD) and ScreenOverlay subclasses, found by the UI
 SP stays the main stack: SP files only call these hooks. Every hook has a do-nothing default.
 The host (plugins/__init__.py) builds only enabled plugins that win their claims, refuses unclaimed use,
 and drops a plugin at its first exception.

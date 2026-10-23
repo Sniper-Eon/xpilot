@@ -1,19 +1,16 @@
-"""Map slot: speed limit, road name and next maneuver from the map interface
+"""Map tile: speed limit, road name and next maneuver from the map interface
 (liveMapDataSP from any map provider, navInstruction from any navigation provider)."""
 from openpilot.common.constants import CV
 from openpilot.selfdrive.ui.ui_state import ui_state
-from openpilot.tesla.ui.grid import SlotSpec
-from openpilot.tesla.ui.slot import Slot
+from openpilot.tesla.ui.tile import Tile
+from openpilot.tesla.ui.tiles import DARK, TileSpec
 
 
-class MapSlot(Slot):
-  SPEC = SlotSpec("map", "Map", zone="bottom", units=2, services=("liveMapDataSP", "navInstruction"), hz=2, order=60)
+class MapTile(Tile):
+  SPEC = TileSpec("map", "Map", sizes=("small", "medium", "wide"), services=("liveMapDataSP", "navInstruction"), hz=2, order=60,
+                  color=DARK)
 
-  def __init__(self):
-    super().__init__()
-    self._lines: list[str] = []
-
-  def update(self, sm) -> None:
+  def state(self, sm):
     lines = []
     if sm.alive['liveMapDataSP']:
       m = sm['liveMapDataSP']
@@ -25,7 +22,7 @@ class MapSlot(Slot):
     if sm.alive['navInstruction'] and sm['navInstruction'].maneuverPrimaryText:
       nav = sm['navInstruction']
       lines.append(f"{nav.maneuverDistance:.0f} m {nav.maneuverPrimaryText}"[:32])
-    self._lines = lines or ["No map data"]
+    return tuple(lines) or ("No map data",)
 
-  def _render(self, rect):
-    self.draw_lines(rect, self._lines, size=36)
+  def draw(self, rect, size, state):
+    self.draw_lines(rect, list(state), size=36)

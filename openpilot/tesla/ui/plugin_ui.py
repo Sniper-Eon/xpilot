@@ -1,4 +1,4 @@
-"""UI side of plugins: finds Slot, HudOverlay and ScreenOverlay classes in openpilot/tesla/ui/slots/ and in each plugin's ui.py,
+"""UI side of plugins: finds Tile, HudOverlay and ScreenOverlay classes in openpilot/tesla/ui/slots/ and in each plugin's ui.py,
 and hides a plugin's widgets while the plugin is switched off (Plugins page). A module that fails to import is
 logged and skipped, so a broken plugin UI never takes the UI down."""
 import importlib
@@ -21,13 +21,13 @@ class HudOverlay(Widget):
 
 
 class ScreenOverlay:
-  """Drawn by the big-screen host onroad, after its cards, in screen px. Subclass in a plugin's ui.py; must construct with no arguments."""
+  """Drawn by the big-screen host onroad, after its tiles, in screen px. Subclass in a plugin's ui.py; must construct with no arguments."""
 
   def update(self, sm) -> None:
     """Every frame before draw(); sm is ui_state.sm."""
 
   def draw(self, zones: dict) -> None:
-    """zones: "left", "right", "top", "bottom" (card zones) and "view" (the mici view) as rl.Rectangle."""
+    """zones: "left", "right", "top", "bottom" (strips around the view) and "view" (the mici view) as rl.Rectangle."""
 
 
 def _classes(module_name: str, base) -> list:
@@ -45,7 +45,7 @@ def _classes(module_name: str, base) -> list:
 
 
 def load(base) -> list[tuple[str | None, object]]:
-  """(plugin NAME or None for core slots, widget instance) for every class deriving from base."""
+  """(plugin NAME or None for core tiles, widget instance) for every class deriving from base."""
   from openpilot.tesla.ui import slots as slots_pkg
   found: list[tuple[str | None, type]] = []
   for info in pkgutil.iter_modules(slots_pkg.__path__):
