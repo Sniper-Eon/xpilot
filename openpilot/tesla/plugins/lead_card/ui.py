@@ -10,7 +10,7 @@ class LeadCardTile(Tile):
 
   def state(self, sm):
     lead = sm['radarState'].leadOne
-    if not sm.alive['radarState'] or not lead.status:
+    if not sm.alive['radarState'] or not lead.present:
       return "-", "", "no lead"
     metric = ui_state.is_metric
     return f"{lead.dRel:.0f}", "m", f"{lead.vRel * (CV.MS_TO_KPH if metric else CV.MS_TO_MPH):+.0f} {'km/h' if metric else 'mph'}"
