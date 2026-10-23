@@ -3,6 +3,7 @@ and are blocked while engaged. Training guide, driver camera, terms and regulato
 driver_camera.py, terms.py, regulatory.py); the training guide and driver camera only offroad."""
 from openpilot.common.hardware import HARDWARE
 from openpilot.selfdrive.ui.ui_state import ui_state
+from openpilot.sunnypilot.hardware.profile import has_driver_camera
 from openpilot.system.ui.widgets.list_view import button_item, text_item
 from openpilot.tesla.ui.pages.base import ListPage, back, confirm
 from openpilot.tesla.ui.pages.driver_camera import DriverCameraPage
@@ -29,14 +30,16 @@ class DevicePage(ListPage):
     power_off = button_item("Power off", "POWER OFF", callback=lambda: confirm("Are you sure you want to power off?", "power off",
                                                                                lambda: params.put_bool("DoShutdown", True, block=True)))
     power_off.set_visible(lambda: not ui_state.ignition)
+    camera_row = button_item("Driver camera preview", "PREVIEW", "Preview the cabin camera to check driver monitoring visibility. The vehicle must be off.",
+                             callback=lambda: offroad() and self.open("driver camera", camera), enabled=offroad)
+    camera_row.set_visible(has_driver_camera())  # C3XL has no cabin camera
     regulatory_row = button_item("Regulatory info", "VIEW", callback=lambda: self.open("regulatory", regulatory))
     regulatory_row.set_visible(HARDWARE.get_device_type() == "mici")  # mici_fcc.html is the comma four label, wrong on C3/C3X/C3XL
     self.add(
       text_item("Dongle ID", lambda: params.get("DongleId") or "N/A"),
       text_item("Serial", lambda: params.get("HardwareSerial") or "N/A"),
       button_item("Review training guide", "REVIEW", callback=lambda: offroad() and self.open("training guide", guide), enabled=offroad),
-      button_item("Driver camera preview", "PREVIEW", "Preview the cabin camera to check driver monitoring visibility. The vehicle must be off.",
-                  callback=lambda: offroad() and self.open("driver camera", camera), enabled=offroad),
+      camera_row,
       button_item("Terms & conditions", "VIEW", callback=lambda: self.open("terms", terms)),
       regulatory_row,
       button_item("Reset calibration", "RESET", CALIB_DESC,

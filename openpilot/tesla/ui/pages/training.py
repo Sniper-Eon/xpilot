@@ -12,6 +12,7 @@ import pyray as rl
 from openpilot.common.filter_simple import FirstOrderFilter
 from openpilot.selfdrive.ui.mici.layouts.onboarding import DriverCameraSetupDialog, TrainingGuideDMTutorial
 from openpilot.selfdrive.ui.ui_state import device, ui_state
+from openpilot.sunnypilot.hardware.profile import has_driver_camera
 from openpilot.system.ui.lib.application import gui_app
 from openpilot.system.ui.widgets import Widget
 from openpilot.system.ui.widgets.button import Button, ButtonStyle
@@ -44,7 +45,7 @@ class TrainingGuidePage(Widget):
                                               "3. You must be ready to take over at any time.\n"
                                               "4. You are fully responsible for driving the car."),
                   [button("next", nxt, ButtonStyle.PRIMARY)]),
-      PRE_DM: ("driver monitoring check", body("Next, we'll check if comma four can detect the driver properly.\n"
+      PRE_DM: ("driver monitoring check", body("Next, we'll check if the device can detect the driver properly.\n"
                                                "sunnypilot uses the cabin camera to check if the driver is distracted.\n"
                                                "If it does not have a clear view of the driver, unplug and remount before continuing."),
                [button("next", nxt, ButtonStyle.PRIMARY)]),
@@ -54,7 +55,7 @@ class TrainingGuidePage(Widget):
                                           "Sharing your data with comma helps improve openpilot and sunnypilot for everyone."),
                [button("no, don't upload", lambda: self._record(False)),
                 button("allow data uploading", lambda: self._record(True), ButtonStyle.PRIMARY)]),
-      BAD_FACE: ("looking for driver", body("Make sure comma four can see your face.\n"
+      BAD_FACE: ("looking for driver", body("Make sure the device can see your face.\n"
                                             "Remount if your face is blocked, or driver monitoring has difficulty tracking your face."),
                  [button("back", lambda: self._go(CHECK))]),
     }
@@ -66,6 +67,9 @@ class TrainingGuidePage(Widget):
     device.add_interactive_timeout_callback(on_timeout)
 
   def _go(self, step: int) -> None:
+    if step != ATTENTION and not has_driver_camera():
+      self._on_done()  # C3XL: no cabin camera, so no driver monitoring check or camera upload choice
+      return
     if step == PRE_DM:
       ui_state.params.put_bool("IsDriverViewEnabled", True)  # get the driver monitoring model ready for the check
     elif step == CHECK and self._step == PRE_DM:
