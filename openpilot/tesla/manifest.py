@@ -181,3 +181,23 @@ def host_platform() -> dict[str, str]:
 def platform_ok(plat: dict | None) -> bool:
   host = host_platform()
   return plat is None or all(plat.get(k) == v for k, v in host.items())
+
+
+MAX_LINES, MAX_ENTRY_LINES = 400, 150  # per .py file / the entry module, which only wires hooks to the plugin's own modules
+
+
+def layout_problems(d: Path, entry_module: str = "plugin") -> list[str]:
+  """Code layout rules (XPILOT.md 5.3) broken by the plugin in d: a .py file over MAX_LINES (tests/ excluded), an entry
+  module over MAX_ENTRY_LINES, pyray imported outside ui.py (card and process code must not load the UI)."""
+  out = []
+  for f in sorted(d.rglob("*.py")):
+    rel = f.relative_to(d)
+    if rel.parts[0] == "tests":
+      continue
+    src = f.read_text(errors="replace")
+    lines, limit = len(src.splitlines()), MAX_ENTRY_LINES if rel.as_posix() == f"{entry_module}.py" else MAX_LINES
+    if lines > limit:
+      out.append(f"{rel}: {lines} lines > {limit}")
+    if rel.name != "ui.py" and re.search(r"^\s*(import|from)\s+pyray\b", src, re.M):
+      out.append(f"{rel}: imports pyray outside ui.py")
+  return out

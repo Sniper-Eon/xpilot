@@ -17,6 +17,7 @@ Failure cases listed before implementation:
 - S13 a plugin built for another platform (machine / Python ABI) is offered as installable or installed
 - S14 an installed plugin whose platform no longer matches (e.g. after a Python upgrade) is loaded instead of skipped
 - S15 a plugin for this platform is refused
+- S16 a plugin that breaks the code layout rules (manifest.layout_problems, e.g. one file over MAX_LINES) is installed
 """
 import hashlib
 import http.server
@@ -127,6 +128,7 @@ def main() -> int:
   publish("ext_link", archive("ext_link", good_files("ext_link"), raw=[link]))
   publish("auto_speed", archive("auto_speed", good_files("auto_speed")))
   publish("ext_dup", archive("ext_dup", good_files("ext_dup", params={"TeslaAutoSpeedLimit": {"type": "BOOL"}})))
+  publish("ext_fat", archive("ext_fat", {**good_files("ext_fat"), "helper.py": "VALUE = 1\n" * (mf.MAX_LINES + 1)}))
   publish("ext_api", archive("ext_api", good_files("ext_api")), api=mf.API_VERSION + 1)
   here, other = mf.host_platform(), {"machine": "sparc", "python": "cpython-27"}
   publish("ext_here", archive("ext_here", good_files("ext_here", platform=here)), platform=here)
@@ -162,13 +164,13 @@ def main() -> int:
     errors.append("S15 this platform refused")
   if (r := install("ext_ok")) is not None:
     errors.append(f"S6 install ext_ok failed: {r}")
-  for pid, code in (("ext_hash", "S1"), ("ext_trav", "S2"), ("ext_link", "S2"), ("auto_speed", "S4"), ("ext_dup", "S5")):
+  for pid, code in (("ext_hash", "S1"), ("ext_trav", "S2"), ("ext_link", "S2"), ("auto_speed", "S4"), ("ext_dup", "S5"), ("ext_fat", "S16")):
     if install(pid) is None:
       errors.append(f"{code} {pid} installed")
   if (TMP / "evil.txt").exists() or (TMP / "installed" / "evil.txt").exists():
     errors.append("S2 file written outside the plugin directory")
-  if any((TMP / "installed" / p).exists() for p in ("ext_hash", "ext_trav", "ext_link", "ext_dup")):
-    errors.append("S1/S2/S5 rejected plugin left on disk")
+  if any((TMP / "installed" / p).exists() for p in ("ext_hash", "ext_trav", "ext_link", "ext_dup", "ext_fat")):
+    errors.append("S1/S2/S5/S16 rejected plugin left on disk")
 
   # update with a broken version keeps 1.0.0 (S3); a good update replaces it (S12)
   bad_v2 = good_files("ext_ok", version="2.0.0")

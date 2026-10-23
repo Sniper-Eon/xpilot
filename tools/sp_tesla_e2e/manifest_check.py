@@ -14,6 +14,8 @@ Failure cases listed before implementation:
 - M8 a built-in plugin's manifest is invalid, or its claims do not cover the hooks it overrides
 - M9 an unknown claim kind is accepted
 - M10 a disabled plugin still takes an exclusive claim from an enabled one
+- M11 a plugin's code is not split by role (XPILOT.md 5.3): a file over MAX_LINES, a fat entry module, or pyray imported
+     outside ui.py passes; or a built-in plugin breaks the rules beyond the files listed in LAYOUT_DEBT
 """
 import json
 from pathlib import Path
@@ -33,6 +35,9 @@ from openpilot.common.swaglog import cloudlog  # noqa: E402
 for _level in ("error", "exception", "warning", "info"):  # the check only needs results, not logs (host has no log sink)
   setattr(cloudlog, _level, lambda *a, **k: None)
 from openpilot.tesla.plugin import Plugin  # noqa: E402
+
+# ponytail: built-in files over MAX_LINES from before the rule; split them when next changed, never add to this list
+LAYOUT_DEBT = {"traffic_light": {"controller.py", "final_plan_arbitrator.py"}}
 
 
 def write(root: Path, d: str, **over) -> None:
@@ -158,6 +163,22 @@ def main() -> int:
         errors.append(f"M8 {cls.NAME} process {proc.name} unclaimed")
   if len(plugins.PLUGINS) != len(found):
     errors.append(f"M8 {len(found)} manifests but {len(plugins.PLUGINS)} plugin classes")
+
+  for m in found:
+    debt = LAYOUT_DEBT.get(m.id, set())
+    for problem in mf.layout_problems(mf.PLUGINS_DIR / m.id, m.entry.split(":")[0]):
+      if not (problem.split(":")[0] in debt and "lines" in problem):
+        errors.append(f"M11 {m.id}/{problem}")
+  with tempfile.TemporaryDirectory() as tmp:
+    d = Path(tmp)
+    (d / "plugin.py").write_text("x = 1\n" * (mf.MAX_ENTRY_LINES + 1))
+    (d / "logic.py").write_text("import pyray as rl\n" + "x = 1\n" * mf.MAX_LINES)
+    (d / "ui.py").write_text("import pyray as rl\n")
+    (d / "tests").mkdir()
+    (d / "tests" / "big.py").write_text("x = 1\n" * (mf.MAX_LINES + 1))
+    got = sorted(p.split(":")[0] + ":" + p.split(": ")[1].split()[0] for p in mf.layout_problems(d))
+    if got != ["logic.py:401", "logic.py:imports", "plugin.py:151"]:
+      errors.append(f"M11 layout problems {got}")
 
   print(json.dumps({"plugins": [c.NAME for c in plugins.PLUGINS], "errors": errors}, indent=1))
   return 1 if errors else 0
