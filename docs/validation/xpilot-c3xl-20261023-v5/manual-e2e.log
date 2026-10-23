@@ -1,0 +1,133 @@
+kj/filesystem-disk-unix.c++:1734: warning: PWD environment variable doesn't match current directory; pwd = /home/comma
+gbm_create_device(156): Info: backend name is: msm_drm
+raylib: COMMA: Failed to initialize color correction
+raylib: FONT: Requested codepoints glyphs found: [117/122]
+raylib: FONT: Requested codepoints glyphs found: [117/122]
+raylib: FONT: Requested codepoints glyphs found: [117/122]
+raylib: FONT: Requested codepoints glyphs found: [107/122]
+raylib: FONT: Requested codepoints glyphs found: [117/122]
+FPS dropped below 60: 9
+FPS dropped below 60: 4
+FPS dropped below 60: 4
+FPS dropped below 60: 4
+{
+  "passed": true,
+  "head": "2bd5436a36410018c83baf65de4cdc4aa100a1c4",
+  "scope": "real GPU, production page/switch/model/add callbacks; no CAN; exact parameter/layout restoration",
+  "cases": [
+    {
+      "item": "D-clock-ip",
+      "added_via": "BigScreenHost._pin production ADD callback",
+      "placed": {
+        "clock": [
+          4,
+          0,
+          "small"
+        ],
+        "ip": [
+          4,
+          1,
+          "small"
+        ]
+      },
+      "clock": [
+        "08:35",
+        "Fri 23 Oct"
+      ],
+      "ip": [
+        "192.168.102.113",
+        "none"
+      ]
+    },
+    {
+      "item": "A",
+      "categories": 5,
+      "refresh": true,
+      "summaries": 13,
+      "plugin_info": [
+        "Battery (BMS)",
+        "Version",
+        "Author",
+        "Category",
+        "Claims",
+        "Priority"
+      ],
+      "back_category": 1
+    },
+    {
+      "item": "B",
+      "theme": "Crimson",
+      "tile_color": [
+        162,
+        0,
+        37
+      ],
+      "tiles": [
+        "car",
+        "clock",
+        "developer",
+        "device",
+        "ip",
+        "lead_card",
+        "map",
+        "models",
+        "network",
+        "plugins",
+        "software",
+        "speed_card",
+        "speed_limit_card",
+        "status",
+        "tesla",
+        "toggles"
+      ]
+    },
+    {
+      "item": "C",
+      "models": [
+        "Auto",
+        "Tesla Model 3 (with HW2.5) 2019",
+        "Tesla Model 3 (with HW3) 2019-23",
+        "Tesla Model 3 (with HW4) 2024-25",
+        "Tesla Model X (with HW4) 2024",
+        "Tesla Model Y (with HW3) 2020-24",
+        "Tesla Model Y (with HW4) 2023-25"
+      ],
+      "selected": "Tesla Model 3 (with HW2.5) 2019",
+      "json_name": "Tesla Model 3 (with HW2.5) 2019",
+      "auto_removed": true
+    },
+    {
+      "item": "D-battery",
+      "default_off": true,
+      "enabled": true,
+      "restart_notice": false,
+      "added_via": "BigScreenHost._pin production ADD callback",
+      "placed": [
+        4,
+        2,
+        "small"
+      ],
+      "state": null,
+      "display": "--"
+    }
+  ],
+  "original_sha256": {
+    "theme": null,
+    "layout": "9cd134605badc8d1e5a5f401b101a86eb336eac7d8b7a0b6fa40bfe29efce30b",
+    "car": "dfcc84df24862d499db2c9a7572af713b81f9592a740eb53b4f393f213722519",
+    "bms": null
+  },
+  "final_sha256": {
+    "theme": null,
+    "layout": "9cd134605badc8d1e5a5f401b101a86eb336eac7d8b7a0b6fa40bfe29efce30b",
+    "car": "dfcc84df24862d499db2c9a7572af713b81f9592a740eb53b4f393f213722519",
+    "bms": null
+  },
+  "restored": {
+    "theme": true,
+    "layout": true,
+    "car": true,
+    "bms": true
+  },
+  "errors": []
+}
