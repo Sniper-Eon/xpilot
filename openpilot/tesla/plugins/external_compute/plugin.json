@@ -10,7 +10,8 @@
   "priority": 100,
   "enable_param": "XpilotExternalEnabled",
   "claims": [
-    "process:externald"
+    "process:externald",
+    "external.provider"
   ],
   "settings": [
     {

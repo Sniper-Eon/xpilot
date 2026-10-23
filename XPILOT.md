@@ -86,6 +86,8 @@ opendbc_repo/opendbc/safety/plugins/
 
 控制链路：`perception_model` 感知模型、`object_fusion` 前车和目标融合、`vehicle_params` 标定和车辆参数、`engagement` 接管状态机、`driver_monitoring` 驾驶员监控、`lateral_planning` 横向规划、`longitudinal_planning` 纵向规划、`lane_change` 变道、`navigation` 导航驾驶、`controller` 控制器、`actuation` 执行和车端报文、`safety_fallback` 安全兜底和 Autopilot 交接。
 
+暂无钩子的类别：`perception_model`、`object_fusion`、`vehicle_params`、`engagement`、`driver_monitoring`、`lateral_planning`、`navigation`、`safety_fallback`。这些类别现在只用于分组显示；插件可以用通用钩子（`processes`、`alert_source` 等），但还不能替换 SP 的对应环节。真有插件需要时再加钩子。
+
 其他：`data_source` 数据源和外接算力、`alerts` 报警、`body_comfort` 车身和舒适、`ui` 界面、`tools` 工具和诊断。
 
 ### 4.3 资源声明（claims）和冲突
@@ -100,6 +102,7 @@ opendbc_repo/opendbc/safety/plugins/
 | `plan.filter` | 使用 `plan_filter` 钩子 | 否，按优先级串联 |
 | `alert` | 使用 `alert_source` 钩子 | 否，每个级别取优先级最高插件的第一条 |
 | `lat.correction` | 使用 `lat_correction` 钩子 | 否，按优先级串联，总改动有上限 |
+| `external.provider` | 使用 `external_provider` 钩子 | 否，所有 provider 一起运行 |
 | `role:lane_change.policy` | 使用 `lane_change_policy` 钩子 | 是 |
 | `role:lateral.controller` | 替换横向控制器（`lat_controller`） | 是 |
 | `role:long.planner` | 替换纵向规划（`long_planner`），可以自带跟车逻辑 | 是 |
@@ -126,9 +129,11 @@ opendbc_repo/opendbc/safety/plugins/
 | `lat_controller(CP, CP_SP, CI, params)`（类方法） | controlsd | 返回和 `LatControl` 接口一致的对象（`update(...) -> (steer, 转角, lac_log)`、`reset()`），替换 SP 的横向控制器。输出不和 SP 比较、不额外限制，只靠车端转角速率限制和 panda 兜底。SP 的控制器一直并行运行；插件出错或输出 NaN/inf 时，本次运行剩下的时间都改用 SP 的输出 |
 | `long_planner(CP, CP_SP, params)`（类方法） | plannerd，SP 算完之后 | 返回带 `update(sm, sp) -> plan 或 None` 的对象。`sp` 是 SP 的结果（`speeds`、`accels`、`jerks` 各 17 个点，`a_target`、`should_stop`）；返回同样字段的 plan 就替换 SP 的计划，**包括跟车**。`a_target` 限制在 ACCEL_MIN/MAX；长度不对、NaN/inf 或 None 时保留 SP 的计划；出错的规划器被停用。SP 的 MPC 仍然运行，FCW 仍由它决定 |
 | `plan_filter(CP, params)`（类方法） | plannerd | 返回带 `publisher(pm, sm)` 的对象，用来收紧纵向计划；不需要就返回 None |
+| `radar_interface(CP, CP_SP, params)`（类方法） | card，启动时 | 需要 `source:radar`。返回和 `RadarInterfaceBase` 接口一致的对象（`update(can_list) -> RadarData 或 None`），替换车型自带的雷达。原车雷达一直并行运行；插件出错后本次运行剩下的时间回到原车雷达 |
+| `external_provider(params)`（类方法） | externald，启动时 | 需要 `external.provider`。返回一个 provider（`poll`、`send`、`close`），见 8b |
 | `SERVICES` | plannerd、selfdrived、controlsd | 钩子需要额外订阅的服务；这些服务不参与存活和有效性检查，不会影响接管 |
 
-SP 里的调用位置：`selfdrive/car/card.py`（`CarPlugins`）、`selfdrive/controls/plannerd.py`（`services`、`plan_filters`、`plan_sink`、`long_targets`）、`sunnypilot/selfdrive/controls/lib/longitudinal_planner.py`（`apply_long_targets`）、`selfdrive/selfdrived/selfdrived.py`（`alert_sources`、`update_alerts`）、`sunnypilot/selfdrive/selfdrived/events.py`（插件报警定义，见 `openpilot/tesla/alerts.py`）、`selfdrive/controls/lib/desire_helper.py`（`lane_change_policies`、`lane_change_allowed`）、`selfdrive/controls/controlsd.py`（`lat_corrections`、`apply_lat_corrections`、`lateral_controller`）、`selfdrive/controls/lib/longitudinal_planner.py`（`apply_long_planner`）、`sunnypilot/system/fork_processes.py`（`processes`）。
+SP 里的调用位置：`selfdrive/car/card.py`（`CarPlugins`、`radar_interface`）、`selfdrive/controls/plannerd.py`（`services`、`plan_filters`、`plan_sink`、`long_targets`）、`sunnypilot/selfdrive/controls/lib/longitudinal_planner.py`（`apply_long_targets`）、`selfdrive/selfdrived/selfdrived.py`（`alert_sources`、`update_alerts`）、`sunnypilot/selfdrive/selfdrived/events.py`（插件报警定义，见 `openpilot/tesla/alerts.py`）、`selfdrive/controls/lib/desire_helper.py`（`lane_change_policies`、`lane_change_allowed`）、`selfdrive/controls/controlsd.py`（`lat_corrections`、`apply_lat_corrections`、`lateral_controller`）、`selfdrive/controls/lib/longitudinal_planner.py`（`apply_long_planner`）、`sunnypilot/system/fork_processes.py`（`processes`，以及 `holds(params, "source:map")` 关掉 SP 的地图进程）。
 
 ## 5. 写一个新插件
 
@@ -172,13 +177,16 @@ typedef struct {
 
 ## 7. 雷达接入接口
 
-`opendbc_repo/opendbc/car/car_helpers.py` 里有 `RADAR_PLUGINS = {"tesla": "module:Class"}`，填上即可用一个 `RadarInterfaceBase` 子类替换车型自带的雷达，card 通过 `get_radar_interface()` 获取。目前为空，Tesla 用原车雷达。外接雷达如果需要发送报文，还要配一个 panda safety 插件。
+写一个声明 `source:radar` 的插件，实现 `radar_interface` 钩子（见 4.4）。插件关闭、没有声明或出错时用原车雷达。外接雷达如果需要发送报文，还要声明 `can.tx` 并配一个 panda safety 插件。
+
+`opendbc_repo/opendbc/car/car_helpers.py` 里的 `RADAR_PLUGINS` 是旧接口，已不用，保持为空（opendbc 不改）。
 
 ## 8. 地图接口
 
 - **数据**：任何数据源只发布 `liveMapDataSP`，包括限速、前方限速、路名、`targetVelocities`（弯道目标速度）、`source`。
-- **选择**：用 `MapProvider` 参数选数据源，默认 `osm`；设置页有开关。
-- **新增数据源**：继承 `sunnypilot/mapd/live_map_data/base_map_data.py`，并在 `process_config.py` 里按 `MapProvider` 的取值注册进程。
+- **默认数据源**：SP 的 OSM（`mapd`、`mapd_manager`、`map_osm` 进程）。
+- **新增数据源**：写一个插件，声明 `source:map` 和 `process:<名字>`，用 `processes()` 启动自己的进程发布 `liveMapDataSP`（可以继承 `sunnypilot/mapd/live_map_data/base_map_data.py`）。这个插件开启时，SP 的三个地图进程自动不启动；关掉插件就回到 OSM。
+- **已知问题**：地图插件开启时，Tesla 页的 "OSM Map Data" 开关仍显示原值，但不起作用。
 - **导航**：发布 `navInstruction`，再把 256×256 地图图像发到 VisionIPC 的 `mapsd` 流。
 
 ## 8b. 外接算力接口（`plugins/external_compute/`）
@@ -187,7 +195,7 @@ typedef struct {
 - **只做建议**：外部数据不能直接控制车辆。要用它的插件订阅 `externalIn`，用 `provider.is_fresh()` 检查时效，再通过自己的钩子（如 `long_target`）和限制生效。
 - **桥接进程** `externald`：插件开启时运行，把所有 provider 收到的消息发到 `externalIn`，把 `externalOut` 转给 provider。
 - **provider 接口**（`provider.py`）：`poll(timeout)`、`send(msg)`、`close()`。现有 `tcp.py`：外部设备通过网线、USB 网卡或 WiFi 连到设备端口（默认 8770），按行发 JSON，第一行必须是 `{"hello": "<令牌>", "name": "..."}`。令牌在设备的 `/data/params/d/XpilotExternalToken`，首次启动自动生成。明文 TCP，只在可信网络上用。
-- **新增 provider**（例如调用大模型 HTTP API）：写一个 `Provider` 子类，加进 `externald.py` 的 provider 列表。
+- **新增 provider**（例如调用大模型 HTTP API）：写一个插件，声明 `external.provider`，在 `external_provider(params)` 钩子里返回一个 `Provider` 子类的实例。`external_compute` 自己就用这个钩子提供 TCP provider。`externald` 只在 `external_compute` 开启时运行。
 
 ## 8c. 插件商店（`openpilot/tesla/store.py`）
 
@@ -248,7 +256,7 @@ typedef struct {
 ```
 python3 tools/sp_tesla_e2e/static_imports.py --baseline <基线 json>   # 有没有断掉的 import
 python3 tools/sp_tesla_e2e/tile_layout_check.py                       # 大屏磁贴：网格、排布、行驶避让、编辑操作、手势、重画判断、ASCII 文字
-python3 tools/sp_tesla_e2e/plugin_host_check.py                       # 插件宿主：出错隔离、总开关、元数据、参数、目标车速
+python3 tools/sp_tesla_e2e/plugin_host_check.py                       # 插件宿主：出错隔离、总开关、元数据、参数、目标车速、雷达/地图/外接 provider
 python3 tools/sp_tesla_e2e/external_bridge_check.py                   # 外接算力 TCP 桥接（本机真实 socket）
 python3 tools/sp_tesla_e2e/manifest_check.py                          # 插件清单、资源声明、冲突裁决
 python3 tools/sp_tesla_e2e/phase2_check.py                            # 插件报警、变道策略、横向修正

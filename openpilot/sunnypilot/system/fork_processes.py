@@ -4,7 +4,7 @@ Keeps openpilot/system/manager/process_config.py official except for one call:
 - driver monitoring follows the DM switch (C3XL has no cabin camera)
 - micd/soundd only run on hardware with a microphone/amplifier (C3XL has neither)
 - C3XL routes alerts to its GPIO buzzer
-- xpilot feature plugins add their own processes (openpilot/tesla/plugins)
+- xpilot feature plugins add their own processes (openpilot/tesla/plugins); an active source:map plugin replaces OSM
 """
 from openpilot.common.hardware import PC
 from openpilot.sunnypilot.hardware.driver_monitoring import driver_monitoring_enabled
@@ -24,6 +24,8 @@ def apply_fork_processes(procs: list, only_onroad) -> list:
     _gate(by_name[name], driver_monitoring_enabled)
   _gate(by_name["micd"], lambda params: has_microphone())
   _gate(by_name["soundd"], lambda params: has_audio_output())
+  for name in ("mapd", "mapd_manager", "map_osm"):
+    _gate(by_name[name], lambda params: not plugins.holds(params, "source:map"))
   return procs + [
     PythonProcess("alert_output", "openpilot.sunnypilot.system.alert_output",
                   lambda started, params, CP: not PC and get_hardware_profile() == HardwareProfile.C3XL),

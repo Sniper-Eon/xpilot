@@ -23,6 +23,12 @@ Failure cases listed before implementation:
 - P18 two raising plugins: the higher one wins (should be the lower, more conservative one)
 - P19 a long target that raises takes plannerd down or keeps running; None changes nothing
 - P20 a disabled plugin still contributes a long target
+- P21 an active source:radar plugin does not replace the port's radar, or one without the claim does
+- P22 a radar plugin that raises takes card down or keeps being called; the port's radar must take over
+- P23 an active source:map plugin leaves SP's OSM map processes running (two liveMapDataSP publishers),
+       or a disabled one stops them
+- P24 externald bridges a provider from a disabled plugin or one without the external.provider claim,
+       or a raising provider hook takes the others down
 
 Run from the repo root with the openpilot python env. Native-only modules (Params) are stubbed if missing.
 """
@@ -234,6 +240,7 @@ def main() -> int:
         errors.append(f"P12 {k} in {owners[k]} and {f.parent.name}")
       owners[k] = f.parent.name
   errors += long_target_checks(plugins_mod)
+  errors += source_checks(plugins_mod)
 
   print(json.dumps({"plugins": [c.NAME for c in real], "errors": errors}, indent=1))
   return 1 if errors else 0
@@ -301,6 +308,63 @@ def long_target_checks(plugins) -> list[str]:
   plugins.PLUGINS = (Off,)
   if plugins.long_targets(CP, FakeParams()):
     errors.append("P20 disabled plugin contributes a long target")
+  return errors
+
+
+def source_checks(plugins) -> list[str]:
+  errors, faults = [], []
+  plugins.record_fault = lambda name, where, exc: faults.append(where)
+
+  class Radar:
+    def __init__(self, out, fail=False):
+      self.out, self.fail, self.calls = out, fail, 0
+
+    def update(self, can_list):
+      self.calls += 1
+      if self.fail:
+        raise RuntimeError("radar")
+      return self.out
+
+  def plugin(name, claims, hook, obj, enable=None):
+    return type(name, (Plugin,), {"NAME": name, "ENABLE_PARAM": enable, "CLAIMS": claims, hook: classmethod(lambda cls, *a: obj)})
+
+  port = Radar("port")
+  plugins.PLUGINS = (plugin("radar", ("source:radar",), "radar_interface", Radar("plugin")),)
+  if plugins.radar_interface(CP, None, FakeParams(), port).update([]) != "plugin":
+    errors.append("P21 active radar plugin did not replace the port's radar")
+  plugins.PLUGINS = (plugin("radar", (), "radar_interface", Radar("plugin")),)
+  if plugins.radar_interface(CP, None, FakeParams(), port) is not port:
+    errors.append("P21 radar plugin without source:radar replaced the port's radar")
+  bad = Radar("plugin", fail=True)
+  plugins.PLUGINS = (plugin("radar", ("source:radar",), "radar_interface", bad),)
+  ri = plugins.radar_interface(CP, None, FakeParams(), port)
+  try:
+    outs = [ri.update([]) for _ in range(3)]
+    if outs != ["port"] * 3 or bad.calls != 1 or "card.radar_interface.update" not in faults:
+      errors.append(f"P22 failing radar plugin: outputs {outs}, called {bad.calls}x, faults {faults}")
+  except Exception as e:
+    errors.append(f"P22 failing radar plugin raised {e!r}")
+
+  plugins.PLUGINS = (plugin("map", ("source:map",), "processes", [], enable="MapKey"),)
+  if plugins.holds(FakeParams(), "source:map") or not plugins.holds(FakeParams({"MapKey": True}), "source:map"):
+    errors.append("P23 holds(source:map) does not follow the map plugin's switch")
+  gate = (ROOT / "openpilot/sunnypilot/system/fork_processes.py").read_text()
+  if 'for name in ("mapd", "mapd_manager", "map_osm")' not in gate or 'plugins.holds(params, "source:map")' not in gate:
+    errors.append("P23 fork_processes.py does not gate SP's OSM processes on source:map")
+
+  faults.clear()
+  good, unclaimed, off = types.SimpleNamespace(), types.SimpleNamespace(), types.SimpleNamespace()
+  plugins.PLUGINS = (plugin("good", ("external.provider",), "external_provider", good),
+                     plugin("unclaimed", (), "external_provider", unclaimed),
+                     plugin("off", ("external.provider",), "external_provider", off, enable="OffKey"),
+                     type("raising", (Plugin,), {"NAME": "raising", "CLAIMS": ("external.provider",),
+                                                 "external_provider": classmethod(lambda cls, p: 1 / 0)}))
+  try:
+    got = plugins.external_providers(FakeParams())
+    if got != [good] or "externald.external_provider" not in faults:
+      errors.append(f"P24 external providers {got}, faults {faults}")
+  except Exception as e:
+    errors.append(f"P24 external_providers raised {e!r}")
   return errors
 
 

@@ -1,23 +1,16 @@
 #!/usr/bin/env python3
 """externald: bridges external compute providers to cereal. Provider messages -> externalIn; externalOut -> providers.
-A provider that raises is closed and dropped; the others keep running."""
-import secrets
-
+Providers come from the active plugins' external_provider hooks. A provider that raises is closed and dropped; the others keep running."""
 from openpilot.cereal import messaging
 from openpilot.common.params import Params
 from openpilot.common.swaglog import cloudlog
-from openpilot.tesla.plugins.external_compute.tcp import TcpProvider
+from openpilot.tesla import plugins
 
 FIELDS = ("source", "kind", "seq", "payload", "validForMs")
 
 
 def main() -> None:
-  params = Params()
-  token = params.get("XpilotExternalToken")
-  if not token:
-    token = secrets.token_hex(8)
-    params.put("XpilotExternalToken", token)
-  providers = [TcpProvider(token, port=int(params.get("XpilotExternalPort", return_default=True)))]
+  providers = plugins.external_providers(Params())
   pm = messaging.PubMaster(["externalIn"])
   out_sock = messaging.sub_sock("externalOut", conflate=False)
 

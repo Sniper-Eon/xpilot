@@ -58,8 +58,9 @@ CLAIM_PATTERNS = (
   r"plan\.filter",                      # plan_filter hook (shared, chained in priority order)
   r"alert",                             # alert_source hook (shared, first alert per severity in priority order)
   r"lat\.correction",                   # lat_correction hook (shared, chained, total change capped by the host)
+  r"external\.provider",                # external_provider hook (shared, all bridged by externald)
 )
-SHARED_CLAIMS = {"long.target", "plan.filter", "alert", "lat.correction"}
+SHARED_CLAIMS = {"long.target", "plan.filter", "alert", "lat.correction", "external.provider"}
 _CLAIM_RE = re.compile("|".join(f"(?:{p})" for p in CLAIM_PATTERNS))
 
 

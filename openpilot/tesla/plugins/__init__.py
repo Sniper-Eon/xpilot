@@ -186,6 +186,11 @@ def processes() -> list:
   return procs
 
 
+def holds(params, claim: str) -> bool:
+  """True if an active plugin holds this claim, e.g. source:map stops SP's OSM map processes (fork_processes.py)."""
+  return any(claim in cls.CLAIMS for cls in active(params))
+
+
 def services() -> list[str]:
   """Extra services plannerd, selfdrived and controlsd subscribe for plugin hooks (ignored for alive/valid checks)."""
   return sorted({svc for p in PLUGINS for svc in p.SERVICES})
@@ -407,3 +412,35 @@ def apply_long_planner(planners: list, planner, sm) -> None:
   planner.v_desired_trajectory, planner.a_desired_trajectory, planner.j_desired_trajectory = (np.array(x) for x in (speeds, accels, jerks))
   planner.output_a_target = min(max(a_target, ACCEL_MIN), ACCEL_MAX)
   planner.output_should_stop = bool(plan.should_stop)
+
+
+# ---- card: replaceable radar ----
+class _GuardedRadar:
+  """Reads the plugin radar while the port's RadarInterface runs alongside; if the plugin raises the port's takes over for good."""
+
+  def __init__(self, plugin, sp):
+    self.plugin, self.sp, self._plugins = plugin, sp, [plugin]
+
+  def __getattr__(self, name):
+    return getattr(self.sp, name)
+
+  def update(self, can_list):
+    sp_out = self.sp.update(can_list)
+    if self._plugins:
+      ok, out = _call(self._plugins, self.plugin, "update", "card.radar_interface", can_list)
+      if ok:
+        return out
+    return sp_out
+
+
+def radar_interface(CP, CP_SP, params, sp_radar):
+  """card: the port's RadarInterface itself, or a guard around the active source:radar plugin's."""
+  if CP.brand != "tesla":
+    return sp_radar
+  found = _collect(params, "radar_interface", "source:radar", "card", CP, CP_SP, params)
+  return _GuardedRadar(found[0], sp_radar) if found else sp_radar
+
+
+# ---- externald: providers ----
+def external_providers(params) -> list:
+  return _collect(params, "external_provider", "external.provider", "externald", params)

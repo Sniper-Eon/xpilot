@@ -115,3 +115,16 @@ class Plugin:
   def plan_filter(cls, CP, params):
     """None, or an object with publisher(pm, sm) returning a pm-like sink that may only tighten the plan."""
     return None
+
+  @classmethod
+  def radar_interface(cls, CP, CP_SP, params):
+    """None, or a RadarInterfaceBase (update(can_list) -> RadarData or None) replacing the port's radar in card; needs
+    the source:radar claim. The port's radar keeps running alongside and takes over for good if this one raises.
+    A radar that sends CAN also needs a panda safety plugin."""
+    return None
+
+  @classmethod
+  def external_provider(cls, params):
+    """None, or a Provider (plugins/external_compute/provider.py) for externald to bridge; needs the external.provider
+    claim. externald runs only while external_compute is on."""
+    return None
