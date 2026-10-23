@@ -66,6 +66,21 @@ def plugin_sections():
   return [(title, [p for p in PLUGINS if p.CATEGORY == c]) for c, title in CATEGORIES.items() if any(p.CATEGORY == c for p in PLUGINS)]
 
 
+def market_sections(entries) -> list[tuple[str, list, list]]:
+  """Plugin market: (category title, plugins, store entries) per manifest category with any, in CATEGORIES order.
+  Store entries are index entries not loaded this boot (new, or installed and waiting for a restart); an unknown
+  category goes to tools."""
+  loaded = {p.NAME for p in PLUGINS}
+  extra = [e for e in entries if e.id not in loaded]
+  sections = []
+  for c, title in CATEGORIES.items():
+    plugins = [p for p in PLUGINS if p.CATEGORY == c]
+    found = [e for e in extra if (e.category if e.category in CATEGORIES else "tools") == c]
+    if plugins or found:
+      sections.append((title, plugins, found))
+  return sections
+
+
 def plugin_rows(params) -> list[tuple[str, str, str]]:
   """Rows of the Plugins page: ("failed", name, error), ("plugin", name, status), ("setting", plugin, key)."""
   faults = params.get(FAULTS_PARAM) or {}
@@ -147,16 +162,17 @@ class StoreJobs:
     return next((e for e in self.entries if e.id == pid), None)
 
   def act(self, pid: str) -> None:
+    """Install, update or remove pid; a downloaded plugin missing from the index (or before a fetch) is removed."""
     entry = self.current(pid)
-    if entry is None:
+    have = self.installed.get(pid)
+    if entry is None and have is None:
       return
     if not self.offroad():
       self.status = "park first"
       return
-    have = self.installed.get(entry.id)
-    if have is not None and (have == entry.version or not entry.installable):
-      store.uninstall(entry.id)
-      self.status = f"removed {entry.id}: restart to apply"
+    if have is not None and (entry is None or have == entry.version or not entry.installable):
+      store.uninstall(pid)
+      self.status = f"removed {pid}: restart to apply"
     elif entry.installable:
       self.status = f"installing {entry.id}..."
       error = store.install(entry)
@@ -165,8 +181,10 @@ class StoreJobs:
   def can_act(self, pid: str) -> bool:
     return not self.busy and self.offroad() and (pid in self.installed or getattr(self.current(pid), "installable", False))
 
-  def action(self, entry: store.IndexEntry) -> str:
-    """Button text of an entry row."""
+  def action(self, entry: store.IndexEntry | None, pid: str = "") -> str:
+    """Button text of an entry row; entry None: a downloaded plugin pid missing from the index."""
+    if entry is None:
+      return "REMOVE" if pid in self.installed else "N/A"
     have = self.installed.get(entry.id)
     if have is not None and (have == entry.version or not entry.installable):
       return "REMOVE"

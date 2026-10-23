@@ -46,7 +46,9 @@ from openpilot.selfdrive.ui.mici.layouts.main import MiciMainLayout
 from openpilot.selfdrive.ui.sunnypilot.model_info import bundles_for_source
 from openpilot.selfdrive.ui.ui_state import ui_state
 from openpilot.tesla.ui import tiles
-from openpilot.tesla.ui.offroad import BACK
+from openpilot.tesla.plugins import PLUGINS
+from openpilot.tesla.ui.offroad import BACK, CONTENT
+from openpilot.tesla.ui.pages.plugins import CAT_H, GAP, LEFT_W
 from openpilot.tesla.ui.pages.onboarding import OnboardingPage, onboarding_needed
 from openpilot.tesla.ui.screen import BigScreenHost
 
@@ -224,15 +226,21 @@ def steps():
     cases.append({'name': tid, 'title': host._stack[-1][0], 'page': type(page).__name__, 'active': type(active).__name__,
                   'stack': len(host._stack), 'nav_stack': len(gui_app._nav_stack), 'mici_draws': mici_draws - before})
     if tid == 'plugins':
-      page._open_store()
+      if len(page.buttons) > 1:
+        yield from touch(center((CONTENT[0], CONTENT[1] + GAP + CAT_H + GAP, LEFT_W, CAT_H)))
+        check(page.selected == 1, 'Plugins: tapping the second category did not select it')
+        screenshot('page-plugins-category')
+      plugin = PLUGINS[0]
+      page._open_plugin(plugin)
       yield 4
-      check(len(host._stack) == 2 and host._stack[-1][0] == 'Store' and type(host._stack[-1][1]).__name__ == 'StorePage', 'Plugins -> Store did not push a second detail level')
-      check(host._shown is host._stack[-1][1] and host.viewport() is None and mici_draws == before, 'Store did not show natively')
-      check(len(gui_app._nav_stack) == 1, 'Store grew the application nav stack')
-      screenshot('page-plugins-store')
+      check(len(host._stack) == 2 and host._stack[-1][0] == plugin.TITLE and type(host._stack[-1][1]).__name__ == 'PluginPage',
+            'Plugins -> plugin did not push a second detail level')
+      check(host._shown is host._stack[-1][1] and host.viewport() is None and mici_draws == before, 'plugin page did not show natively')
+      check(len(gui_app._nav_stack) == 1, 'plugin page grew the application nav stack')
+      screenshot('page-plugins-plugin')
       yield from touch(center(BACK))
-      assert host._stack == [(tile.SPEC.title, page)] and host._shown is page, 'BACK from Store did not return to Plugins'
-      cases.append({'name': 'Plugins > Store > BACK', 'page': type(page).__name__, 'stack': len(host._stack)})
+      assert host._stack == [(tile.SPEC.title, page)] and host._shown is page, 'BACK from the plugin page did not return to Plugins'
+      cases.append({'name': 'Plugins > plugin > BACK', 'page': type(page).__name__, 'stack': len(host._stack)})
     if tid == 'models':
       if bundles_for_source('qcom'):
         page._choose('qcom')

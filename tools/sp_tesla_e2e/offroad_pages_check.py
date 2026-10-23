@@ -9,7 +9,10 @@ Failure cases listed before implementation:
 - O3 the Plugins rows miss a PLUGINS entry or one of its settings, or a plugin that failed to load is not listed first
 - O4 switching a plugin on leaves a plugin with a shared exclusive claim on, switches off one without a shared claim,
      or leaves its fault mark
-- O5 a store row shows the wrong action/value for an index entry, a row acts while busy or onroad, or install/remove runs onroad
+- O5 a store row shows the wrong action/value for an index entry, a row acts while busy or onroad, or install/remove runs onroad,
+     or a downloaded plugin missing from the index cannot be removed
+- O12 the plugin market misses a PLUGINS entry or a not-loaded index entry, lists a loaded plugin twice, puts one in the wrong
+     category, or breaks CATEGORIES order
 - O6 offroad the mici texture gets a viewport outside mici widgets pushed above main (onboarding and Device sub-pages are
      native now), or loses it for such a widget
 - O7 offroad without a viewport a screen touch maps inside the mici logical screen (a hidden mici widget would react)
@@ -62,7 +65,7 @@ from openpilot.tesla.plugins import FAULTS_PARAM, LOAD_ERRORS, PLUGINS
 from openpilot.tesla.ui import offroad
 
 PAGE_MODULES = {"Home": "home", "Toggles": "toggles", "Plugins": "plugins", "Tesla": "tesla", "Network": "network",
-                "Device": "device", "Software": "software", "Developer": "developer", "Store": "store", "Training": "training", "Terms": "terms",
+                "Device": "device", "Software": "software", "Developer": "developer", "Training": "training", "Terms": "terms",
                 "Regulatory": "regulatory", "Driver camera": "driver_camera", "Onboarding": "onboarding", "Models": "models"}
 PARAM_CALLS = {"get", "get_bool", "put", "put_bool", "remove"}
 
@@ -180,8 +183,32 @@ def check_store(errors: list) -> None:
     jobs.run(lambda: jobs.act("api"), wait=True)
     if calls != [("install", "new"), ("uninstall", "same"), ("install", "old")]:
       errors.append(f"O5 store actions: {calls}")
+    jobs.entries = []
+    if jobs.action(None, "old") != "REMOVE" or jobs.action(None, "nope") != "N/A" or not jobs.can_act("old"):
+      errors.append("O5 a downloaded plugin missing from the index has no REMOVE")
+    jobs.run(lambda: jobs.act("old"), wait=True)
+    jobs.run(lambda: jobs.act("nope"), wait=True)
+    if calls[3:] != [("uninstall", "old")]:
+      errors.append(f"O5 remove without an index entry: {calls[3:]}")
   finally:
     store.installed_versions, store.install, store.uninstall = saved
+
+
+def check_market(errors: list) -> None:
+  entry = lambda pid, cat: store.IndexEntry(pid, pid, "1.0.0", mf.API_VERSION, cat, "t", "d", "u", "0" * 64, None, True)  # noqa: E731
+  loaded = PLUGINS[0].NAME
+  sections = offroad.market_sections([entry(loaded, "tools"), entry("ext_new", "alerts"), entry("ext_odd", "nonsense")])
+  titles = [t for t, _, _ in sections]
+  if titles != [t for t in mf.CATEGORIES.values() if t in titles]:
+    errors.append(f"O12 market categories out of order: {titles}")
+  plugins = [(t, p.NAME) for t, ps, _ in sections for p in ps]
+  if sorted(n for _, n in plugins) != sorted(p.NAME for p in PLUGINS):
+    errors.append("O12 market plugins differ from PLUGINS")
+  if any(t != mf.CATEGORIES[p.CATEGORY] for (t, _), p in zip(plugins, [p for _, ps, _ in sections for p in ps], strict=True)):
+    errors.append("O12 a plugin in the wrong market category")
+  found = {e.id: t for t, _, es in sections for e in es}
+  if found != {"ext_new": mf.CATEGORIES["alerts"], "ext_odd": mf.CATEGORIES["tools"]}:
+    errors.append(f"O12 market store entries: {found}")
 
 
 def check_view(errors: list) -> None:
@@ -237,7 +264,7 @@ def check_sources(errors: list) -> None:
 
 def main() -> int:
   errors: list[str] = []
-  for check in (check_tiles, check_pages, check_plugins, check_store, check_view, check_alerts, check_sources):
+  for check in (check_tiles, check_pages, check_plugins, check_store, check_market, check_view, check_alerts, check_sources):
     try:
       check(errors)
     except Exception as e:
