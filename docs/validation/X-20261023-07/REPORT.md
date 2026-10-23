@@ -2,7 +2,7 @@
 
 Status: COMPLETE (host scope; unchanged global coverage gate is explicitly waived by the coordinator).
 Branch: task/X-20261023-07, based on 00f7924ca05272103dd7cd2063cd5c66d1767b87.
-Verified source: f6da24032cd1c33b8dcff3742b76f6ffb487810e. The final evidence commit changes only validation artifacts.
+Verified source: f6da24032cd1c33b8dcff3742b76f6ffb487810e. The final commits after the verified source change only documentation and validation artifacts.
 Local/device distinction: no device queried, deployed, flashed or activated; device active commit UNKNOWN.
 Task worktree: /Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/wt-X-20261023-07.
 Verification source checkout and its pre-existing untracked validation directory were preserved.
@@ -25,9 +25,9 @@ Set PYTHONPATH=opendbc_repo:msgq_repo:. From the task root unless noted:
 | Command | Exit | Result |
 |---|---:|---|
 | python3 -m unittest opendbc.safety.tests.test_release_build | 0 | debug + release libsafety compiled; 2 passed |
-| python3 -m unittest opendbc.safety.tests.test_tesla | 0 | 381 run, 338 passed, 43 skipped |
-| python3 -m unittest opendbc.safety.tests.test_defaults | 0 | 29 run, 28 passed, 1 skipped |
-| python3 -m unittest opendbc.safety.tests.test_tesla_plugins | 0 | 189 run, 170 passed, 19 skipped |
+| python3 -m unittest opendbc.safety.tests.test_tesla | 0 | 381 run, 43 skips reported, 0 failures/errors |
+| python3 -m unittest opendbc.safety.tests.test_defaults | 0 | 29 run, 1 skip reported, 0 failures/errors |
+| python3 -m unittest opendbc.safety.tests.test_tesla_plugins | 0 | 189 run, 19 skips reported, 0 failures/errors |
 | python3 openpilot/tesla/plugins/gen_safety.py | 0 | deterministic registry/bit generation |
 | python3 openpilot/tesla/plugins/gen_safety.py --check | 0 | generated registry current |
 | python3 openpilot/tesla/plugins/gen_params.py --check | 0 | existing generated params unchanged/current |
@@ -35,7 +35,7 @@ Set PYTHONPATH=opendbc_repo:msgq_repo:. From the task root unless noted:
 | python3 tools/sp_tesla_e2e/manifest_check.py | 0 | all 8 plugins, errors [] |
 | python3 tools/sp_tesla_e2e/plugin_host_check.py | 0 | all 8 plugins, errors [] |
 | python3 docs/validation/X-20261023-07/mutations.py | 0 | 45/45 compiled mutants fail the targeted assertion; children exit 1 |
-| bash opendbc/safety/tests/test.sh (cwd opendbc_repo) | 1 | both rounds 609 run / 545 passed / 64 skipped / no failures/errors; global coverage gate only |
+| bash opendbc/safety/tests/test.sh (cwd opendbc_repo) | 1 | both rounds 609 run / 64 skips reported / no failures/errors; global coverage gate only |
 | SAFETY_COVERAGE=1 python3 -m unittest opendbc.safety.tests.test_tesla_plugins | 0 | rebuild counters after test.sh's gcovr -d deletes them |
 | gcovr -r ../ --gcov-executable '<Xcode>/llvm-cov gcov' --filter '.*/plugins/.*' --fail-under-line=100 --txt (cwd safety/tests) | 0 | 118/118 lines = 100% |
 | gcovr -r ../ --gcov-executable '<Xcode>/llvm-cov gcov' --json <output> (cwd safety/tests) | 0 | per-line machine-readable coverage |
@@ -47,10 +47,15 @@ Exact argv, absolute cwd, output SHA-256 and exits: final/commands.json. Full lo
 Test source and runtime file SHA-256: final/source.json. Per-line coverage: final/coverage.json and final/hook-coverage.json.
 Dependency versions: final/dependency-versions.log. SHA256SUMS covers all committed evidence recursively.
 
+The unittest skip total includes skipped classes and subtests and cannot be subtracted from testsRun to infer successes.
+A final TextTestResult.addSuccess counter confirmed 555 success callbacks for full discovery (609 run, 64 reported skips),
+343 for Tesla (381/43), 29 for defaults (29/1), and 173 for plugin tests (189/19), all with zero failures/errors.
+See final/success-counts.log. Reports use the native run/skip counters to avoid treating these overlapping counts as disjoint.
+
 ## Coverage and mutation details
 
-Before plugin tests, unchanged test.sh ran 420 tests twice, 375 passed / 45 skipped each; global coverage 778/1094 = 71.1%.
-Final unchanged test.sh: 609 tests twice, 545 passed / 64 skipped each; global coverage 855/1102 = 77.6%.
+Before plugin tests, unchanged test.sh ran 420 tests twice, 45 skips reported each, 0 failures/errors; global coverage 778/1094 = 71.1%.
+Final unchanged test.sh: 609 tests twice, 64 skips reported each, 0 failures/errors; global coverage 855/1102 = 77.6%.
 The lost coverage is in generic helpers/lateral/longitudinal and other core paths after non-Tesla modes/tests were removed.
 Do not treat test.sh exit 1 as a passing global gate. Coordinator explicitly allowed continuation and required a separate plugin gate.
 

@@ -18,7 +18,7 @@ opendbc_repo/.venv/bin/python3 -m unittest opendbc.safety.tests.test_defaults
 The direct `_build_libsafety(release=False/True)` command in commands.json exited 0;
 its log records both library paths and SHA-256. This checkout has no opendbc SConstruct;
 libsafety_py.py compiles with the repo's own cc commands, also exercised by test.sh.
-Tesla: exit 0, 381 run / 338 passed / 43 skipped. Defaults: exit 0, 29 run / 28 passed / 1 skipped.
+Tesla: exit 0, 381 run / 43 skips reported / 0 failures/errors. Defaults: exit 0, 29 run / 1 skip reported / 0 failures/errors.
 
 From opendbc_repo:
 
@@ -27,7 +27,7 @@ export PATH="$PATH:/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDe
 GIT_LFS_SKIP_SMUDGE=1 UV_PYTHON=3.12 bash opendbc/safety/tests/test.sh
 ```
 
-Exit 1. Both UBSan and coverage rounds: 420 run / 375 passed / 45 skipped / 0 failures / 0 errors.
+Exit 1. Both UBSan and coverage rounds: 420 run / 45 skips reported / 0 failures / 0 errors.
 Global line coverage: 778/1094 = 71.1%, fails unchanged 100% gate.
 Tesla mode: 245/245 = 100%; auto_speed 9/37, ambient_light 15/52, registry 19/21.
 Unchanged helpers/lateral/longitudinal and safety core have uncovered lines after non-Tesla modes/tests were removed.

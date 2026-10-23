@@ -2,7 +2,7 @@
 
 Source commits: tests first 6d2b125; ambient gate bc9e1ca; auto session d2a3586; final tests/mutations 001fca2.
 First corrected pre-fix run: exit 1, 189 tests, 5 failures, 19 skipped (phase2-red-final.log).
-After fixes: exit 0, 189 run / 170 passed / 19 skipped / 0 failures or errors.
+After fixes: exit 0, 189 run / 19 skips reported / 0 failures or errors.
 Ambient-only: exit 0, 15 passed. Includes inherited upstream Tesla stock/longitudinal checks with both bits set,
 and noOutput:param=1 with plugin bits. Upstream test files, test.sh, Tesla mode and car port are untouched.
 
