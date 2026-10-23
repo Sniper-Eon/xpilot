@@ -347,7 +347,7 @@ def steps():
   lx, ly = host.to_logical(*tiles.VIEW[:2])
   check(abs(lx) < 0.01 and abs(ly) < 0.01, f'onroad to_logical origin {lx},{ly}')
   forced, drawn = [], []
-  for entry in host._overlays:
+  for entry in host._overlays._entries:
     overlay = entry[1]
     if type(overlay).__name__ == 'BlindspotEdges':
       overlay.update = lambda sm, o=overlay: (setattr(o, 'left', True), setattr(o, 'right', True))

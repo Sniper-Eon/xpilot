@@ -76,3 +76,24 @@ class EnabledPlugins:
 
   def shows(self, name: str | None) -> bool:
     return name is None or name in self.get()
+
+
+class Overlays:
+  """Every widget deriving from base; each() skips a widget while its plugin is off, and for good once it raised
+  MAX_FAILURES times in a row, so a broken plugin overlay never takes the UI down."""
+
+  def __init__(self, base, params):
+    self._entries = [[name, w, 0] for name, w in load(base)]
+    self._enabled = EnabledPlugins(params)
+
+  def each(self, fn) -> None:
+    for entry in self._entries:
+      name, widget, failures = entry
+      if failures >= MAX_FAILURES or not self._enabled.shows(name):
+        continue
+      try:
+        fn(widget)
+        entry[2] = 0
+      except Exception:
+        entry[2] += 1
+        cloudlog.exception(f"overlay {type(widget).__name__} failed")

@@ -29,7 +29,7 @@ from openpilot.tesla.ui.offroad import BACK, CONTENT, TITLE_H
 from openpilot.tesla.ui.pages.base import ListPage
 from openpilot.tesla.ui.pages.device import DevicePage
 from openpilot.tesla.ui.pages.onboarding import OnboardingPage
-from openpilot.tesla.ui.plugin_ui import MAX_FAILURES, EnabledPlugins, ScreenOverlay, load
+from openpilot.tesla.ui.plugin_ui import MAX_FAILURES, EnabledPlugins, Overlays, ScreenOverlay, load
 from openpilot.tesla.ui.tile import Tile
 from openpilot.tesla.ui.tiles import LAYOUT_PARAM, LAYOUT_SPEC, SCREEN, VIEW
 
@@ -96,7 +96,7 @@ class BigScreenHost:
         cloudlog.error(f"tile id {tile.SPEC.id} used twice, keeping the first")
         continue
       self._entries[tile.SPEC.id] = _Entry(name, tile)
-    self._overlays = [[name, o, 0] for name, o in load(ScreenOverlay)]
+    self._overlays = Overlays(ScreenOverlay, self._params)
     self._enabled = EnabledPlugins(self._params)
     services = sorted({svc for e in self._entries.values() for svc in e.spec.services})
     self._sm = messaging.SubMaster(services) if services else None
@@ -294,17 +294,7 @@ class BigScreenHost:
     rl.draw_texture_pro(t, rl.Rectangle(0, 0, t.width, -t.height), dest, rl.Vector2(0, 0), 0.0, rl.WHITE)
 
   def _draw_overlays(self) -> None:
-    for entry in self._overlays:
-      name, overlay, failures = entry
-      if failures >= MAX_FAILURES or not self._enabled.shows(name):
-        continue
-      try:
-        overlay.update(ui_state.sm)
-        overlay.draw(self._zones)
-        entry[2] = 0
-      except Exception:
-        entry[2] += 1  # same isolation as tiles
-        cloudlog.exception(f"screen overlay {type(overlay).__name__} failed")
+    self._overlays.each(lambda o: (o.update(ui_state.sm), o.draw(self._zones)))
 
   @contextmanager
   def _native(self, events):
