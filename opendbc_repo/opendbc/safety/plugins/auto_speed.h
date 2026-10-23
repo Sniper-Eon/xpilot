@@ -5,7 +5,7 @@
 #define XPILOT_PARAM_SP_AUTO_SPEED 0x4000U  // CarParamsSP.safetyParam bit set by the plugin when enabled
 
 static bool auto_speed_template_valid = false;
-static uint8_t auto_speed_template[8] = {0U};
+static uint8_t auto_speed_template[8] = {0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U};
 static uint32_t auto_speed_template_ts = 0U;
 static bool auto_speed_last_tx_valid = false;
 static uint32_t auto_speed_last_tx_ts = 0U;

@@ -167,7 +167,7 @@ typedef struct {
 
 规则：一个插件只负责一个报文，原有 safety 模式的白名单和检查一律不改；校验内容至少包括报文模板、新鲜度、频率限制、`controls_allowed`、只在 Tesla 模式下生效，以及会话上限。
 
-**当前状态：已接入（实验性），未编译验证。** `safety.h` 里有 4 处调用：
+**当前状态：Mac Apple clang 16 已编译 libsafety；Tesla stock 381 项运行（338 passed、43 skipped），xpilot 插件 28 项运行（22 passed、6 个 TX inventory skipped）；MISRA 已运行但因 stock safety 的既有 8.7/unusedFunction 报告未通过。** `safety.h` 里有 4 处调用：
 1. include `opendbc/safety/plugins/registry.h`；
 2. `safety_rx_hook` 里，`valid` 为真时调用 `safety_plugins_rx(msg)`；
 3. `safety_tx_hook` 里，属于插件的报文交给 `plugin->tx(msg)` 校验，其余报文仍走原模式；
