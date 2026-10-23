@@ -4,13 +4,13 @@
 
 Failure cases listed before implementation:
 - O1 a settings tile (ui/slots/settings.py) has no PAGE, its PAGE is not imported from a pages/<name>.py whose class defines
-     show_event (only Models may open a mici layout, with MICI = True), or the Store sub-page has no such module
+     show_event, a tile still sets MICI (no settings tile opens a mici layout), or the Store sub-page has no such module
 - O2 a page reads or writes a param key (string literal in get/get_bool/put/put_bool/remove) the compiled Params does not know
 - O3 the Plugins rows miss a PLUGINS entry or one of its settings, or a plugin that failed to load is not listed first
 - O4 switching a plugin on leaves a plugin with a shared exclusive claim on, switches off one without a shared claim,
      or leaves its fault mark
 - O5 a store row shows the wrong action/value for an index entry, a row acts while busy or onroad, or install/remove runs onroad
-- O6 offroad the mici texture gets a viewport outside onboarding and mici pages pushed above main (Models, mici dialogs),
+- O6 offroad the mici texture gets a viewport outside onboarding and mici widgets pushed above main (Device's mici dialogs),
      or loses it in those cases
 - O7 offroad without a viewport a screen touch maps inside the mici logical screen (a hidden mici widget would react)
 - O8 offroad alerts are not most severe first, miss the %1 extra, or show inactive alerts
@@ -62,7 +62,7 @@ from openpilot.tesla.plugins import FAULTS_PARAM, LOAD_ERRORS, PLUGINS
 from openpilot.tesla.ui import offroad
 
 PAGE_MODULES = {"Home": "home", "Toggles": "toggles", "Plugins": "plugins", "Tesla": "tesla", "Network": "network",
-                "Device": "device", "Software": "software", "Developer": "developer", "Store": "store"}
+                "Device": "device", "Software": "software", "Developer": "developer", "Store": "store", "Models": "models"}
 PARAM_CALLS = {"get", "get_bool", "put", "put_bool", "remove"}
 
 
@@ -77,11 +77,10 @@ def check_tiles(errors: list) -> None:
   for cls in tiles:
     attrs = {b.targets[0].id: b.value for b in cls.body if isinstance(b, ast.Assign) and isinstance(b.targets[0], ast.Name)}
     page = attrs.get("PAGE")
-    mici = isinstance(attrs.get("MICI"), ast.Constant) and attrs["MICI"].value is True
     if not isinstance(page, ast.Name):
       errors.append(f"O1 {cls.name} has no PAGE")
-    elif mici != (page.id == "ModelsLayoutMici") or (not mici and imported.get(page.id) not in pages):
-      errors.append(f"O1 {cls.name}: PAGE {page.id} from {imported.get(page.id)}, MICI={mici}")
+    elif "MICI" in attrs or imported.get(page.id) not in pages:
+      errors.append(f"O1 {cls.name}: PAGE {page.id} from {imported.get(page.id)}{', MICI set' if 'MICI' in attrs else ''}")
 
 
 def check_pages(errors: list) -> None:
