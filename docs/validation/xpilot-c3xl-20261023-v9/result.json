@@ -1,127 +1,67 @@
 {
-  "task": "X-20261023-13",
-  "status": "BLOCKED",
-  "target_head": "e60f99c0d9cb14e39711d2716b2ba694b28ce9d3",
-  "device_head": null,
-  "expected_device_start_head": "f7af016516db4043bec0af24e6d3133fd864dfc9",
-  "device_mutations_performed": false,
-  "build": {
-    "rc": null,
-    "status": "NOT RUN",
-    "cereal_regeneration_verified": false
+  "task": "X-20261023-16",
+  "status": "DONE",
+  "device_head": "9258ebcb48981b95c81ff73471efb2979cc63727",
+  "report_branch": "task/X-20261023-13",
+  "data": {
+    "avail_before": 5313699840,
+    "avail_after": 19743948800,
+    "avail_final": 19653787648,
+    "skipped": []
   },
   "failure_modes": {
-    "a": {
-      "acceptance": "FAIL",
-      "execution": "NOT RUN",
-      "reason": "SSH gate failed: comma@172.16.1.202:22 unreachable; rc=255"
-    },
-    "b": {
-      "acceptance": "FAIL",
-      "execution": "NOT RUN",
-      "reason": "SSH gate failed: comma@172.16.1.202:22 unreachable; rc=255"
-    },
-    "c": {
-      "acceptance": "FAIL",
-      "execution": "NOT RUN",
-      "reason": "SSH gate failed: comma@172.16.1.202:22 unreachable; rc=255"
-    },
-    "d": {
-      "acceptance": "FAIL",
-      "execution": "NOT RUN",
-      "reason": "SSH gate failed: comma@172.16.1.202:22 unreachable; rc=255"
-    },
-    "e": {
-      "acceptance": "FAIL",
-      "execution": "NOT RUN",
-      "reason": "SSH gate failed: comma@172.16.1.202:22 unreachable; rc=255"
-    },
-    "f": {
-      "acceptance": "FAIL",
-      "execution": "NOT RUN",
-      "reason": "SSH gate failed: comma@172.16.1.202:22 unreachable; rc=255"
-    }
+    "a": "PASS",
+    "b": "PASS",
+    "c": "PASS",
+    "d": "PASS",
+    "e": "PASS",
+    "f": "PASS"
   },
   "checks": {
-    "external_bridge_check.py": {
-      "rc": null,
-      "status": "NOT RUN"
-    },
-    "manifest_check.py": {
-      "rc": null,
-      "status": "NOT RUN"
-    },
-    "offroad_pages_check.py": {
-      "rc": null,
-      "status": "NOT RUN"
-    },
-    "phase2_check.py": {
-      "rc": null,
-      "status": "NOT RUN"
-    },
-    "phase3_check.py": {
-      "rc": null,
-      "status": "NOT RUN"
-    },
-    "phase4_check.py": {
-      "rc": null,
-      "status": "NOT RUN"
-    },
-    "plugin_host_check.py": {
-      "rc": null,
-      "status": "NOT RUN"
-    },
-    "store_check.py": {
-      "rc": null,
-      "status": "NOT RUN"
-    },
-    "tile_layout_check.py": {
-      "rc": null,
-      "status": "NOT RUN"
-    }
+    "external_bridge_check.py": 0,
+    "manifest_check.py": 0,
+    "offroad_pages_check.py": 0,
+    "phase2_check.py": 0,
+    "phase3_check.py": 0,
+    "phase4_check.py": 0,
+    "plugin_host_check.py": 0,
+    "store_check.py": 0,
+    "tile_layout_check.py": 0
   },
   "e2e": {
-    "big_screen": {
-      "rc": null,
-      "passed": null,
-      "status": "NOT RUN"
-    },
-    "store_e2e": {
-      "rc": null,
-      "errors": null,
-      "status": "NOT RUN"
-    }
+    "big_screen_passed": true,
+    "store_errors": []
   },
-  "default_path": {
-    "status": "NOT RUN",
-    "core_alive": null,
-    "gate_sm": null,
-    "owners": null,
-    "install_core_no_op": null
-  },
-  "screenshots": [],
-  "params": {
-    "snapshot_taken": false,
-    "modified": false,
-    "restoration_required": false,
-    "final_bytes_verified": false
-  },
-  "service": {
-    "stopped_by_task": false,
-    "started_by_task": false,
-    "final_state_verified": false
+  "alpha_long": {
+    "param_after_60s": true,
+    "alphaLongitudinalAvailable": true,
+    "openpilotLongitudinalControl": false
   },
   "problems": [
     {
-      "number": 1,
-      "description": "SSH gate failed: comma@172.16.1.202:22 unreachable; rc=255"
+      "id": 1,
+      "type": "verification_script",
+      "resolved": true,
+      "error": "AssertionError after asynchronous put_bool immediate read"
+    },
+    {
+      "id": 2,
+      "type": "verification_script",
+      "resolved": true,
+      "error": "AttributeError: 'bool' object has no attribute 'hex'"
+    },
+    {
+      "id": 3,
+      "type": "environment",
+      "resolved": false,
+      "error": "Plugin store index and SP model index connection reset; SP uses expired cache"
     }
   ],
   "not_run": [
     "onroad engagement",
-    "card gate under a hung selfdrived",
-    "MADS button",
+    "card gate under hung selfdrived",
+    "physical MADS button",
     "all closed-course items",
-    "all device gates/build/checks/E2E/default-path/UI/log/final-safety checks"
+    "Alpha real longitudinal control at next car start"
   ]
 }

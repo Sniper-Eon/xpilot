@@ -1,0 +1,38 @@
+{
+  "XpilotTileLayout": {
+    "exists": true,
+    "sha256": "d73ea8f49dbf49e97680419e51ec608cd8af9d82028c6297dddf56088c277838",
+    "byte_equal": true,
+    "rewrite_needed": false
+  },
+  "XpilotTileTheme": {
+    "exists": true,
+    "sha256": "1d261a8554d2da69b2e13445a8ee2a94dd10912a2bf5a0f3d3fe0698e5540f84",
+    "byte_equal": true,
+    "rewrite_needed": false
+  },
+  "XpilotBms": {
+    "exists": true,
+    "sha256": "6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b",
+    "byte_equal": true,
+    "rewrite_needed": false
+  },
+  "CarPlatformBundle": {
+    "exists": true,
+    "sha256": "dfcc84df24862d499db2c9a7572af713b81f9592a740eb53b4f393f213722519",
+    "byte_equal": true,
+    "rewrite_needed": false
+  },
+  "IsDriverViewEnabled": {
+    "exists": true,
+    "sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+    "byte_equal": true,
+    "rewrite_needed": false
+  },
+  "AlphaLongitudinalEnabled": {
+    "exists": false,
+    "sha256": null,
+    "byte_equal": true,
+    "rewrite_needed": false
+  }
+}

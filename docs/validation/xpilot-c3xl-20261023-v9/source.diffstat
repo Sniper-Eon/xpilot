@@ -1,4 +1,4 @@
-XPILOT.md                                          |  16 +-
+ XPILOT.md                                          |  16 +-
  openpilot/cereal/custom.capnp                      |   1 +
  openpilot/selfdrive/car/card.py                    |   2 +-
  openpilot/selfdrive/selfdrived/selfdrived.py       |   1 +
@@ -6,6 +6,7 @@ XPILOT.md                                          |  16 +-
  openpilot/tesla/core_host.py                       | 245 +++++++++++++++
  openpilot/tesla/plugin.py                          |  19 ++
  openpilot/tesla/plugins/__init__.py                |  13 +
+ openpilot/tesla/plugins/lead_card/ui.py            |   2 +-
  openpilot/tesla/plugins/sp_engagement/__init__.py  |   0
  openpilot/tesla/plugins/sp_engagement/plugin.json  |  16 +
  openpilot/tesla/plugins/sp_engagement/plugin.py    |   7 +
@@ -14,4 +15,4 @@ XPILOT.md                                          |  16 +-
  .../tesla/plugins/sp_safety_fallback/plugin.py     |   7 +
  tools/sp_tesla_e2e/phase4_check.py                 | 340 +++++++++++++++++++++
  tools/sp_tesla_e2e/plugin_host_check.py            |   2 +-
- 16 files changed, 687 insertions(+), 8 deletions(-)
+ 17 files changed, 688 insertions(+), 9 deletions(-)

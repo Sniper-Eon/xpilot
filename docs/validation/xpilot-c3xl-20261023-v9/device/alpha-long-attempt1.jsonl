@@ -1,0 +1,2 @@
+{"stage": "before", "CarParamsPersistent": {"alphaLongitudinalAvailable": true, "openpilotLongitudinalControl": false, "brand": "tesla", "carFingerprint": "TESLA_MODEL_Y"}, "param_bool": false, "param_raw_hex": null}
+{"stage": "immediate", "param_bool": false, "param_raw_hex": null}
