@@ -8,7 +8,6 @@ from openpilot.tesla.ui.offroad import offroad_alerts
 from openpilot.tesla.ui.pages.developer import DeveloperPage
 from openpilot.tesla.ui.pages.device import DevicePage
 from openpilot.tesla.ui.pages.home import HomePage
-from openpilot.tesla.ui.pages.models import ModelsPage
 from openpilot.tesla.ui.pages.network import NetworkPage
 from openpilot.tesla.ui.pages.plugins import PluginsPage
 from openpilot.tesla.ui.pages.software import SoftwarePage
@@ -73,12 +72,6 @@ class TeslaTile(_Settings):
   SPEC = TileSpec("tesla", "Tesla", sizes=SIZES, show="offroad", order=3)
   PAGE = TeslaPage
   ICON = "icons_mici/wheel.png"
-
-
-class ModelsTile(_Settings):
-  SPEC = TileSpec("models", "Models", sizes=("small", "medium", "wide"), show="offroad", order=4)
-  PAGE = ModelsPage
-  ICON = "icons_mici/chestnut.png"
 
 
 class NetworkTile(_Settings):
