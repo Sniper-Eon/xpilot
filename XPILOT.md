@@ -9,7 +9,7 @@
 - **主体**：横向、纵向、模型都是 SP 原版，Tesla 车端代码是上游原版。
 - **扩展**：xpilot 的功能全部以插件形式接入，不改 SP 主体逻辑。
 - **已删除**：其他车型、comma 云、sunnylink、旧的大屏 UI、扭矩车用的横向控制、翻译（UI 只用英文）。
-- **硬件**：C3、C3X、C3XL、C4。大屏设备上 mici UI 显示在中间，四周是插件卡片（见第 9 节）。
+- **硬件**：C3、C3X、C3XL、C4。大屏设备上整屏是磁贴，行驶时 mici 画面固定在中间、磁贴排在四周（见第 9 节）。
 
 ## 2. 硬规则
 
@@ -198,25 +198,32 @@ typedef struct {
 - **下载插件的参数**：不编译进 Params，而是存在 `/data/xpilot_plugins/.params/<key>`，支持 BOOL、INT、FLOAT、STRING、JSON。宿主把交给插件、开关判断和设置页的 params 都包了一层（`plugin_params.ParamsView`），插件照常用 `params.get/get_bool/put`。删除插件时参数值保留，重装后设置还在。
 - **带二进制的插件**：需要编译的代码（例如 acados 求解器）以预编译二进制发布，清单里写 `"platform": {"machine", "python"}`（由插件自己的 `build_native.py` 在目标设备上生成）。设备只显示、安装和加载平台一致的版本；升级 Python 等导致不一致时，插件被跳过并显示 "Failed"。panda safety 插件只能内置。
 
-## 9. UI（大屏，2160×1080）
+## 9. UI（大屏，2160×1080，UI v4：磁贴）
 
-- **行驶时**：mici 画面在中间 V=(360,218,1440,644)（缩放 1440/536），报警只由 mici 在画面内显示一次。四周是卡片区：左列 L=(0,0,360,1080)、右列 R=(1800,0,360,1080)、上带 T=(360,0,1440,218)、下带 B=(360,862,1440,218)。
-- **加卡片**：插件的写在 `plugins/<名字>/ui.py`；不属于插件的在 `openpilot/tesla/ui/slots/` 新建文件。继承 `Slot`，写好 `SPEC = SlotSpec(id, title, zone, units, services, show, hz, order)`，会被自动发现。
-  - `zone`：`left`/`right` 竖排（每单位 270 px 高、360 宽），`top`/`bottom` 横排（每单位 360 px 宽、218 高），每区 4 个单位；`auto` 依次找 left、right、bottom、top 里第一个放得下的区。
-  - 按 (`order`, `id`) 依次放；放不下的卡片不显示；卡片四周留 12 px。`show="offroad"` 的卡片不显示（停车时没有卡片区）。
-  - 外观用 `Slot.draw_value(rect, value, unit, sub)`（标题、大数字、单位、灰色副行）或 `draw_lines(rect, lines)`，保持统一。
-  - 卡片只显示，不接收触摸。连续出错 3 次停止绘制。
-- **整屏叠加层**：`ScreenOverlay`（`update(sm)`、`draw(zones)`，`zones` 是 left/right/top/bottom/view 的屏幕矩形），行驶时在卡片之后绘制；出错隔离同上，插件关闭时隐藏。例：`blindspot_edges`。
-- **停车时（UI v3）**：左列导航（xpilot、Home、Toggles、Models、Plugins、Tesla、Network、Device、Software、Developer），选中的行有蓝色左边条。右边上方 0..150 是标题带，下面 (360,150,1800,930) 是原生列表页（最宽 1500，居中），由宿主按屏幕像素直接画（tici 的 `list_view`/`scroller_tici` 控件），不再画 3 倍的 mici 卡片。
-  - 每页一个模块：`openpilot/tesla/ui/pages/<页>.py`，每个是带 `show_event` 的 Widget（`show_event` 时从 params 重新读状态）。共用部分在 `pages/base.py`（`ListPage`、灰色大写分组标题 `Header`、`ParamToggle`、`SettingRow`、带确认的 `confirm`）。不画图的逻辑在 `ui/offroad.py`（导航项、视口模式、触摸映射、插件行、商店任务 `StoreJobs`、停车提示），`offroad_pages_check.py` 在本机测它。
-  - 页面内容和 mici 一致：Home（版本/分支/提交、网络、车型、更新提示、停车提示按严重度排序）；Toggles、Developer、Software、Device 用 mici 同样的参数、动作和可用条件（行驶中或接合时不能改）；Tesla（DM、OSM 地图、VEHICLE_SETTINGS）；Plugins（加载失败的列在最上面，按类别分组，每个插件一个开关和它的设置行，打开时关掉冲突插件）；Store 是 Plugins 的子页（标题带显示 `Plugins › Store` 和 `‹ Back`）；Network 用 tici 的 `NetworkUI`。
-  - 重置校准、重启、关机、卸载用 `ConfirmDialog`；这些 tici 弹窗压在导航栈上，在 mici 那一遍里隐藏，由宿主全屏画（弹窗打开时页面不接收触摸）。
-  - 仍显示 mici 页面（3 倍，FALLBACK_VIEW=(456,255,1608,720)）的：Models（没有合适的原生模型列表接口），以及 Device 里的训练指南、条款、法规信息、车内摄像头。标题带显示 `Device › …` 和 `‹ Back`（回到主界面）。
-  - 开机引导（onboarding）在栈里时照旧全屏显示 mici（456,180,1608,720），不画导航。
-  - 不画 mici 纹理靠 `system/ui/lib/application.py` 里一行钩子：`host.viewport()` 返回 `None` 时跳过 `draw_texture_pro`。此时 `to_logical` 把所有触摸映射到 mici 屏幕很远之外，下面继续运行的 mici 控件不会响应。这是对 SP 文件唯一的改动。
-  - 已知：`NetworkUI` 自己建一个 `WifiManager`，mici 的 `NetworkLayoutMici` 只在 mici 设置里构造（大屏不构造），所以大屏进程里只有 Network 页那一个；如果以后两边都构造，会有两个实例。
-  - 主机检查只验证逻辑和静态结构，**没有渲染过**；字号、间距、弹窗位置要在设备上用 `big_screen_e2e.py` 截图确认。
-- 布局检查：`tools/sp_tesla_e2e/slot_layout_check.py`、`offroad_pages_check.py`（本机）；渲染和触摸：`tools/sp_tesla_e2e/big_screen_e2e.py`（只能在设备上跑，截图每个导航页和 Store 子页，并检查停车时除 Models 外不画 mici 纹理）。
+整个大屏是 Windows Phone / Win 8 风格的磁贴（tile）。不画图的布局逻辑在 `openpilot/tesla/ui/tiles.py`（`tile_layout_check.py` 在本机测），宿主在 `ui/screen.py`，磁贴基类在 `ui/tile.py`。
+
+- **网格**：8 列 × 4 行，格子 250 px，间隙 12 px（步距 262），整体居中，原点 `ORIGIN=(38,22)`。磁贴尺寸（列×行）：`small` 1×1、`medium` 2×2、`wide` 4×2、`large` 4×4。
+- **排布**：磁贴按列表顺序依次放进第一个放得下的位置，按列扫描（第 0 列从上到下，再第 1 列……，Win 8 横屏的顺序），前面留下的空洞会被后面的小磁贴填上。放不下的磁贴不显示（编辑模式里可以从"添加"重新放）。
+- **行驶时**：mici 画面固定在 `VIEW=(300,59,1560,699)`（第 1–6 列 × 第 0–2 行这块区域里按 536:240 居中，缩放约 2.91），这 18 格不放磁贴；磁贴绕着它排：第 0 列、第 7 列和第 3 行的第 1–6 列，共 14 格。磁贴在自己支持的尺寸里从保存的尺寸往小试，放得下就用（这几条都是 1 格宽，所以实际都是 `small`）。只显示 `show` 为 `always`/`onroad` 的磁贴；行驶时磁贴不接收触摸，报警只由 mici 在画面内显示一次。
+- **停车时**：整屏 32 格都放磁贴，只显示 `show` 为 `always`/`offroad` 的磁贴。点一下磁贴打开它的详情页（有 `PAGE` 的）；长按（0.6 s）磁贴或空格进入编辑模式。
+- **编辑模式**（只在停车时）：其他磁贴变暗，选中的磁贴右上角是"取消固定"圆钮、右下角是"改尺寸"圆钮（图形用线画，不用字符）。点改尺寸按 `sizes` 的顺序循环；点取消固定把它移到隐藏列表；按住拖动磁贴，松手处的格子决定新位置（排在落点之后第一个磁贴的前面，没有就排到最后）；点别的磁贴改选它；第一个空格显示"+"，点它打开"Add tiles"页，列出隐藏和放不下的磁贴，点一个就以它最小的尺寸固定到最后；点其他空格或再点一次选中的磁贴退出编辑模式。
+- **保存**：布局存在 `XpilotTileLayout`（JSON `{"tiles": [[id, 尺寸], ...], "hidden": [id, ...]}`），不进 `params_keys.h`，由 `plugin_params.ParamsView` 存成文件 `/data/xpilot_plugins/.params/XpilotTileLayout`。读取时丢掉不认识的 id 和不支持的尺寸；新出现的磁贴按 (`order`, `id`) 用默认尺寸排到最后；插件关闭时它的磁贴不显示但位置保留。
+- **加磁贴**：插件的写在 `plugins/<名字>/ui.py`；不属于插件的放 `openpilot/tesla/ui/tiles/`。继承 `Tile`，写 `SPEC = TileSpec(id, title, sizes, services, show, hz, order, color)`，会被自动发现。
+  - `sizes`：支持的尺寸，第一个是默认；要在行驶时显示必须包含 `small`。
+  - `state(sm)`：读数据，返回这块磁贴要显示的内容（可比较的值）。最多每秒调用 `hz` 次；**只有返回值变了（或尺寸变了）才重画**，其余帧画缓存的纹理。`draw(rect, size, state)` 画磁贴正面。
+  - 外观用 `Tile.face(rect, ...)`（底色、左下角标题）、`draw_value`（大数字、单位、灰色副行）或 `draw_lines`，保持统一。文字只用 ASCII（设备字体缺 `‹ › · —` 等字，会显示成 `?`；`tile_layout_check.py` 检查）。
+  - 连续出错 3 次停止绘制，不影响其他磁贴。
+- **设置磁贴（内置）**：Status（原 Home）、Toggles、Models、Plugins、Tesla、Network、Device、Software、Developer，放在 `ui/tiles/settings.py`，`show="offroad"`。`PAGE` 是 `ui/pages/` 里对应的原生页面，Models 仍是 mici 页面（`MICI=True`）。
+- **详情页（WP 风格）**：整屏。左上角是返回圆钮（线画的箭头，点击区 `BACK=(0,0,140,230)`），右边小号大写的上级名（`XPILOT` 或父页面名），下面是大号小写标题；内容区 `CONTENT=(140,230,1920,850)`，由宿主按屏幕像素直接画 `ui/pages/` 里的原生列表页（tici 的 `list_view`/`scroller_tici` 控件）。页面打开的子页（如 Plugins 的 Store）压栈，返回一层层退回，退到底回到磁贴屏。
+  - 每页一个模块：`openpilot/tesla/ui/pages/<页>.py`，带 `show_event` 的 Widget（`show_event` 时从 params 重新读状态）。共用部分在 `pages/base.py`。不画图的逻辑在 `ui/offroad.py`（视口模式、触摸映射、插件行、商店任务 `StoreJobs`、停车提示），`offroad_pages_check.py` 在本机测。
+  - 页面内容和 mici 一致（同样的参数、动作和可用条件，行驶中或接合时不能改）。重置校准、重启、关机、卸载用 `ConfirmDialog`；这些 tici 弹窗压在导航栈上，在 mici 那一遍里隐藏，由宿主全屏画（弹窗打开时页面不接收触摸）。
+  - 仍显示 mici 页面（3 倍，`FALLBACK_VIEW=(296,295,1608,720)`，内容区居中）的：Models，以及 Device 里的训练指南、条款、法规信息、车内摄像头。
+  - 开机引导（onboarding）在栈里时照旧全屏显示 mici（456,180,1608,720），不画磁贴。
+- **不画 mici 纹理**靠 `system/ui/lib/application.py` 里一行钩子：`host.viewport()` 返回 `None` 时跳过 `draw_texture_pro`。此时 `to_logical` 把所有触摸映射到 mici 屏幕很远之外，下面继续运行的 mici 控件不会响应。这是对 SP 文件唯一的改动。
+- **整屏叠加层**：`ScreenOverlay`（`update(sm)`、`draw(zones)`），行驶时在磁贴之后绘制；`zones` 是 `VIEW` 四周的 left/right/top/bottom 和 view 本身的屏幕矩形。出错隔离同上，插件关闭时隐藏。例：`blindspot_edges`。
+- 已知：`NetworkUI` 自己建一个 `WifiManager`，mici 的 `NetworkLayoutMici` 只在 mici 设置里构造（大屏不构造），所以大屏进程里只有 Network 页那一个。
+- 主机检查只验证逻辑和静态结构，**没有渲染过**；字号、间距、弹窗位置要在设备上用 `big_screen_e2e.py` 截图确认。
+- 检查：`tools/sp_tesla_e2e/tile_layout_check.py`（网格、排布、行驶避让、编辑操作、手势、保存格式、ASCII）、`offroad_pages_check.py`（本机）；渲染和触摸：`tools/sp_tesla_e2e/big_screen_e2e.py`（只能在设备上跑，截图磁贴屏、编辑模式、每个设置详情页和 Store，检查停车时除 Models 外不画 mici 纹理）。
 
 ## 10. 现有插件
 
@@ -236,6 +243,7 @@ typedef struct {
 ```
 python3 tools/sp_tesla_e2e/static_imports.py --baseline <基线 json>   # 有没有断掉的 import
 python3 tools/sp_tesla_e2e/slot_layout_check.py                       # 卡片分区排布
+python3 tools/sp_tesla_e2e/tile_layout_check.py                       # 大屏磁贴：网格、排布、行驶避让、编辑操作、手势、重画判断、ASCII 文字
 python3 tools/sp_tesla_e2e/plugin_host_check.py                       # 插件宿主：出错隔离、总开关、元数据、参数、目标车速
 python3 tools/sp_tesla_e2e/external_bridge_check.py                   # 外接算力 TCP 桥接（本机真实 socket）
 python3 tools/sp_tesla_e2e/manifest_check.py                          # 插件清单、资源声明、冲突裁决
