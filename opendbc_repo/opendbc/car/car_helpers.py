@@ -6,7 +6,6 @@ from opendbc.car.can_definitions import CanRecvCallable, CanSendCallable
 from opendbc.car.carlog import carlog
 from opendbc.car.structs import CarParams, CarParamsT
 from opendbc.car.fingerprints import eliminate_incompatible_cars, all_legacy_fingerprint_cars
-import importlib
 from opendbc.car.fw_versions import ObdCallback, get_fw_versions_ordered, get_present_ecus, match_fw_to_car
 from opendbc.car.mock.values import CAR as MOCK
 from opendbc.car.values import BRANDS
@@ -41,16 +40,7 @@ def _get_interface_names() -> dict[str, list[str]]:
 interface_names = _get_interface_names()
 interfaces = load_interfaces(interface_names)
 
-# Radar plugin interface: brand -> "module:Class" of a RadarInterfaceBase subclass that replaces the
-# port's own radar (e.g. an external radar). Empty: every brand uses its port's RadarInterface.
-# A radar that needs CAN TX also needs a panda safety plugin (opendbc/safety/plugins/).
-RADAR_PLUGINS: dict[str, str] = {}
-
-
 def get_radar_interface(CP, CP_SP):
-  if spec := RADAR_PLUGINS.get(CP.brand):
-    module, name = spec.split(":")
-    return getattr(importlib.import_module(module), name)(CP, CP_SP)
   return interfaces[CP.carFingerprint].RadarInterface(CP, CP_SP)
 
 

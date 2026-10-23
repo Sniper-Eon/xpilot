@@ -172,6 +172,29 @@ class CarPlugins:
     self._each("service_params", view(params))
 
 
+class _GuardedRadar:
+  """card's RI: the plugin radar until it raises, then the port radar for good."""
+
+  def __init__(self, plugin, port):
+    self.plugin, self.port, self._plugins = plugin, port, [plugin]
+
+  def __getattr__(self, name):
+    return getattr(self.plugin if self._plugins else self.port, name)
+
+  def update(self, can_packets):
+    if self._plugins:
+      ok, out = _call(self._plugins, self.plugin, "update", "card.radar_interface", can_packets)
+      if ok:
+        return out
+    return self.port.update(can_packets)
+
+
+def radar_interface(CP, CP_SP, params, port):
+  """card: the active source:radar plugin's radar (guarded), else the port's radar."""
+  found = _collect(params, "radar_interface", "source:radar", "card", CP, CP_SP) if CP.brand == "tesla" else []
+  return _GuardedRadar(found[0], port) if found else port
+
+
 def processes() -> list:
   """manager: each plugin process runs only while its plugin is active, and only if the plugin claims it."""
   procs = []

@@ -57,6 +57,13 @@ class Plugin:
   def service_params(self, params) -> None:
     """~10 Hz in card's params thread: reload live settings."""
 
+  # ---- card (claim "source:radar", exclusive) ----
+  @classmethod
+  def radar_interface(cls, CP, CP_SP):
+    """None, or a RadarInterfaceBase instance (update(can_packets) -> RadarData or None) that replaces the car
+    port's radar in card. Raising here or in update drops it; card then uses the port's radar."""
+    return None
+
   # ---- manager ----
   @classmethod
   def processes(cls) -> list:

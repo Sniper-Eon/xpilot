@@ -23,6 +23,11 @@ Failure cases listed before implementation:
 - P18 two raising plugins: the higher one wins (should be the lower, more conservative one)
 - P19 a long target that raises takes plannerd down or keeps running; None changes nothing
 - P20 a disabled plugin still contributes a long target
+- R1 card does not use the active plugin's radar_interface (source:radar)
+- R2 no, a disabled, or a non-Tesla radar plugin: card gets anything but the port radar
+- R3 a radar returned without a source:radar claim, or by the loser of a source:radar conflict, is used
+- R4 radar_interface raises at creation: card raises, no fault recorded, or the port radar is not used
+- R5 the plugin radar raises in update: card raises, or the plugin keeps being called instead of the port radar
 
 Run from the repo root with the openpilot python env. Native-only modules (Params) are stubbed if missing.
 """
@@ -234,6 +239,7 @@ def main() -> int:
         errors.append(f"P12 {k} in {owners[k]} and {f.parent.name}")
       owners[k] = f.parent.name
   errors += long_target_checks(plugins_mod)
+  errors += radar_checks(plugins_mod)
 
   print(json.dumps({"plugins": [c.NAME for c in real], "errors": errors}, indent=1))
   return 1 if errors else 0
@@ -301,6 +307,65 @@ def long_target_checks(plugins) -> list[str]:
   plugins.PLUGINS = (Off,)
   if plugins.long_targets(CP, FakeParams()):
     errors.append("P20 disabled plugin contributes a long target")
+  return errors
+
+
+def radar_checks(plugins) -> list[str]:
+  errors, faults = [], []
+  plugins.record_fault = lambda name, where, exc: faults.append((name, where))
+
+  class Radar:
+    def __init__(self, name, fail=False):
+      self.name, self.fail, self.calls = name, fail, 0
+
+    def update(self, can_packets):
+      self.calls += 1
+      if self.fail:
+        raise RuntimeError("radar update")
+      return self.name
+
+  def make_radar(name, claims=("source:radar",), enable=None, priority=100, fail_init=False, fail_update=False):
+    class R(Plugin):
+      NAME, ENABLE_PARAM, CLAIMS, PRIORITY = name, enable, claims, priority
+
+      @classmethod
+      def radar_interface(cls, CP, CP_SP):
+        if fail_init:
+          raise RuntimeError("radar init")
+        return Radar(name, fail_update)
+    return R
+
+  def got(*classes, brand=CP, params=None):
+    plugins.PLUGINS = classes
+    return plugins.radar_interface(brand, None, params or FakeParams(), Radar("port")).update([])
+
+  if got(make_radar("ext")) != "ext":
+    errors.append("R1 active radar plugin not used")
+  if got() != "port" or got(make_radar("off", enable="OffKey")) != "port":
+    errors.append("R2 no or disabled radar plugin: port radar not used")
+
+  class Other:
+    brand = "toyota"
+  if got(make_radar("ext"), brand=Other) != "port":
+    errors.append("R2 non-Tesla car uses a radar plugin")
+  if got(make_radar("noclaim", claims=())) != "port":
+    errors.append("R3 radar used without a source:radar claim")
+  if got(make_radar("b", priority=50), make_radar("a")) != "b":
+    errors.append("R3 source:radar conflict not won by the lower priority")
+  faults.clear()
+  try:
+    if got(make_radar("boom", fail_init=True)) != "port" or ("boom", "card.radar_interface") not in faults:
+      errors.append(f"R4 creation fault: port radar not used or not recorded {faults}")
+  except Exception as e:
+    errors.append(f"R4 host raised {e!r}")
+  plugins.PLUGINS = (make_radar("flaky", fail_update=True),)
+  ri = plugins.radar_interface(CP, None, FakeParams(), Radar("port"))
+  try:
+    out = [ri.update([]) for _ in range(3)]
+    if out != ["port"] * 3 or ri.plugin.calls != 1 or ("flaky", "card.radar_interface.update") not in faults:
+      errors.append(f"R5 update fault: {out}, plugin calls {ri.plugin.calls}, faults {faults}")
+  except Exception as e:
+    errors.append(f"R5 host raised {e!r}")
   return errors
 
 
