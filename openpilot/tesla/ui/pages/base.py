@@ -90,13 +90,13 @@ class SettingRow:
     if self.kind == "toggle":
       self.item = toggle_item(title, initial_state=bool(self._value()), callback=self._set, enabled=ui_state.is_offroad)
     elif self.kind == "buttons":
-      self.choices = setting_choices(setting)
+      self.choices = setting_choices(setting, ui_state.is_metric)
       self.item = ListItem(title=title, action_item=MultipleButtonAction([label for label, _ in self.choices], 250,
                                                                          callback=lambda i: self._set(self.choices[i][1])))
       self.item.action_item.set_enabled(ui_state.is_offroad)
     else:
-      self.choices = setting_choices(setting)
-      action = ButtonAction(lambda: setting_label(setting, self._value()), enabled=ui_state.is_offroad)
+      self.choices = setting_choices(setting, ui_state.is_metric)
+      action = ButtonAction(lambda: setting_label(setting, self._value(), ui_state.is_metric), enabled=ui_state.is_offroad)
       self.item = ListItem(title=title, action_item=action, callback=lambda: self._set(next_choice(self.choices, self._value())))
     self.refresh()
 

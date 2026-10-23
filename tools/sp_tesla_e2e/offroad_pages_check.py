@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Offroad pages check (big-screen UI v3): the pyray-free logic behind the native offroad pages (openpilot/tesla/ui/offroad.py)
-and the static shape of openpilot/tesla/ui/pages/. Drawing is not checked here (tools/sp_tesla_e2e/big_screen_e2e.py on the device).
+"""Offroad pages check (big-screen UI v4 detail pages): the pyray-free logic behind the native offroad pages
+(openpilot/tesla/ui/offroad.py) and the static shape of openpilot/tesla/ui/pages/ and the settings tiles. Drawing is not checked here (tools/sp_tesla_e2e/big_screen_e2e.py on the device).
 
 Failure cases listed before implementation:
-- O1 a nav entry (other than Models, which shows the mici page) or the Store sub-page has no pages/<name>.py with a Widget
-     class defining show_event
+- O1 a settings tile (ui/slots/settings.py) has no PAGE, its PAGE is not imported from a pages/<name>.py whose class defines
+     show_event (only Models may open a mici layout, with MICI = True), or the Store sub-page has no such module
 - O2 a page reads or writes a param key (string literal in get/get_bool/put/put_bool/remove) the compiled Params does not know
 - O3 the Plugins rows miss a PLUGINS entry or one of its settings, or a plugin that failed to load is not listed first
 - O4 switching a plugin on leaves a plugin with a shared exclusive claim on, switches off one without a shared claim,
@@ -15,7 +15,8 @@ Failure cases listed before implementation:
 - O7 offroad without a viewport a screen touch maps inside the mici logical screen (a hidden mici widget would react)
 - O8 offroad alerts are not most severe first, miss the %1 extra, or show inactive alerts
 - O9 the v2 pieces (PAGES factories, _hide_back) remain in screen.py, or the application.py no-viewport hook is missing
-- O10 the content rect is wider than MAX_W, not centered right of the nav column, or overlaps the title band
+- O10 the detail page content rect overlaps the back button or the title band or leaves the screen, or the mici fallback
+     view leaves the content rect
 - O11 a tesla UI module uses a pyray type in a | union annotation without from __future__ import annotations
      (pyray types are functions on the device: TypeError at import, UI exits)
 """
@@ -65,11 +66,26 @@ PAGE_MODULES = {"Home": "home", "Toggles": "toggles", "Plugins": "plugins", "Tes
 PARAM_CALLS = {"get", "get_bool", "put", "put_bool", "remove"}
 
 
+def check_tiles(errors: list) -> None:
+  tree = ast.parse((PKG / "tesla/ui/slots/settings.py").read_text())
+  imported = {a.asname or a.name: n.module for n in tree.body if isinstance(n, ast.ImportFrom) for a in n.names}
+  pages = {f"openpilot.tesla.ui.pages.{m}" for m in PAGE_MODULES.values()}
+  tiles = [n for n in tree.body if isinstance(n, ast.ClassDef) and any(isinstance(b, ast.Assign) and b.targets[0].id == "SPEC" for b in n.body
+                                                                       if isinstance(b, ast.Assign) and isinstance(b.targets[0], ast.Name))]
+  if len(tiles) < 9:
+    errors.append(f"O1 only {len(tiles)} settings tiles")
+  for cls in tiles:
+    attrs = {b.targets[0].id: b.value for b in cls.body if isinstance(b, ast.Assign) and isinstance(b.targets[0], ast.Name)}
+    page = attrs.get("PAGE")
+    mici = isinstance(attrs.get("MICI"), ast.Constant) and attrs["MICI"].value is True
+    if not isinstance(page, ast.Name):
+      errors.append(f"O1 {cls.name} has no PAGE")
+    elif mici != (page.id == "ModelsLayoutMici") or (not mici and imported.get(page.id) not in pages):
+      errors.append(f"O1 {cls.name}: PAGE {page.id} from {imported.get(page.id)}, MICI={mici}")
+
+
 def check_pages(errors: list) -> None:
   known = mf.compiled_param_keys()
-  for label in offroad.NAV:
-    if label != "Models" and label not in PAGE_MODULES:
-      errors.append(f"O1 nav entry {label} has no page module")
   for label, module in PAGE_MODULES.items():
     path = PKG / "tesla/ui/pages" / f"{module}.py"
     if not path.exists():
@@ -206,10 +222,13 @@ def check_sources(errors: list) -> None:
       errors.append(f"O9 screen.py still has {name}")
   if "if texture and dst_rect is not None:" not in (PKG / "system/ui/lib/application.py").read_text():
     errors.append("O9 application.py no-viewport hook missing")
-  x, y, w, h = offroad.content_rect()
-  cx, cy, cw, ch = offroad.CONTENT
-  if w > offroad.MAX_W or abs((x - cx) - (cx + cw - x - w)) > 1e-6 or x < offroad.NAV_W or y < offroad.TITLE_H or y + h > 1080:
+  x, y, w, h = offroad.CONTENT
+  bx, by, bw, bh = offroad.BACK
+  if x < bx + bw or y < offroad.TITLE_H or y < by + bh or x + w > 2160 or y + h > 1080:
     errors.append(f"O10 content rect {(x, y, w, h)}")
+  fx, fy, fw, fh = offroad.FALLBACK_VIEW
+  if fx < x or fy < y or fx + fw > x + w or fy + fh > y + h:
+    errors.append(f"O10 fallback view {offroad.FALLBACK_VIEW} outside the content rect")
   for path in sorted((PKG / "tesla").rglob("*.py")):
     text = path.read_text()
     if re.search(r"rl\.[A-Z]\w* *\||\| *rl\.[A-Z]", text) and "from __future__ import annotations" not in text:
@@ -218,7 +237,7 @@ def check_sources(errors: list) -> None:
 
 def main() -> int:
   errors: list[str] = []
-  for check in (check_pages, check_plugins, check_store, check_view, check_alerts, check_sources):
+  for check in (check_tiles, check_pages, check_plugins, check_store, check_view, check_alerts, check_sources):
     try:
       check(errors)
     except Exception as e:

@@ -43,10 +43,10 @@ openpilot/tesla/
   plugins/ambient_light/    盲区氛围灯
   plugins/external_compute/ 外接算力桥接
   plugins/speed_card/ lead_card/ speed_limit_card/ blindspot_edges/   大屏卡片和盲区边框（只显示）
-  ui/screen.py ui/grid.py ui/slot.py ui/slots/   大屏宿主、插槽格式、插槽
+  ui/screen.py ui/tile.py ui/tiles.py ui/slots/   大屏磁贴宿主、磁贴基类、布局模型（无 pyray）、内置磁贴（slots/settings.py 是设置磁贴）
   ui/plugin_ui.py           UI 侧插件加载：找到插槽、HudOverlay 和 ScreenOverlay，插件关闭时隐藏
   ui/plugins_page.py ui/store_page.py   mici 设置里的"Plugins"页和商店页（小屏用）
-  ui/offroad.py ui/pages/   大屏停车时的原生页面（见第 9 节）
+  ui/offroad.py ui/pages/   大屏停车时的详情页（见第 9 节）
   ui/settings_page.py ui/settings_meta.py        Tesla 设置页（上游 Tesla 选项、DM、地图）
 opendbc_repo/opendbc/safety/plugins/
   plugin.h registry.h auto_speed.h ambient_light.h   panda safety 插件（见第 6 节，已接入，未编译验证）
@@ -208,12 +208,12 @@ typedef struct {
 - **停车时**：整屏 32 格都放磁贴，只显示 `show` 为 `always`/`offroad` 的磁贴。点一下磁贴打开它的详情页（有 `PAGE` 的）；长按（0.6 s）磁贴或空格进入编辑模式。
 - **编辑模式**（只在停车时）：其他磁贴变暗，选中的磁贴右上角是"取消固定"圆钮、右下角是"改尺寸"圆钮（图形用线画，不用字符）。点改尺寸按 `sizes` 的顺序循环；点取消固定把它移到隐藏列表；按住拖动磁贴，松手处的格子决定新位置（排在落点之后第一个磁贴的前面，没有就排到最后）；点别的磁贴改选它；第一个空格显示"+"，点它打开"Add tiles"页，列出隐藏和放不下的磁贴，点一个就以它最小的尺寸固定到最后；点其他空格或再点一次选中的磁贴退出编辑模式。
 - **保存**：布局存在 `XpilotTileLayout`（JSON `{"tiles": [[id, 尺寸], ...], "hidden": [id, ...]}`），不进 `params_keys.h`，由 `plugin_params.ParamsView` 存成文件 `/data/xpilot_plugins/.params/XpilotTileLayout`。读取时丢掉不认识的 id 和不支持的尺寸；新出现的磁贴按 (`order`, `id`) 用默认尺寸排到最后；插件关闭时它的磁贴不显示但位置保留。
-- **加磁贴**：插件的写在 `plugins/<名字>/ui.py`；不属于插件的放 `openpilot/tesla/ui/tiles/`。继承 `Tile`，写 `SPEC = TileSpec(id, title, sizes, services, show, hz, order, color)`，会被自动发现。
+- **加磁贴**：插件的写在 `plugins/<名字>/ui.py`；不属于插件的放 `openpilot/tesla/ui/slots/`。继承 `Tile`，写 `SPEC = TileSpec(id, title, sizes, services, show, hz, order, color)`，会被自动发现。
   - `sizes`：支持的尺寸，第一个是默认；要在行驶时显示必须包含 `small`。
   - `state(sm)`：读数据，返回这块磁贴要显示的内容（可比较的值）。最多每秒调用 `hz` 次；**只有返回值变了（或尺寸变了）才重画**，其余帧画缓存的纹理。`draw(rect, size, state)` 画磁贴正面。
   - 外观用 `Tile.face(rect, ...)`（底色、左下角标题）、`draw_value`（大数字、单位、灰色副行）或 `draw_lines`，保持统一。文字只用 ASCII（设备字体缺 `‹ › · —` 等字，会显示成 `?`；`tile_layout_check.py` 检查）。
   - 连续出错 3 次停止绘制，不影响其他磁贴。
-- **设置磁贴（内置）**：Status（原 Home）、Toggles、Models、Plugins、Tesla、Network、Device、Software、Developer，放在 `ui/tiles/settings.py`，`show="offroad"`。`PAGE` 是 `ui/pages/` 里对应的原生页面，Models 仍是 mici 页面（`MICI=True`）。
+- **设置磁贴（内置）**：Status（原 Home）、Toggles、Models、Plugins、Tesla、Network、Device、Software、Developer，放在 `ui/slots/settings.py`，`show="offroad"`。`PAGE` 是 `ui/pages/` 里对应的原生页面，Models 仍是 mici 页面（`MICI=True`）。
 - **详情页（WP 风格）**：整屏。左上角是返回圆钮（线画的箭头，点击区 `BACK=(0,0,140,230)`），右边小号大写的上级名（`XPILOT` 或父页面名），下面是大号小写标题；内容区 `CONTENT=(140,230,1920,850)`，由宿主按屏幕像素直接画 `ui/pages/` 里的原生列表页（tici 的 `list_view`/`scroller_tici` 控件）。页面打开的子页（如 Plugins 的 Store）压栈，返回一层层退回，退到底回到磁贴屏。
   - 每页一个模块：`openpilot/tesla/ui/pages/<页>.py`，带 `show_event` 的 Widget（`show_event` 时从 params 重新读状态）。共用部分在 `pages/base.py`。不画图的逻辑在 `ui/offroad.py`（视口模式、触摸映射、插件行、商店任务 `StoreJobs`、停车提示），`offroad_pages_check.py` 在本机测。
   - 页面内容和 mici 一致（同样的参数、动作和可用条件，行驶中或接合时不能改）。重置校准、重启、关机、卸载用 `ConfirmDialog`；这些 tici 弹窗压在导航栈上，在 mici 那一遍里隐藏，由宿主全屏画（弹窗打开时页面不接收触摸）。

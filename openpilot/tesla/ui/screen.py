@@ -1,11 +1,12 @@
-"""Big-screen host (C3/C3X/C3XL, 2160x1080) around the mici UI.
-Onroad: the mici view in grid.VIEW, plugin cards in the zones around it (grid.py), then plugin ScreenOverlays.
+"""Big-screen host (C3/C3X/C3XL, 2160x1080), UI v4: Windows Phone / Win 8 style tiles (XPILOT.md §9, layout in tiles.py).
+Onroad: the mici view fixed at tiles.VIEW, tiles in the cells around it, then plugin ScreenOverlays; no touches.
 Alerts are drawn once, by mici inside the view.
-Offroad (UI v3): a nav column, a title band and native list pages (tesla/ui/pages/) drawn here in screen pixels. The mici
-texture is not drawn (viewport() -> None) except during onboarding and for mici pages pushed above main (Models, training
-guide, terms, regulatory, cabin camera), which show at 3x in the content area. Without a viewport every touch maps far
-outside the mici screen, so the mici widgets running underneath never react. tici dialogs (ConfirmDialog, Keyboard) the
-native pages push onto the nav stack are hidden in the mici pass and drawn full-screen here."""
+Offroad: the tile screen (tap opens a tile's page, long press enters edit mode), or a full-screen detail page: back
+button, parent name, title, and a native page (tesla/ui/pages) drawn here in screen pixels. The mici texture is not
+drawn (viewport() -> None) except during onboarding and for mici pages pushed above main (Models, training guide, terms,
+regulatory, cabin camera), which show at 3x in FALLBACK_VIEW. Without a viewport every touch maps far outside the mici
+screen, so the mici widgets running underneath never react. tici dialogs (ConfirmDialog, Keyboard) the native pages
+push onto the nav stack are hidden in the mici pass and drawn full-screen here."""
 from __future__ import annotations  # pyray types are functions: rl.Rectangle | None fails at import
 
 from contextlib import contextmanager
@@ -18,34 +19,25 @@ from openpilot.cereal import messaging
 from openpilot.common.hardware import HARDWARE
 from openpilot.common.params import Params
 from openpilot.common.swaglog import cloudlog
-from openpilot.selfdrive.ui.sunnypilot.mici.layouts.models import ModelsLayoutMici
 from openpilot.selfdrive.ui.ui_state import ui_state
 from openpilot.sunnypilot.hardware.profile import HardwareProfile, get_hardware_profile
 from openpilot.system.ui.lib.application import MousePos, gui_app, FontWeight
-from openpilot.tesla.ui import offroad
-from openpilot.tesla.ui.grid import SCREEN, VIEW, ZONES, place
-from openpilot.tesla.ui.offroad import NAV, NAV_W, TITLE_H
-from openpilot.tesla.ui.pages.developer import DeveloperPage
+from openpilot.system.ui.widgets.list_view import button_item, text_item
+from openpilot.tesla.plugin_params import ParamsView
+from openpilot.tesla.ui import offroad, tiles
+from openpilot.tesla.ui.offroad import BACK, CONTENT, TITLE_H
+from openpilot.tesla.ui.pages.base import ListPage
 from openpilot.tesla.ui.pages.device import DevicePage
-from openpilot.tesla.ui.pages.home import HomePage
-from openpilot.tesla.ui.pages.network import NetworkPage
-from openpilot.tesla.ui.pages.plugins import PluginsPage
-from openpilot.tesla.ui.pages.software import SoftwarePage
-from openpilot.tesla.ui.pages.tesla import TeslaPage
-from openpilot.tesla.ui.pages.toggles import TogglesPage
 from openpilot.tesla.ui.plugin_ui import MAX_FAILURES, EnabledPlugins, ScreenOverlay, load
-from openpilot.tesla.ui.slot import DIM, Slot
+from openpilot.tesla.ui.tile import Tile
+from openpilot.tesla.ui.tiles import LAYOUT_PARAM, LAYOUT_SPEC, SCREEN, VIEW
 
-NAV_TOP, ROW_H = 180, 96
-# Native page per nav label, built on first use. Models has none: it shows the mici page (FALLBACK_VIEW).
-NATIVE = {"Home": HomePage, "Toggles": TogglesPage, "Plugins": PluginsPage, "Tesla": TeslaPage, "Network": NetworkPage,
-          "Device": DevicePage, "Software": SoftwarePage, "Developer": DeveloperPage}
-FALLBACK_TITLES = {"ReviewTrainingGuide": "Training guide", "CabinCameraDialog": "Cabin camera", "ReviewTermsPage": "Terms",
-                   "MiciFccModal": "Regulatory"}
-NAV_BG = rl.Color(14, 15, 19, 255)
-NAV_SEL = rl.Color(34, 38, 48, 255)
-NAV_PRESSED = rl.Color(26, 28, 36, 255)
-ACCENT = rl.Color(54, 140, 255, 255)
+FALLBACK_TITLES = {"ReviewTrainingGuide": "training guide", "CabinCameraDialog": "cabin camera", "ReviewTermsPage": "terms",
+                   "MiciFccModal": "regulatory"}
+DIM = rl.Color(150, 152, 162, 255)
+SHADE = rl.Color(0, 0, 0, 120)      # over unselected tiles in edit mode
+PRESSED = rl.Color(0, 0, 0, 60)
+ACCENT = rl.Color(*tiles.ACCENT, 255)
 
 
 def is_big_screen() -> bool:
@@ -66,9 +58,31 @@ def scaled(s: float):
     rl.begin_scissor_mode = prev
 
 
-class _Tile:
-  def __init__(self, plugin: str | None, slot: Slot):
-    self.plugin, self.slot, self.rect, self.texture, self.last, self.failures = plugin, slot, None, None, 0.0, 0
+def _zones() -> dict:
+  """ScreenOverlay zones: the strips around VIEW and VIEW itself."""
+  x, y, w, h = VIEW
+  return {"left": rl.Rectangle(0, 0, x, SCREEN[1]), "right": rl.Rectangle(x + w, 0, SCREEN[0] - x - w, SCREEN[1]),
+          "top": rl.Rectangle(x, 0, w, y), "bottom": rl.Rectangle(x, y + h, w, SCREEN[1] - y - h), "view": rl.Rectangle(*VIEW)}
+
+
+class _Entry:
+  def __init__(self, plugin: str | None, tile: Tile):
+    self.plugin, self.tile, self.spec = plugin, tile, tile.SPEC
+    self.poll, self.texture, self.state, self.failures = tiles.Poll(tile.SPEC.hz), None, None, 0
+
+
+class AddTilesPage(ListPage):
+  """Edit mode "+": one row per hidden or left-out tile; tapping one pins it."""
+
+  def __init__(self, entries, pin):
+    super().__init__()
+    if not entries:
+      self.add(text_item("No tiles to add", "", "Every tile is on the screen."))
+    for e in entries:
+      self.add(button_item(e.spec.title, "ADD", callback=lambda tid=e.spec.id: pin(tid)))
+
+  def show_event(self):
+    super().show_event()
 
 
 class BigScreenHost:
@@ -76,20 +90,34 @@ class BigScreenHost:
 
   def __init__(self):
     self._params = Params()
-    self._tiles = [_Tile(name, s) for name, s in load(Slot)]  # core slots/ and each plugin's ui.py
+    self._layout_params = ParamsView(self._params, LAYOUT_SPEC)
+    self._entries: dict[str, _Entry] = {}
+    for name, tile in load(Tile):  # core slots/ and each plugin's ui.py
+      if tile.SPEC.id in self._entries:
+        cloudlog.error(f"tile id {tile.SPEC.id} used twice, keeping the first")
+        continue
+      self._entries[tile.SPEC.id] = _Entry(name, tile)
     self._overlays = [[name, o, 0] for name, o in load(ScreenOverlay)]
     self._enabled = EnabledPlugins(self._params)
-    services = sorted({svc for t in self._tiles for svc in t.slot.SPEC.services})
+    services = sorted({svc for e in self._entries.values() for svc in e.spec.services})
     self._sm = messaging.SubMaster(services) if services else None
-    self._zones = {**{k: rl.Rectangle(*z) for k, z in ZONES.items()}, "view": rl.Rectangle(*VIEW)}
-    self._layout_key = None
+    self._zones = _zones()
+    try:
+      saved = self._layout_params.get(LAYOUT_PARAM)
+    except Exception:
+      saved = None
+    self._pinned, self._hidden = tiles.arrange([e.spec for e in self._entries.values()], saved)
+    self._placed_key = None
+    self._placed: dict[str, tuple[int, int, str]] = {}
     self._main = None
     self._pages: dict[str, object] = {}
-    self._models = None
-    self._selected = 0
-    self._sub: tuple[str, object] | None = None  # (title, page) opened by the selected page
+    self._stack: list[tuple[str, object | None]] = []  # open detail pages (title, native page or None for a mici page)
     self._shown = None  # the native page that last got show_event
-    self._pressed = None
+    self._gesture = tiles.Gesture()
+    self._edit = False
+    self._selected: str | None = None
+    self._drag: str | None = None
+    self._back_pressed = False
     self._view: tuple | None = None  # set each frame by viewport(); to_logical runs on the touch thread
     self._mode = "native"
     self._host_pass = False
@@ -98,31 +126,72 @@ class BigScreenHost:
     self._main = main
 
   def open_settings(self) -> None:
-    self._select(1)
+    self.open_tile("toggles")
 
-  def _select(self, index: int) -> None:
+  # layout
+
+  def _visible(self, started: bool) -> list[tuple[str, str, tuple[str, ...]]]:
+    enabled = self._enabled.get()
+    out = []
+    for tid, size in self._pinned:
+      e = self._entries[tid]
+      if e.failures < MAX_FAILURES and tiles.shows(e.spec, started) and (e.plugin is None or e.plugin in enabled):
+        out.append((tid, size, e.spec.sizes))
+    return out
+
+  def _place(self, started: bool) -> dict[str, tuple[int, int, str]]:
+    items = self._visible(started)
+    key = (started, tuple(items))
+    if key != self._placed_key:
+      self._placed_key, self._placed = key, tiles.place(items, started)
+    return self._placed
+
+  def _save(self, pinned, hidden=None) -> None:
+    self._pinned, self._hidden = pinned, self._hidden if hidden is None else hidden
+    try:
+      self._layout_params.put(LAYOUT_PARAM, tiles.saved(self._pinned, self._hidden))
+    except Exception:
+      cloudlog.exception("tile layout not saved")
+
+  def _pin(self, tid: str) -> None:
+    self._save(*tiles.pin(self._pinned, self._hidden, tid, self._entries[tid].spec.sizes))
+    self._back()
+
+  # pages
+
+  def open_tile(self, tid: str) -> None:
+    e = self._entries.get(tid)
+    if e is None or e.tile.PAGE is None:
+      return
     gui_app.pop_widgets_to(self._main, instant=True)  # never grow the nav stack
-    self._selected, self._sub = index, None
-    if NAV[index] not in NATIVE:
-      self._models = self._models or ModelsLayoutMici()
-      gui_app.push_widget(self._models)
-
-  def _page(self):
-    """The native page in the content area: the open sub-page, else the selected nav page (None for Models)."""
-    if self._sub is not None:
-      return self._sub[1]
-    label = NAV[self._selected]
-    if label not in NATIVE:
-      return None
-    if label not in self._pages:
-      page = self._pages[label] = NATIVE[label]()
-      page.open = lambda title, sub: self._open(title, sub)
+    self._stack = []
+    if tid not in self._pages:
+      try:
+        page = e.tile.PAGE()
+      except Exception:
+        cloudlog.exception(f"tile {tid}: page failed to build")  # a broken page must not take the UI down
+        return
+      page.open = self._open
       if isinstance(page, DevicePage):
         page.main = self._main
-    return self._pages[label]
+      self._pages[tid] = page
+    if e.tile.MICI:
+      gui_app.push_widget(self._pages[tid])
+      self._open(e.spec.title, None)
+    else:
+      self._open(e.spec.title, self._pages[tid])
 
   def _open(self, title, page) -> None:
-    self._sub = None if page is None else (title, page)
+    """Push a detail page; ListPage.open(title, sub) of the open page lands here too. page None: a mici page above main."""
+    self._stack.append((title, page))
+
+  def _back(self) -> None:
+    if self._mode == "mici":
+      gui_app.pop_widgets_to(self._main, instant=True)
+      if self._stack and self._stack[-1][1] is not None:
+        return  # a mici dialog opened by a native page (Device): back to that page
+    if self._stack:
+      self._stack.pop()
 
   @staticmethod
   def _is_modal(widget) -> bool:
@@ -146,48 +215,64 @@ class BigScreenHost:
   def to_logical(self, x: float, y: float) -> tuple[float, float]:
     return offroad.to_logical(self._view, x, y)
 
-  def render(self) -> None:
-    if self._mode != "onroad":
-      if self._mode != "onboarding":
-        self._draw_offroad()
-      return
-    enabled = self._enabled.get()
-    key = frozenset(enabled)
-    if key != self._layout_key:
-      self._layout_key = key
-      rects = place([t.slot.SPEC for t in self._tiles if t.plugin is None or t.plugin in enabled], True)
-      for t in self._tiles:
-        t.rect = rects.get(t.slot.SPEC.id)
-    self._draw_tiles()
-    self._draw_overlays()
+  # drawing
 
-  def _draw_tiles(self) -> None:
-    if self._sm is not None:
-      self._sm.update(0)
-    now = time.monotonic()
-    for t in self._tiles:
-      if t.rect is None or t.failures >= MAX_FAILURES:
-        continue
-      x, y, w, h = t.rect
-      if t.texture is None or t.texture.texture.width != w or t.texture.texture.height != h:
-        t.texture, t.last = rl.load_render_texture(w, h), 0.0
-      if now - t.last >= 1.0 / t.slot.SPEC.hz:
-        t.last = now
-        rl.begin_texture_mode(t.texture)
+  def render(self) -> None:
+    if self._mode == "onroad":
+      self._edit, self._drag, self._selected = False, None, None
+      self._draw_tiles(self._place(True))
+      self._draw_overlays()
+    elif self._mode != "onboarding":
+      self._draw_offroad()
+
+  def _face(self, e: _Entry, size: str, now: float) -> bool:
+    """Bring the tile's cached texture up to date; True if there is one to draw."""
+    w, h = tiles.SIZES[size]
+    w, h = w * tiles.PITCH - tiles.GAP, h * tiles.PITCH - tiles.GAP
+    if e.texture is None or e.texture.texture.width != w or e.texture.texture.height != h:
+      if e.texture is not None:
+        rl.unload_render_texture(e.texture)
+      e.texture = rl.load_render_texture(w, h)
+      e.poll.invalidate()
+    try:
+      if e.poll.due(now):
+        e.state = e.tile.state(self._sm if self._sm is not None and e.spec.services else ui_state.sm)
+      if e.poll.changed(e.state, size):
+        rl.begin_texture_mode(e.texture)
         rl.clear_background(rl.BLANK)
         try:
-          t.slot.update(self._sm if self._sm is not None and t.slot.SPEC.services else ui_state.sm)
-          rect = rl.Rectangle(0, 0, w, h)
-          t.slot.set_rect(rect)
           with scaled(1):
-            t.slot._update_state()
-            t.slot._render(rect)
-          t.failures = 0
-        except Exception:
-          t.failures += 1  # a broken slot must never take the UI (and engagement) down
-          cloudlog.exception(f"slot {t.slot.SPEC.id} failed")
-        rl.end_texture_mode()
-      rl.draw_texture_pro(t.texture.texture, rl.Rectangle(0, 0, w, -h), rl.Rectangle(x, y, w, h), rl.Vector2(0, 0), 0.0, rl.WHITE)
+            e.tile.draw(rl.Rectangle(0, 0, w, h), size, e.state)
+        finally:
+          rl.end_texture_mode()
+      e.failures = 0
+    except Exception:
+      e.failures += 1  # a broken tile must never take the UI (and engagement) down
+      e.poll.invalidate()
+      cloudlog.exception(f"tile {e.spec.id} failed")
+      return False
+    return True
+
+  def _draw_tiles(self, placed, now: float | None = None) -> None:
+    if self._sm is not None:
+      self._sm.update(0)
+    now = time.monotonic() if now is None else now
+    for tid, p in placed.items():
+      e = self._entries[tid]
+      if tid == self._drag or not self._face(e, p[2], now):
+        continue
+      x, y, w, h = tiles.tile_rect(p)
+      grow = 0.03 * w if self._edit and tid == self._selected else 0.0
+      self._blit(e, rl.Rectangle(x - grow, y - grow * h / w, w + 2 * grow, h + 2 * grow * h / w))
+      if self._edit and tid != self._selected:
+        rl.draw_rectangle(x, y, w, h, SHADE)
+      elif not self._edit and self._gesture.start is not None and tiles.hit({tid: p}, *self._gesture.start[:2]) and not self._gesture.long:
+        rl.draw_rectangle(x, y, w, h, PRESSED)
+
+  @staticmethod
+  def _blit(e: _Entry, dest: rl.Rectangle) -> None:
+    t = e.texture.texture
+    rl.draw_texture_pro(t, rl.Rectangle(0, 0, t.width, -t.height), dest, rl.Vector2(0, 0), 0.0, rl.WHITE)
 
   def _draw_overlays(self) -> None:
     for entry in self._overlays:
@@ -199,7 +284,7 @@ class BigScreenHost:
         overlay.draw(self._zones)
         entry[2] = 0
       except Exception:
-        entry[2] += 1  # same isolation as slots
+        entry[2] += 1  # same isolation as tiles
         cloudlog.exception(f"screen overlay {type(overlay).__name__} failed")
 
   @contextmanager
@@ -215,71 +300,158 @@ class BigScreenHost:
       self._host_pass = False
       gui_app._mouse_events, gui_app._width, gui_app._height = saved
 
-  def _tapped(self, key, rect: rl.Rectangle, events) -> bool:
-    tapped = False
-    for event in events:
-      inside = rl.check_collision_point_rec(event.pos, rect)
-      if event.left_pressed and inside:
-        self._pressed = key
-      if event.left_released and self._pressed == key:
-        self._pressed = None
-        tapped = inside
-    return tapped
-
   def _draw_offroad(self) -> None:
     events = [e._replace(pos=MousePos(*offroad.to_screen(self._view, e.pos.x, e.pos.y))) for e in gui_app.mouse_events]
     top = gui_app.get_active_widget()
-    if top is self._main and NAV[self._selected] not in NATIVE:
-      self._selected = 0  # left the Models page with the mici back gesture
+    if top is self._main and self._stack and self._stack[-1][1] is None:
+      self._stack.pop()  # left the Models page with the mici back gesture
     modal = self._mode == "modal"
-    page_events = [] if modal else events
-
-    rl.draw_rectangle(0, 0, NAV_W, SCREEN[1], NAV_BG)
-    rl.draw_text_ex(gui_app.font(FontWeight.BOLD), "xpilot", rl.Vector2(48, 52), 76, 0, rl.WHITE)
-    medium = gui_app.font(FontWeight.MEDIUM)
-    for index, label in enumerate(NAV):
-      rect = rl.Rectangle(0, NAV_TOP + index * ROW_H, NAV_W, ROW_H)
-      if self._tapped(index, rect, page_events):
-        self._select(index)
-      selected = index == self._selected
-      if selected or self._pressed == index:
-        rl.draw_rectangle_rec(rect, NAV_SEL if selected else NAV_PRESSED)
-      if selected:
-        rl.draw_rectangle_rec(rl.Rectangle(0, rect.y, 8, ROW_H), ACCENT)
-      rl.draw_text_ex(medium, label, rl.Vector2(48, rect.y + (ROW_H - 44) / 2), 44, 0, rl.WHITE if selected else DIM)
-
-    # title band: the page title, or a breadcrumb and Back for a sub-page / a mici page pushed above main
-    x, y, w, h = offroad.content_rect()
-    label = NAV[self._selected]
-    sub = self._sub[0] if self._sub is not None else None
-    if self._mode == "mici" and label in NATIVE:
-      sub = FALLBACK_TITLES.get(type(top).__name__, "")
-    bold = gui_app.font(FontWeight.BOLD)
-    if sub is None:
-      rl.draw_text_ex(bold, label, rl.Vector2(x, (TITLE_H - 72) / 2), 72, 0, rl.WHITE)
+    if not self._stack and self._mode != "mici":
+      self._show(None)
+      self._draw_start(events if not modal else [])
     else:
-      back = rl.Rectangle(x - 24, 0, 260, 76)
-      if self._tapped("back", back, page_events):
-        if self._mode == "mici":
-          gui_app.pop_widgets_to(self._main, instant=True)
-        else:
-          self._sub = None
-      rl.draw_text_ex(medium, "Back", rl.Vector2(x, 22), 40, 0, ACCENT if self._pressed != "back" else DIM)
-      rl.draw_text_ex(bold, f"{label} / {sub}" if sub else label, rl.Vector2(x, 72), 60, 0, rl.WHITE)
+      self._draw_detail(top, events if not modal else [])
+    self._hook_modal()
+    if modal:
+      with self._native(events):
+        top.render(rl.Rectangle(0, 0, *SCREEN))
 
-    if self._mode == "mici":
-      return  # the mici page is drawn in FALLBACK_VIEW
-    page = self._page()
+  def _show(self, page) -> None:
     if page is not self._shown:
       if self._shown is not None:
         self._shown.hide_event()
       if page is not None:
         page.show_event()
       self._shown = page
+
+  # tile screen and edit mode
+
+  def _draw_start(self, events) -> None:
+    now = time.monotonic()
+    placed = self._place(False)
+    for ev in events:
+      if ev.slot != 0:
+        continue
+      x, y = ev.pos.x, ev.pos.y
+      if ev.left_pressed:
+        self._gesture.press(x, y, ev.t)
+      elif ev.left_released:
+        self._on_gesture(self._gesture.start, self._gesture.release(x, y, ev.t), x, y, placed)
+      elif ev.left_down:
+        self._on_gesture(self._gesture.start, self._gesture.move(x, y, ev.t), x, y, placed)
+    if self._gesture.start is not None:
+      self._on_gesture(self._gesture.start, self._gesture.tick(now), *self._gesture.pos, placed)
+    placed = self._place(False)
+    self._draw_tiles(placed, now)
+    if not self._edit:
+      return
+    cell = tiles.add_cell(placed, False)
+    if cell is not None:
+      x, y, w, h = tiles.cell_rect(*cell)
+      rl.draw_rectangle_lines_ex(rl.Rectangle(x, y, w, h), 3, DIM)
+      rl.draw_line_ex(rl.Vector2(x + w / 2 - 40, y + h / 2), rl.Vector2(x + w / 2 + 40, y + h / 2), 6, DIM)
+      rl.draw_line_ex(rl.Vector2(x + w / 2, y + h / 2 - 40), rl.Vector2(x + w / 2, y + h / 2 + 40), 6, DIM)
+    if self._selected in placed and self._drag is None:
+      self._draw_corner_buttons(tiles.tile_rect(placed[self._selected]))
+    if self._drag is not None and self._drag in placed and self._gesture.start is not None:
+      e = self._entries[self._drag]
+      x, y, w, h = tiles.tile_rect(placed[self._drag])
+      dx, dy = self._gesture.pos[0] - self._gesture.start[0], self._gesture.pos[1] - self._gesture.start[1]
+      if self._face(e, placed[self._drag][2], now):
+        self._blit(e, rl.Rectangle(x + dx, y + dy, w, h))
+
+  @staticmethod
+  def _draw_corner_buttons(rect) -> None:
+    buttons = tiles.corner_buttons(rect)
+    for name, (cx, cy, r) in buttons.items():
+      rl.draw_circle(int(cx), int(cy), r, rl.WHITE)
+      d = r * 0.45
+      dark = rl.Color(20, 20, 24, 255)
+      if name == "unpin":  # x
+        rl.draw_line_ex(rl.Vector2(cx - d, cy - d), rl.Vector2(cx + d, cy + d), 5, dark)
+        rl.draw_line_ex(rl.Vector2(cx - d, cy + d), rl.Vector2(cx + d, cy - d), 5, dark)
+      else:  # diagonal double arrow
+        rl.draw_line_ex(rl.Vector2(cx - d, cy + d), rl.Vector2(cx + d, cy - d), 5, dark)
+        for sx, sy in ((cx + d, cy - d), (cx - d, cy + d)):
+          k = 1 if sx > cx else -1
+          rl.draw_line_ex(rl.Vector2(sx, sy), rl.Vector2(sx - k * d * 0.9, sy), 5, dark)
+          rl.draw_line_ex(rl.Vector2(sx, sy), rl.Vector2(sx, sy + k * d * 0.9), 5, dark)
+
+  def _on_gesture(self, start, event, x, y, placed) -> None:
+    if event is None or start is None:
+      return
+    sx, sy = start[:2]
+    tid = tiles.hit(placed, sx, sy)
+    if event == "long" and not self._edit:
+      self._edit, self._selected = True, tid
+    elif event == "drag" and self._edit and tid is not None:
+      self._drag = self._selected = tid
+    elif event == "drop" and self._drag is not None:
+      cell = tiles.cell_at(x, y)
+      if cell is not None:
+        self._save(tiles.move(self._pinned, placed, self._drag, cell))
+      self._drag = None
+    elif event == "tap" and not self._edit:
+      if tid is not None:
+        self.open_tile(tid)
+    elif event == "tap":
+      self._edit_tap(sx, sy, tid, placed)
+
+  def _edit_tap(self, x, y, tid, placed) -> None:
+    if self._selected in placed:
+      for name, (cx, cy, r) in tiles.corner_buttons(tiles.tile_rect(placed[self._selected])).items():
+        if (x - cx) ** 2 + (y - cy) ** 2 <= (r + 12) ** 2:
+          if name == "unpin":
+            self._save(*tiles.unpin(self._pinned, self._hidden, self._selected))
+            self._selected = None
+          else:
+            self._save(tiles.resize(self._pinned, self._selected, self._entries[self._selected].spec.sizes))
+          return
+    if tid is not None:
+      if tid == self._selected:
+        self._edit, self._selected = False, None
+      else:
+        self._selected = tid
+      return
+    if tiles.cell_at(x, y) is not None and tiles.cell_at(x, y) == tiles.add_cell(placed, False):
+      visible = [(i, s) for i, s, _ in self._visible(False)]
+      ids = tiles.addable(visible, [i for i in self._hidden if tiles.shows(self._entries[i].spec, False)], placed)
+      self._open("add tiles", AddTilesPage([self._entries[i] for i in ids], self._pin))
+      return
+    self._edit, self._selected = False, None
+
+  # detail pages
+
+  def _draw_detail(self, top, events) -> None:
+    title, page = self._stack[-1] if self._stack else ("", None)
+    parent = self._stack[-2][0] if len(self._stack) > 1 else "xpilot"
+    if self._mode == "mici" and page is not None:
+      parent, title = title, FALLBACK_TITLES.get(type(top).__name__, "")
+    self._draw_title(parent, title, events)
+    if self._mode == "mici":
+      self._show(None)
+      return  # the mici page is drawn in FALLBACK_VIEW
+    self._show(page)
     if page is not None:
-      with self._native(page_events):
-        page.render(rl.Rectangle(x, y, w, h))
-    self._hook_modal()
-    if modal:
       with self._native(events):
-        top.render(rl.Rectangle(0, 0, *SCREEN))
+        page.render(rl.Rectangle(*CONTENT))
+
+  def _draw_title(self, parent: str, title: str, events) -> None:
+    back = rl.Rectangle(*BACK)
+    for ev in events:
+      inside = rl.check_collision_point_rec(ev.pos, back)
+      if ev.left_pressed and inside:
+        self._back_pressed = True
+      if ev.left_released and self._back_pressed:
+        self._back_pressed = False
+        if inside:
+          self._back()
+    cx, cy, r = 72, 84, 38
+    color = DIM if self._back_pressed else rl.WHITE
+    rl.draw_ring(rl.Vector2(cx, cy), r - 3, r, 0, 360, 48, color)
+    rl.draw_line_ex(rl.Vector2(cx - 16, cy), rl.Vector2(cx + 16, cy), 4, color)
+    rl.draw_line_ex(rl.Vector2(cx - 16, cy), rl.Vector2(cx - 2, cy - 14), 4, color)
+    rl.draw_line_ex(rl.Vector2(cx - 16, cy), rl.Vector2(cx - 2, cy + 14), 4, color)
+    rl.draw_text_ex(gui_app.font(FontWeight.SEMI_BOLD), parent.upper(), rl.Vector2(CONTENT[0], 50), 34, 2, DIM)
+    rl.draw_text_ex(gui_app.font(FontWeight.NORMAL), title.lower(), rl.Vector2(CONTENT[0] - 6, 88), 110, 0, rl.WHITE)
+    rl.draw_line_ex(rl.Vector2(CONTENT[0], TITLE_H - 2), rl.Vector2(CONTENT[0] + CONTENT[2], TITLE_H - 2), 2, rl.Color(255, 255, 255, 30))

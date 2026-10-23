@@ -1,4 +1,4 @@
-"""Pyray-free logic of the offroad pages (UI v3): nav entries, view modes, touch mapping, plugin rows and store jobs.
+"""Pyray-free logic of the offroad detail pages (UI v4): view modes, touch mapping, plugin rows and store jobs.
 Kept apart from drawing so tools/sp_tesla_e2e/offroad_pages_check.py can test it on a host without raylib."""
 import json
 import os
@@ -9,13 +9,12 @@ from openpilot.tesla import store
 from openpilot.tesla.manifest import CATEGORIES, conflicting
 from openpilot.tesla.plugins import FAULTS_PARAM, LOAD_ERRORS, PLUGINS, resolve
 
-NAV = ("Home", "Toggles", "Models", "Plugins", "Tesla", "Network", "Device", "Software", "Developer")
 MICI = (536, 240)
-NAV_W, TITLE_H = 360, 150
-CONTENT = (360, 150, 1800, 930)  # x, y, w, h right of the nav column and below the title band
-MAX_W = 1500  # content rows are at most this wide, centered in CONTENT
+TITLE_H = 230  # detail page title band: back button, parent name, page title
+BACK = (0, 0, 140, TITLE_H)  # back button touch area
+CONTENT = (140, TITLE_H, 1920, 1080 - TITLE_H)  # x, y, w, h of a detail page's rows
 ONBOARDING_VIEW = (456, 180, 1608, 720)  # onboarding: mici at 3x, as in v2
-FALLBACK_VIEW = (456, 255, 1608, 720)  # mici pages without a native page (Models, mici dialogs): 3x centered in CONTENT
+FALLBACK_VIEW = (CONTENT[0] + (CONTENT[2] - 1608) // 2, CONTENT[1] + (CONTENT[3] - 720) // 2, 1608, 720)  # mici pages: 3x in CONTENT
 FAR = 100000.0
 NATIVE_VIEW = (FAR, FAR, MICI[0], MICI[1])  # nothing drawn; touches map far outside every mici widget
 
@@ -37,11 +36,6 @@ def to_logical(view, x: float, y: float) -> tuple[float, float]:
 def to_screen(view, x: float, y: float) -> tuple[float, float]:
   vx, vy, vw, vh = view or NATIVE_VIEW
   return vx + x * vw / MICI[0], vy + y * vh / MICI[1]
-
-
-def content_rect(width: float = CONTENT[2]) -> tuple[float, float, float, float]:
-  w = min(MAX_W, width)
-  return CONTENT[0] + (CONTENT[2] - w) / 2, CONTENT[1], w, CONTENT[3]
 
 
 with open(os.path.join(BASEDIR, "openpilot/selfdrive/selfdrived/alerts_offroad.json")) as f:

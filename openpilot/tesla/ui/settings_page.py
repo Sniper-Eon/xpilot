@@ -57,7 +57,7 @@ class SettingsList(NavScroller):
 
   def _choose(self, setting) -> None:
     page = _page()
-    for label, value in setting_choices(setting):
+    for label, value in setting_choices(setting, ui_state.is_metric):
       button = BigButton(label)
       button.set_enabled(ui_state.is_offroad)
       button.set_click_callback(lambda v=value: (_set_param(setting.key, v), self.show_event(), gui_app.pop_widget()))
@@ -69,7 +69,7 @@ class SettingsList(NavScroller):
     for key, toggle in self.toggles:
       toggle.set_checked(bool(_params().get(key, return_default=True)))
     for setting, button in self.choice_buttons:
-      button.set_value(setting_label(setting, _params().get(setting.key, return_default=True)))
+      button.set_value(setting_label(setting, _params().get(setting.key, return_default=True), ui_state.is_metric))
 
 
 class TeslaSettingsMici(SettingsList):
