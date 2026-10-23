@@ -8,6 +8,7 @@
 - **基线**：sunnypilot `922513f`，opendbc `5be750714`。只做这一次基准，之后不再整体合并上游，只手工挑修复（`tools/dev_sp_release/upstream_watch.py`）。
 - **主体**：横向、纵向、模型都是 SP 原版，Tesla 车端代码是上游原版。
 - **扩展**：xpilot 的功能全部以插件形式接入，不改 SP 主体逻辑。
+- **现状（2026-10-23）**：所有功能都是插件。SP 文件里不再有手写的功能注册：雷达替换走 `radar_interface` 钩子（第 7 节），OSM 地图进程由 `osm_map` 插件提供（第 8 节），插件之间的数据走 `pluginMsg`（8d 节）。都经过 `plugin.json` 发现、总开关、资源声明和出错隔离。
 - **已删除**：其他车型、comma 云、sunnylink、旧的大屏 UI、扭矩车用的横向控制、翻译（UI 只用英文）。
 - **硬件**：C3、C3X、C3XL、C4。大屏设备上整屏是磁贴，行驶时 mici 画面固定在中间、磁贴排在四周（见第 9 节）。
 
@@ -18,7 +19,7 @@
 3. **插件不能绕过车端和 panda 的检查。** 纵向：`long_target` 加速只能替换驾驶员设定车速（条件见第 4 节）；`plan_filter` 只能收紧；`role:long.planner` 可以整体替换纵向计划、包括跟车（用户 2026-10-22 决定），但加速度限制、FCW、踩刹车退出、原车 AEB 和 panda 限制不变。横向：`role:lateral.controller` 的输出不额外限制，靠车端转角速率限制和 panda 兜底。外接算力的数据只做建议。
 4. **每个 CAN 发送地址都必须有 panda safety 插件**（`opendbc/safety/plugins/`），在插件里自己校验内容、频率、时效和 `controls_allowed`。没有 safety 插件，panda 会直接拦掉。
 5. **插件出错不能拖垮进程**：输入过期就当周期什么都不发。宿主兜底：插件在任何钩子里抛异常，就被记进 `XpilotPluginFaults`、本次进程内停用，其他插件和 SP 照常运行；plan filter 出错时计划照常发布。UI 磁贴和叠加层连续出错 3 次会停止绘制。
-6. **Params**：插件的 key 写在自己 `plugin.json` 的 `params` 里，然后运行 `python3 openpilot/tesla/plugins/gen_params.py` 生成 `common/plugin_params.inc` 并一起提交；不属于插件的 key 才写进 `params_keys.h`。每个插件有一个 BOOL 总开关 `enable_param`，默认关闭；例外：只做显示、`claims` 为空的 `ui` 类插件（如 `speed_card`）可以默认开启。设置项写在 `plugin.json` 的 `settings` 里。
+6. **Params**：插件的 key 写在自己 `plugin.json` 的 `params` 里，然后运行 `python3 openpilot/tesla/plugins/gen_params.py` 生成 `common/plugin_params.inc` 并一起提交；不属于插件的 key 才写进 `params_keys.h`。每个插件有一个 BOOL 总开关 `enable_param`，默认关闭；例外：只做显示、`claims` 为空的 `ui` 类插件（如 `speed_card`）可以默认开启；`osm_map` 的 `enable_param` 为 null，开关是 `MapProvider`（见第 8 节）。设置项写在 `plugin.json` 的 `settings` 里。
 7. **cereal**：只追加字段，不改已有字段的序号和类型。新消息用 `custom.capnp` 里的 `customReserved*` 槽位。
 8. **验证**（沿用 `AGENTS.md`）：
    - 先列出失败模式，再写检查。
@@ -42,6 +43,7 @@ openpilot/tesla/
   plugins/traffic_light/    红绿灯停车
   plugins/ambient_light/    盲区氛围灯
   plugins/external_compute/ 外接算力桥接
+  plugins/osm_map/          OSM 地图进程（mapd、mapd_manager、map_osm），由 MapProvider 控制
   plugins/speed_card/ lead_card/ speed_limit_card/ blindspot_edges/   大屏磁贴和盲区边框（只显示）
   ui/screen.py ui/tile.py ui/tiles.py ui/slots/   大屏磁贴宿主、磁贴基类、布局模型（无 pyray）、内置磁贴（slots/settings.py 设置，car.py、map.py 车况和地图）
   ui/plugin_ui.py           UI 侧插件加载：找到 Tile、HudOverlay 和 ScreenOverlay，插件关闭时隐藏
@@ -95,6 +97,8 @@ opendbc_repo/opendbc/safety/plugins/
 | `can.tx:0x<地址>:<总线>` | 发送这个 CAN 地址（还需要 panda safety 插件） | 是 |
 | `process:<名字>` | 运行这个 manager 进程 | 是 |
 | `source:<数据>` | 提供某类数据，如 `source:radar`、`source:lanes` | 是 |
+| `source:radar` | 用 `radar_interface` 替换车型自带的雷达（第 7 节） | 是 |
+| `source:map` | 提供 `liveMapDataSP` 地图数据（`osm_map`，第 8 节） | 是 |
 | `role:<环节>` | 占用一个可替换的环节，如 `role:lateral.controller` | 是 |
 | `long.target` | 使用 `long_target` 钩子 | 否，宿主按固定规则合并 |
 | `plan.filter` | 使用 `plan_filter` 钩子 | 否，按优先级串联 |
@@ -120,6 +124,8 @@ opendbc_repo/opendbc/safety/plugins/
 | `control_sends(CS, CC, now_ns)` | card，每个控制周期 | 返回要追加发送的 `CanData` |
 | `service_params(params)` | card，约 10 Hz | 重新读取实时设置 |
 | `processes()`（类方法） | manager | 额外进程。manager 相关的 import 写在方法内部 |
+| `radar_interface(CP, CP_SP)`（类方法，`source:radar`） | card，识别车型后调用一次 | 返回 `RadarInterfaceBase` 实例（`update(can_packets) -> RadarData 或 None`），替换车型自带的雷达；不需要就返回 None。创建或 `update` 时出错：记进 `XpilotPluginFaults`，本次运行改用车型自带的雷达（第 7 节） |
+| `plugins.send_msg(pm, plugin, kind, payload, valid_for_ms)`、`plugins.PluginMsgs().fresh(kind)` | 任何插件代码 | 发布和读取 `pluginMsg`（8d 节），每个 `kind` 要声明 `msg:<kind>` |
 | `long_target(CP, params)`（类方法） | plannerd，每个计划周期 | 返回带 `update(sm, v_ego, v_cruise)` 的对象，给出目标车速（m/s）或 None。低于巡航车速：和 SP 自己的限速一样取最小；高于巡航车速：只替换驾驶员设定车速，且只在已接管、没踩油门/刹车、没 override 时生效，多个插件取最低，上限 `V_CRUISE_MAX`。MPC 跟车、模型和 SP 的限速功能仍然取最小，所以加速不会越过它们 |
 | `alert_source(CP, params)`（类方法） | selfdrived，每周期（100 Hz） | 返回带 `update(sm) -> list[PluginAlert]` 的对象。`PluginAlert(severity, title, body)`，severity 为 `info`（无声）、`warning`（提示音）、`critical`（警告音）。插件报警在任何状态都显示，不会让系统退出，优先级最高到 MID，SP 自己的退出和严重报警永远优先。标题最多 60 字符，正文 80 |
 | `lane_change_policy(params)`（类方法） | modeld 的 DesireHelper | 返回带 `allow(carstate, direction, default) -> bool` 的对象，只替换 SP 的"不用推方向盘就开始变道"这一个判断（`default` 是 SP 原来的结果）。打转向灯、最低车速、盲区和路沿检查仍然强制生效 |
@@ -129,7 +135,7 @@ opendbc_repo/opendbc/safety/plugins/
 | `plan_filter(CP, params)`（类方法） | plannerd | 返回带 `publisher(pm, sm)` 的对象，用来收紧纵向计划；不需要就返回 None |
 | `SERVICES` | plannerd、selfdrived、controlsd | 钩子需要额外订阅的服务；这些服务不参与存活和有效性检查，不会影响接管 |
 
-SP 里的调用位置：`selfdrive/car/card.py`（`CarPlugins`）、`selfdrive/controls/plannerd.py`（`services`、`plan_filters`、`plan_sink`、`long_targets`）、`sunnypilot/selfdrive/controls/lib/longitudinal_planner.py`（`apply_long_targets`）、`selfdrive/selfdrived/selfdrived.py`（`alert_sources`、`update_alerts`）、`sunnypilot/selfdrive/selfdrived/events.py`（插件报警定义，见 `openpilot/tesla/alerts.py`）、`selfdrive/controls/lib/desire_helper.py`（`lane_change_policies`、`lane_change_allowed`）、`selfdrive/controls/controlsd.py`（`lat_corrections`、`apply_lat_corrections`、`lateral_controller`）、`selfdrive/controls/lib/longitudinal_planner.py`（`apply_long_planner`）、`sunnypilot/system/fork_processes.py`（`processes`）。
+SP 里的调用位置：`selfdrive/car/card.py`（`CarPlugins`、`radar_interface`）、`selfdrive/controls/plannerd.py`（`services`、`plan_filters`、`plan_sink`、`long_targets`）、`sunnypilot/selfdrive/controls/lib/longitudinal_planner.py`（`apply_long_targets`）、`selfdrive/selfdrived/selfdrived.py`（`alert_sources`、`update_alerts`）、`sunnypilot/selfdrive/selfdrived/events.py`（插件报警定义，见 `openpilot/tesla/alerts.py`）、`selfdrive/controls/lib/desire_helper.py`（`lane_change_policies`、`lane_change_allowed`）、`selfdrive/controls/controlsd.py`（`lat_corrections`、`apply_lat_corrections`、`lateral_controller`）、`selfdrive/controls/lib/longitudinal_planner.py`（`apply_long_planner`）、`sunnypilot/system/fork_processes.py`（`processes`）。
 
 ## 5. 写一个新插件
 
@@ -173,13 +179,14 @@ typedef struct {
 
 ## 7. 雷达接入接口
 
-`opendbc_repo/opendbc/car/car_helpers.py` 里有 `RADAR_PLUGINS = {"tesla": "module:Class"}`，填上即可用一个 `RadarInterfaceBase` 子类替换车型自带的雷达，card 通过 `get_radar_interface()` 获取。目前为空，Tesla 用原车雷达。外接雷达如果需要发送报文，还要配一个 panda safety 插件。
+雷达也是插件：插件声明 `source:radar`，实现类方法 `radar_interface(CP, CP_SP)`，返回一个 `RadarInterfaceBase` 子类的实例。card 创建雷达时（`card.py` 一行调用 `plugins.radar_interface`）先问宿主，宿主按通常的规则选：只看 Tesla、插件已开启、赢得 `source:radar`（冲突时 `priority` 小的生效）、声明过资源。没有这样的插件，或者插件返回 None，就用车型自带的雷达（`car_helpers.get_radar_interface()`）。创建时出错，或者之后 `update` 出错，都记进 `XpilotPluginFaults`，本次运行改用车型自带的雷达。目前没有雷达插件，Tesla 用原车雷达。外接雷达如果需要发送报文，还要配一个 panda safety 插件。`car_helpers.py` 里原来的 `RADAR_PLUGINS` 表已删除。
 
 ## 8. 地图接口
 
 - **数据**：任何数据源只发布 `liveMapDataSP`，包括限速、前方限速、路名、`targetVelocities`（弯道目标速度）、`source`。
-- **选择**：用 `MapProvider` 参数选数据源，默认 `osm`；设置页有开关。
-- **新增数据源**：继承 `sunnypilot/mapd/live_map_data/base_map_data.py`，并在 `process_config.py` 里按 `MapProvider` 的取值注册进程。
+- **选择**：用 `MapProvider` 参数选数据源（`osm` 或 `none`），默认 `osm`；设置页有开关。
+- **OSM 插件 `osm_map`**：类别 `navigation`，声明 `source:map` 和三个进程 `process:mapd`、`process:mapd_manager`、`process:map_osm`。`processes()` 返回这三个进程，只在 `MapProvider == "osm"` 时运行（`map_osm` 还要求已启动），`process_config.py` 不再列出它们。它的 `enable_param` 为 null（宿主视为一直开启）：`MapProvider` 已经是用户在设置页看到的开关，再加一个 BOOL 开关会出现两个开关管同一件事、而且可能互相矛盾，所以只保留 `MapProvider`，取值和设置页都不变。
+- **新增数据源**：写一个插件，声明 `source:map` 和自己的 `process:<名字>`，在 `processes()` 里返回发布 `liveMapDataSP` 的进程（继承 `sunnypilot/mapd/live_map_data/base_map_data.py`），按 `MapProvider` 的取值决定是否运行。两个地图插件都开启时，`source:map` 冲突，`priority` 小的生效。
 - **导航**：发布 `navInstruction`，再把 256×256 地图图像发到 VisionIPC 的 `mapsd` 流。
 
 ## 8b. 外接算力接口（`plugins/external_compute/`）
@@ -245,6 +252,7 @@ typedef struct {
 | `traffic_light` | 读取 Tesla 自身的红绿灯感知（APP_trafficControl），由 trafficcontrold 和计划仲裁器在红灯前停车（只收紧） | `TeslaTrafficSignalControlEnabled`、`TeslaTrafficStopReference`、`TeslaTrafficControlMaxSpeed` | 无发送 |
 | `ambient_light` | 盲区有车时把氛围灯点成红色；区分昼夜亮度 | `TeslaBlindspotAmbient*` | `ambient_light.h`（0x679） |
 | `external_compute` | 外接算力桥接（见 8b），本身不控制车辆 | `XpilotExternal*` | 无发送 |
+| `osm_map` | OSM 地图数据：mapd、mapd_manager、map_osm 进程，发布 `liveMapDataSP`；开关是 `MapProvider == "osm"`（见第 8 节） | `MapProvider`（核心参数，不在插件清单里） | 无发送 |
 | `speed_card` | 大屏磁贴：车速（仪表车速）和 SET 设定车速；默认开启 | `XpilotSpeedCard` | 无发送 |
 | `lead_card` | 大屏磁贴：前车距离和相对速度（radarState.leadOne）；默认开启 | `XpilotLeadCard` | 无发送 |
 | `speed_limit_card` | 大屏磁贴：SP 解析出的限速（longitudinalPlanSP）；默认开启 | `XpilotSpeedLimitCard` | 无发送 |
@@ -255,7 +263,7 @@ typedef struct {
 ```
 python3 tools/sp_tesla_e2e/static_imports.py --baseline <基线 json>   # 有没有断掉的 import
 python3 tools/sp_tesla_e2e/tile_layout_check.py                       # 大屏磁贴：网格、排布、行驶避让、编辑操作、手势、重画判断、ASCII 文字
-python3 tools/sp_tesla_e2e/plugin_host_check.py                       # 插件宿主：出错隔离、总开关、元数据、参数、目标车速
+python3 tools/sp_tesla_e2e/plugin_host_check.py                       # 插件宿主：出错隔离、总开关、元数据、参数、目标车速、雷达插件、osm_map 进程、pluginMsg
 python3 tools/sp_tesla_e2e/external_bridge_check.py                   # 外接算力 TCP 桥接（本机真实 socket）
 python3 tools/sp_tesla_e2e/manifest_check.py                          # 插件清单、资源声明、冲突裁决
 python3 tools/sp_tesla_e2e/phase2_check.py                            # 插件报警、变道策略、横向修正
