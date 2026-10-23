@@ -5,8 +5,9 @@ import time
 from opendbc.car.tesla.values import CANBUS
 from openpilot.tesla.plugin import Plugin
 
-# ponytail: layouts from the community Model 3/Y CAN DBC (0x132 ID132HVBattAmpVolt, 0x292 ID292BMS_SOC), little endian;
-# verify against the car and move to a DBC once more BMS signals are needed
+# Layouts match opendbc tesla_modely_hw4_perception.dbc (BO_ 306 BMS_hvBusStatus, BO_ 658 BMS_socStatus). packCurrent is
+# negated as in the community Model 3 DBC so discharging reads positive. ponytail: sign and bus (vehicle) come from the community
+# Model 3 DBC and are not yet seen on a car; switch to a CANParser on that DBC once more BMS signals are needed
 HV_STATUS, SOC_STATUS = 0x132, 0x292
 STALE_NS = 2_000_000_000
 
