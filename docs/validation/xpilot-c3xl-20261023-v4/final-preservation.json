@@ -1,0 +1,97 @@
+{
+  "head": "3e0b8ba896e876166b86639881f7ead288c846dd",
+  "hostname": "comma-9c13c9f5",
+  "service": "active",
+  "started": false,
+  "IsOffroad": true,
+  "IsEngaged": false,
+  "layout_before_exists": false,
+  "layout_final_exists": true,
+  "layout_final_sha256": "bbfa8eb72310ee2e77e8322de689f69e969fbdb599f69695ce6600b0c3749034",
+  "layout_concurrency": "user confirmed touching the physical screen several times; current user layout preserved",
+  "protected_params_unchanged": true,
+  "protected_params": {
+    "DoReboot": {
+      "exists": false,
+      "sha256": null
+    },
+    "DoShutdown": {
+      "exists": false,
+      "sha256": null
+    },
+    "DoUninstall": {
+      "exists": false,
+      "sha256": null
+    },
+    "HasAcceptedTerms": {
+      "exists": true,
+      "sha256": "d4735e3a265e16eee03f59718b9b5d03019c07d8b6c51f90da3a666eec13ab35"
+    },
+    "HasAcceptedTermsSP": {
+      "exists": true,
+      "sha256": "d0ff5974b6aa52cf562bea5921840c032a860a91a3512f7fe8f768f6bbe005f6"
+    },
+    "CompletedTrainingVersion": {
+      "exists": true,
+      "sha256": "911fc0c48cb0c70601db5775a9bef1b740dc4cc9f9b46389b9f0563fe7eb94d7"
+    },
+    "IsDriverViewEnabled": {
+      "exists": true,
+      "sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+    },
+    "CalibrationParams": {
+      "exists": false,
+      "sha256": null
+    },
+    "LiveTorqueParameters": {
+      "exists": false,
+      "sha256": null
+    },
+    "LiveParametersV2": {
+      "exists": false,
+      "sha256": null
+    },
+    "LiveDelay": {
+      "exists": false,
+      "sha256": null
+    }
+  },
+  "prior_dirty_files": 287,
+  "prior_dirty_content_changed": [],
+  "critical_processes": [
+    {
+      "name": "ui",
+      "running": true,
+      "pid": 161246,
+      "exitCode": 0
+    },
+    {
+      "name": "pandad",
+      "running": true,
+      "pid": 161262,
+      "exitCode": 0
+    },
+    {
+      "name": "hardwared",
+      "running": true,
+      "pid": 161266,
+      "exitCode": 0
+    }
+  ],
+  "panda_samples": 151,
+  "alive": {
+    "deviceState": true,
+    "pandaStates": true,
+    "managerState": true,
+    "peripheralState": true,
+    "uiDebug": true
+  },
+  "valid": {
+    "deviceState": true,
+    "pandaStates": true,
+    "managerState": true,
+    "peripheralState": true,
+    "uiDebug": true
+  },
+  "e2e_script_sha256": "e5075a49325a550a5544694f6e1c210baa1097bfc50d5016d261028b4b74136d"
+}

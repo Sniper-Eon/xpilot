@@ -1,0 +1,7 @@
+{
+  "original_exists": false,
+  "after_e2e_exists": true,
+  "preserved_after_e2e_sha256": "11a4122b191393b0fe21fa981560838f49b500886c23a55d4977c9ea1caf790e",
+  "action": "service stopped; removed only the task-created layout file to restore original absence",
+  "restored_exists": false
+}

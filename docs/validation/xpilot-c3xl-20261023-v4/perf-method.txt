@@ -1,0 +1,95 @@
+"""30 s production UI measurement, using /proc UI ticks and uiDebug as in v3b.
+Failure modes: missing samples; stale/dead UI; UI PID replacement/reuse; started,
+engaged or controlsAllowed becomes true; Panda faults; no offroad parameter.
+Raw timestamped samples and the summary are saved for independent recomputation.
+Neutral corner taps keep the production display awake without changing Params.
+"""
+import fcntl
+import json
+import os
+from pathlib import Path
+import statistics
+import struct
+import subprocess
+import time
+
+from openpilot.cereal import messaging
+from openpilot.common.params import Params
+
+params = Params()
+assert params.get_bool('IsOffroad') and not params.get_bool('IsEngaged')
+assert Path('/sys/class/input/event2/device/name').read_text().strip() == 'Samsung Touchscreen'
+touch_fd = os.open('/dev/input/event2', os.O_RDWR)
+assert struct.unpack('6i', fcntl.ioctl(touch_fd, 0x80184575, bytes(24)))[1:3] == (0, 1080)
+assert struct.unpack('6i', fcntl.ioctl(touch_fd, 0x80184576, bytes(24)))[1:3] == (0, 2160)
+touches = []
+
+
+def wake():
+  def event(kind, code, value):
+    os.write(touch_fd, struct.pack('llHHi', 0, 0, kind, code, value))
+  for kind, code, value in ((3, 0x2f, 0), (3, 0x39, 77), (3, 0x35, 10), (3, 0x36, 10), (3, 0, 10), (3, 1, 10), (1, 330, 1), (0, 0, 0)):
+    event(kind, code, value)
+  try:
+    time.sleep(0.05)
+  finally:
+    for kind, code, value in ((3, 0x2f, 0), (3, 0x39, -1), (1, 330, 0), (0, 0, 0)):
+      event(kind, code, value)
+  touches.append(time.monotonic())
+
+
+wake()
+sm = messaging.SubMaster(['deviceState', 'pandaStates', 'managerState', 'uiDebug'])
+deadline = time.monotonic() + 20
+while not all(sm.alive.values()) or not sm.seen['uiDebug']:
+  sm.update(100)
+  assert time.monotonic() < deadline, 'production services not alive'
+pid = next(p.pid for p in sm['managerState'].processes if p.name == 'ui' and p.running)
+
+
+def stat():
+  fields = Path(f'/proc/{pid}/stat').read_text().rsplit(')', 1)[1].split()
+  return int(fields[11]) + int(fields[12]), int(fields[19])
+
+
+ticks, identity = stat()
+start = time.monotonic()
+samples, panda = [], []
+next_touch = start + 10
+while time.monotonic() - start < 30:
+  if time.monotonic() >= next_touch:
+    wake()
+    next_touch += 10
+  sm.update(100)
+  assert not sm['deviceState'].started and not params.get_bool('IsEngaged')
+  if sm.updated['managerState']:
+    assert any(p.name == 'ui' and p.running and p.pid == pid for p in sm['managerState'].processes), 'UI PID changed'
+  if sm.updated['uiDebug']:
+    samples.append([time.monotonic() - start, sm['uiDebug'].frameTimeMillis, sm['uiDebug'].cpuTimeMillis, sm.valid['uiDebug']])
+  if sm.updated['pandaStates']:
+    row = [(p.controlsAllowed, str(p.faultStatus)) for p in sm['pandaStates']]
+    assert row and all(not allowed and fault == 'none' for allowed, fault in row)
+    panda.append(row)
+elapsed = time.monotonic() - start
+last_ticks, last_identity = stat()
+os.close(touch_fd)
+Path('/data/xpilot-ui-check-v4-evidence/perf-samples.json').write_text(json.dumps(samples) + '\n')
+assert identity == last_identity and len(samples) > 1000 and panda
+assert params.get_bool('IsOffroad') and all(sm.alive.values())
+
+
+def summary(values):
+  percentiles = statistics.quantiles(values, n=100, method='inclusive')
+  return {'avg': statistics.mean(values), 'median': statistics.median(values), 'p95': percentiles[94], 'p99': percentiles[98], 'max': max(values)}
+
+
+frames, cpu = [s[1] for s in samples], [s[2] for s in samples]
+result = {'head': subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip(), 'duration_seconds': elapsed,
+          'ui_pid': pid, 'process_cpu_percent': (last_ticks - ticks) / os.sysconf('SC_CLK_TCK') / elapsed * 100,
+          'started': sm['deviceState'].started, 'frame_samples': len(samples), 'frame_time_ms': summary(frames),
+          'frame_cpu_ms': summary(cpu), 'over_20ms': sum(f > 20 for f in frames), 'over_33_3ms': sum(f > 33.3 for f in frames),
+          'over_100ms': sum(f > 100 for f in frames), 'uiDebug_valid_samples': sum(s[3] for s in samples),
+          'panda_samples': len(panda), 'ui_ticks_delta': last_ticks - ticks, 'clock_ticks_per_second': os.sysconf('SC_CLK_TCK'),
+          'wake_touches_seconds': [t - start for t in touches], 'wake_touch_raw_xy': [10, 10]}
+Path('/data/xpilot-ui-check-v4-perf.json').write_text(json.dumps(result, indent=2) + '\n')
+print(json.dumps(result, indent=2))

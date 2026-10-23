@@ -1,0 +1,39 @@
+kj/filesystem-disk-unix.c++:1734: warning: PWD environment variable doesn't match current directory; pwd = /home/comma
+{
+  "head": "3e0b8ba896e876166b86639881f7ead288c846dd",
+  "duration_seconds": 30.008654595001644,
+  "ui_pid": 153399,
+  "process_cpu_percent": 23.226632763339378,
+  "started": false,
+  "frame_samples": 1745,
+  "frame_time_ms": {
+    "avg": 17.164945772930682,
+    "median": 17.161643981933594,
+    "p95": 17.192603302001952,
+    "p99": 17.21311408996582,
+    "max": 17.229351043701172
+  },
+  "frame_cpu_ms": {
+    "avg": 1.5217200855812576,
+    "median": 1.4607009887695312,
+    "p95": 1.8777032375335694,
+    "p99": 2.2039921474456787,
+    "max": 5.176513195037842
+  },
+  "over_20ms": 0,
+  "over_33_3ms": 0,
+  "over_100ms": 0,
+  "uiDebug_valid_samples": 0,
+  "panda_samples": 301,
+  "ui_ticks_delta": 697,
+  "clock_ticks_per_second": 100,
+  "wake_touches_seconds": [
+    -0.5490421659997082,
+    10.058224413000062,
+    20.059245023001495
+  ],
+  "wake_touch_raw_xy": [
+    10,
+    10
+  ]
+}

@@ -1,0 +1,129 @@
+1689600
+1689600
+tee: /sys/devices/system/cpu/cpufreq/policy4/scaling_max_freq: Invalid argument
+waiting for magic
+magic ready after 0s
+ln: failed to create symbolic link '/home/comma/.cursor-server/vscode-server': File exists
+ln: failed to create symbolic link '/home/comma/.windsurf-server/vscode-server': File exists
+/data/openpilot has been modified, skipping overlay update installation
+openpilot/system/loggerd/bootlog.cc: bootlog to /data/media/0/realdata/boot/00000017--b38dbeab7e.zst
+No IRQs found for 'fts_ts'
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+gbm_create_device(156): Info: backend name is: msm_drm
+raylib: COMMA: Failed to initialize color correction
+raylib: FONT: Requested codepoints glyphs found: [117/122]
+pid 322's current affinity list: 3
+pid 322's new affinity list: 3
+raylib: FONT: Requested codepoints glyphs found: [117/122]
+raylib: FONT: Requested codepoints glyphs found: [117/122]
+raylib: FONT: Requested codepoints glyphs found: [107/122]
+raylib: FONT: Requested codepoints glyphs found: [117/122]
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+Panda 1d002d000a51303436323838 connected, version: DEV-443dd964-DEBUG, signature 89e7f6a96b68f6a0, expected 89e7f6a96b68f6a0
+openpilot/selfdrive/pandad/main.cc: starting pandad
+openpilot/selfdrive/pandad/pandad.cc: connecting to panda: 1d002d000a51303436323838
+openpilot/selfdrive/pandad/usb.cc: failed to connect to panda over USB: Success
+openpilot/selfdrive/pandad/panda.cc: connected to 1d002d000a51303436323838 over SPI
+openpilot/selfdrive/pandad/pandad.cc: connected to panda
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m
+[32mlogmessaged[0m [32mtimed[0m [32mui[0m [32mdeleter[0m [32mpandad[0m [32mhardwared[0m [32mtombstoned[0m [32mupdated[0m [32mmodels_manager[0m [32mmodeld_warmup[0m [32malert_output[0m

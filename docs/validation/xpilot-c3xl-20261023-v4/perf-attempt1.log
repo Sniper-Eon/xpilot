@@ -1,0 +1,6 @@
+kj/filesystem-disk-unix.c++:1734: warning: PWD environment variable doesn't match current directory; pwd = /home/comma
+Traceback (most recent call last):
+  File "/data/xpilot-ui-check-v4-evidence/perf.py", line 47, in <module>
+    assert identity == last_identity and len(samples) > 1000 and panda
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError

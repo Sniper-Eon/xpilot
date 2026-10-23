@@ -1,0 +1,57 @@
+{
+  "layout_exists": true,
+  "layout_sha256": "11a4122b191393b0fe21fa981560838f49b500886c23a55d4977c9ea1caf790e",
+  "protected_params": {
+    "DoReboot": {
+      "exists": false,
+      "sha256": null,
+      "value": null
+    },
+    "DoShutdown": {
+      "exists": false,
+      "sha256": null,
+      "value": null
+    },
+    "DoUninstall": {
+      "exists": false,
+      "sha256": null,
+      "value": null
+    },
+    "HasAcceptedTerms": {
+      "exists": true,
+      "sha256": "d4735e3a265e16eee03f59718b9b5d03019c07d8b6c51f90da3a666eec13ab35",
+      "value": "2"
+    },
+    "HasAcceptedTermsSP": {
+      "exists": true,
+      "sha256": "d0ff5974b6aa52cf562bea5921840c032a860a91a3512f7fe8f768f6bbe005f6",
+      "value": "1.0"
+    },
+    "CompletedTrainingVersion": {
+      "exists": true,
+      "sha256": "911fc0c48cb0c70601db5775a9bef1b740dc4cc9f9b46389b9f0563fe7eb94d7",
+      "value": "0.2.0"
+    },
+    "IsDriverViewEnabled": {
+      "exists": true,
+      "sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+      "value": "0"
+    },
+    "CalibrationParams": {
+      "exists": false,
+      "sha256": null
+    },
+    "LiveTorqueParameters": {
+      "exists": false,
+      "sha256": null
+    },
+    "LiveParametersV2": {
+      "exists": false,
+      "sha256": null
+    },
+    "LiveDelay": {
+      "exists": false,
+      "sha256": null
+    }
+  }
+}
