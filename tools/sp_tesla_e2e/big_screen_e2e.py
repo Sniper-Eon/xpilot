@@ -63,7 +63,6 @@ main = MiciMainLayout()
 host = gui_app.host
 driver_view_before = ui_state.params.get_bool('IsDriverViewEnabled')
 SETTINGS = ('status', 'toggles', 'plugins', 'tesla', 'models', 'network', 'device', 'software', 'developer')
-DATA = ('speed_card', 'lead_card', 'speed_limit_card', 'car', 'map')
 errors, cases = [], []
 original_render = host.render
 original_draw_texture_pro = rl.draw_texture_pro
@@ -317,9 +316,11 @@ def steps():
   host._layouts['drive'] = tiles.arrange([e.tile.SPEC for e in host._entries.values() if tiles.shows(e.tile.SPEC, True)], None, 'drive')
   yield from touch(center(tiles.bar_buttons(host._placed, host._layout == 'drive')['drive']))
   assert host._edit and host._layout == 'drive', 'Drive bar button did not select the drive layout'
-  check(set(host._placed) == set(DATA), f'drive edit tiles: {list(host._placed)}')
-  default_order = [tid for tid, _, _ in host._layouts['drive'][0] if tid in DATA]
-  for tid, cell in zip(default_order, ((0, 0), (7, 0), (0, 1), (7, 1), (0, 2))):
+  data = [tid for tid, _, _, _ in host._visible('drive')]  # enabled onroad tiles, built-in, plugin or store
+  check(set(host._placed) == set(data), f'drive edit tiles: {list(host._placed)}, expected {data}')
+  default_order = [tid for tid, _, _ in host._layouts['drive'][0] if tid in data]
+  free = [cell for cell in tiles.scan(True) if cell not in tiles.blocked(True)]
+  for tid, cell in zip(default_order, free):
     check(tid in host._placed and host._placed[tid][:2] == cell, f'default drive tile {tid}: {host._placed.get(tid)}, expected {cell}')
   for tid, (col, row, size) in host._placed.items():
     cols, rows = tiles.SIZES[size]
@@ -327,7 +328,7 @@ def steps():
   screenshot('edit-drive')
   cases.append({'name': 'edit drive default', 'order': default_order, 'placed': dict(host._placed)})
 
-  moved = next((tid for tid in DATA if tid in host._placed), None)
+  moved = next((tid for tid in data if tid in host._placed), None)
   assert moved is not None, 'no data tile to drag'
   sx, sy = center(tiles.tile_rect(host._placed[moved]))
   ex, ey = center(tiles.cell_rect(7, 3))
@@ -377,7 +378,7 @@ def steps():
     cells = {(col + c, row + r) for c in range(cols) for r in range(rows)}
     check(not cells & tiles.blocked(True), f'onroad tile {tid} overlaps blocked cells')
     check(tid not in SETTINGS and host._entries[tid].tile.SPEC.show != 'offroad', f'onroad settings tile {tid} placed')
-  for tid in DATA:
+  for tid in data:
     check(tid in host._placed, f'onroad data tile {tid} not placed')
   check(moved in host._placed and host._placed[moved][:2] == drop_cell, f'onroad lost fixed position of {moved}: {host._placed.get(moved)}')
   check(len(drawn) == len(forced), 'blindspot overlay did not draw successfully')
