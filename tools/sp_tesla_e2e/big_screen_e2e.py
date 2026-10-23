@@ -1,31 +1,42 @@
 #!/usr/bin/env python3
-"""Real GPU UI E2E for the big-screen host; saves screenshots and JSON, changes no settings.
-Failure modes:
-- offroad (UI v3) the mici texture is drawn on a native page, or not drawn (FALLBACK_VIEW) on the Models fallback
-- onroad viewport not at grid.VIEW, or to_logical and viewport disagree (touches land beside the widget that is drawn)
-- a nav row selects the wrong page, shows the wrong native page or leaves pages on the nav stack
-- a tap on the nav column or a native page reaches mici as a press inside a mici widget
-- the Plugin Store sub-page does not open with its breadcrumb, or Back in the title band does not close it
-- the host still draws its own alert banner (alerts must appear once, inside the view)
-- onroad cards missing, outside their zone, or overlapping the view
-- the blind-spot overlay does not draw, or breaks the frame
-Run with comma service stopped and native libraries built.
+"""Real GPU E2E for the UI v4 tiles; saves screenshots and result.json.
+
+Failure modes (listed before implementation):
+1. Offroad tile screen has a viewport, draws mici, or omits a settings tile.
+2. A mapped tap at a settings tile's center opens the wrong title/PAGE; Models
+   is not ModelsLayoutMici, has the wrong FALLBACK_VIEW, or never draws mici.
+3. A native detail page draws mici or grows the application nav stack beyond 1.
+4. BACK does not return to tiles; Plugins -> Store does not push a second detail
+   level, or BACK from Store does not return to the same Plugins page.
+5. Holding Toggles for LONG_PRESS+0.2 s does not select it in edit mode; its
+   resize corner does not change size; + does not open "add tiles"; tapping the
+   selected tile or an empty non-add cell does not leave edit mode.
+6. Editing permanently changes XpilotTileLayout bytes (including absence),
+   _pinned or _hidden; restore all three even when the run raises.
+7. More than 2 tile faces redraw over 60 idle, touch-free tile-screen frames.
+8. Synthetic onroad has the wrong tiles.VIEW, a tile overlaps VIEW/blocked
+   cells, settings remain placed, a required data tile is missing, or the
+   forced blind-spot overlay is absent, never draws, or raises.
+
+Run with comma service stopped and native libraries built. No CAN transmission,
+settings actions, store refresh/install, or reboot/reset/uninstall confirmation.
 """
 import argparse
 import json
 import subprocess
+import tempfile
 import time
+import traceback
 from pathlib import Path
 
 import pyray as rl
 from openpilot.common.params import Params
 from openpilot.system.ui.lib.application import gui_app, MouseEvent, MousePos
-from openpilot.selfdrive.ui.ui_state import ui_state
-from openpilot.tesla.ui.grid import VIEW, ZONES
-from openpilot.tesla.ui.offroad import FALLBACK_VIEW, NAV, content_rect
-from openpilot.tesla.ui.pages.store import StorePage
-from openpilot.tesla.ui.screen import NATIVE, BigScreenHost, NAV_TOP, NAV_W, ROW_H
 from openpilot.selfdrive.ui.mici.layouts.main import MiciMainLayout
+from openpilot.selfdrive.ui.ui_state import ui_state
+from openpilot.tesla.ui import tiles
+from openpilot.tesla.ui.offroad import BACK, FALLBACK_VIEW
+from openpilot.tesla.ui.screen import BigScreenHost
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--output', type=Path, required=True)
@@ -35,16 +46,17 @@ assert Params().get_bool('IsOffroad') and not Params().get_bool('IsEngaged')
 gui_app.init_window('xpilot big screen E2E', host=BigScreenHost)
 main = MiciMainLayout()
 host = gui_app.host
+SETTINGS = ('status', 'toggles', 'plugins', 'tesla', 'models', 'network', 'device', 'software', 'developer')
 errors, cases = [], []
 original_render = host.render
-frame = 0
-draws_before = [0]
-NAV_START, NAV_STEP = 30, 30
-ONROAD = NAV_START + NAV_STEP * len(NAV) + 10
-PLUGINS = NAV.index('Plugins')
-mici_draws = 0  # draws of the mici texture outside screenshot(); offroad only the Models fallback may add to it
-in_screenshot = False
 original_draw_texture_pro = rl.draw_texture_pro
+original_begin_texture_mode = rl.begin_texture_mode
+frame, next_step = 0, 1
+mici_draws, tile_redraws = 0, 0
+in_screenshot, completed = False, False
+pending_events = []
+layout_path = host._layout_params._path(tiles.LAYOUT_PARAM)
+layout_backup = None
 
 
 def counting_draw_texture_pro(texture, *rest):
@@ -54,7 +66,15 @@ def counting_draw_texture_pro(texture, *rest):
   original_draw_texture_pro(texture, *rest)
 
 
+def counting_begin_texture_mode(target):
+  global tile_redraws
+  if not in_screenshot and any(e.texture is not None and target.id == e.texture.id for e in host._entries.values()):
+    tile_redraws += 1
+  original_begin_texture_mode(target)
+
+
 rl.draw_texture_pro = counting_draw_texture_pro
+rl.begin_texture_mode = counting_begin_texture_mode
 
 
 def check(ok, message):
@@ -63,121 +83,252 @@ def check(ok, message):
 
 
 def rect(r):
-  return [r.x, r.y, r.width, r.height]
+  return None if r is None else [r.x, r.y, r.width, r.height]
+
+
+def center(r):
+  x, y, w, h = r
+  return x + w / 2, y + h / 2
 
 
 def screenshot(name):
   global in_screenshot
   in_screenshot = True
   target = rl.load_render_texture(2160, 1080)
-  rl.begin_texture_mode(target)
-  rl.clear_background(rl.BLACK)
-  texture = gui_app._render_texture.texture
-  view = host.viewport()
-  if view is not None:
-    rl.draw_texture_pro(texture, rl.Rectangle(0, 0, texture.width, -texture.height), view, rl.Vector2(0, 0), 0, rl.WHITE)
   events = gui_app._mouse_events
-  gui_app._mouse_events = []
-  original_render()  # slot textures were refreshed by this frame's on-screen render, so nothing nests texture modes
-  gui_app._mouse_events = events
-  rl.end_texture_mode()
-  image = rl.load_image_from_texture(target.texture)
-  rl.image_flip_vertical(image)
-  rl.export_image(image, str(args.output / (name + '.png')))
-  rl.unload_image(image)
-  rl.unload_render_texture(target)
-  in_screenshot = False
+  try:
+    rl.begin_texture_mode(target)
+    try:
+      rl.clear_background(rl.BLACK)
+      texture = gui_app._render_texture.texture
+      view = host.viewport()
+      if view is not None:
+        rl.draw_texture_pro(texture, rl.Rectangle(0, 0, texture.width, -texture.height), view, rl.Vector2(0, 0), 0, rl.WHITE)
+      gui_app._mouse_events = []
+      original_render()  # tile textures were refreshed by this frame's on-screen render
+    finally:
+      rl.end_texture_mode()
+    image = rl.load_image_from_texture(target.texture)
+    try:
+      rl.image_flip_vertical(image)
+      path = args.output / (name + '.png')
+      check(rl.export_image(image, str(path)), f'screenshot export failed: {name}')
+    finally:
+      rl.unload_image(image)
+  finally:
+    gui_app._mouse_events = events
+    rl.unload_render_texture(target)
+    in_screenshot = False
 
 
 def tap(x, y, phase):
-  """Screen tap: press on phase 0, release on phase 1, mapped like the touch thread does."""
-  if phase in (0, 1):
-    lx, ly = host.to_logical(x, y)
-    check(not (0 <= lx <= 536 and 0 <= ly <= 240) or host.viewport() is not None, f'tap ({x},{y}) maps inside mici ({lx},{ly})')
-    gui_app._mouse_events = [MouseEvent(MousePos(lx, ly), 0, phase == 0, phase == 1, phase == 0, time.monotonic())]
+  """Queue screen press/release for the next host frame through the real touch mapping."""
+  global pending_events
+  lx, ly = host.to_logical(x, y)
+  check(not (0 <= lx <= 536 and 0 <= ly <= 240) or host.viewport() is not None, f'tap ({x},{y}) maps inside mici ({lx},{ly})')
+  pending_events = [MouseEvent(MousePos(lx, ly), 0, phase == 0, phase == 1, phase == 0, time.monotonic())]
+
+
+def touch(point):
+  tap(*point, 0)
+  yield 1
+  tap(*point, 1)
+  yield 4
+
+
+def hold_toggles():
+  point = center(tiles.tile_rect(host._placed['toggles']))
+  start = time.monotonic()
+  tap(*point, 0)
+  while time.monotonic() - start < tiles.LONG_PRESS + 0.2:
+    yield 1
+  tap(*point, 1)
+  yield 3
+  assert host._edit and host._selected == 'toggles', f'long press: edit={host._edit}, selected={host._selected}'
+
+
+def tile_screen():
+  assert not host._stack and gui_app.get_active_widget() is main, 'BACK did not return to the tile screen'
+  check(host.viewport() is None and host._shown is None, 'tile screen still shows a detail page or mici viewport')
+
+
+def layout_bytes():
+  return layout_path.read_bytes() if layout_path.exists() else None
+
+
+def restore_layout():
+  if layout_backup is None:
+    return
+  pinned, hidden, raw = layout_backup
+  host._pinned, host._hidden = list(pinned), list(hidden)
+  host._edit, host._selected, host._drag = False, None, None
+  if layout_bytes() != raw:
+    if raw is None:
+      layout_path.unlink(missing_ok=True)
+    else:
+      with tempfile.NamedTemporaryFile(dir=layout_path.parent, delete=False) as saved:
+        saved.write(raw)
+      Path(saved.name).replace(layout_path)
+  check(layout_bytes() == raw and host._pinned == pinned and host._hidden == hidden, 'saved layout was not restored exactly')
+
+
+def steps():
+  global layout_backup, completed
+  yield 30
+  tile_screen()
+  check(mici_draws == 0, f'offroad tile screen drew mici {mici_draws} times')
+  for tid in SETTINGS:
+    check(tid in host._placed, f'offroad settings tile {tid} not placed')
+  screenshot('start')
+  cases.append({'name': 'offroad', 'viewport': rect(host.viewport()), 'placed': dict(host._placed), 'mici_draws': mici_draws})
+  before = tile_redraws
+  yield 60
+  check(tile_redraws - before <= 2, f'60 idle frames redrew {tile_redraws - before} tile faces')
+  check(mici_draws == 0, 'idle tile screen drew mici')
+  cases.append({'name': 'idle', 'frames': 60, 'tile_redraws': tile_redraws - before})
+
+  for tid in SETTINGS:
+    if tid not in host._placed:
+      continue  # already reported; do not tap where an absent tile should have been
+    tile = host._entries[tid].tile
+    before = mici_draws
+    yield from touch(center(tiles.tile_rect(host._placed[tid])))
+    assert len(host._stack) == 1 and host._stack[-1][0] == tile.SPEC.title, f'tile {tid}: detail stack {host._stack}'
+    page = host._stack[-1][1]
+    active = gui_app.get_active_widget()
+    if tile.MICI:
+      check(type(active) is tile.PAGE and type(active).__name__ == 'ModelsLayoutMici' and page is None, f'tile {tid}: active {type(active).__name__}')
+      check(rect(host.viewport()) == list(FALLBACK_VIEW) and mici_draws > before, f'tile {tid}: mici fallback not drawn in FALLBACK_VIEW')
+      check(len(gui_app._nav_stack) == 2, f'tile {tid}: application stack depth {len(gui_app._nav_stack)}')
+    else:
+      assert type(page) is tile.PAGE, f'tile {tid}: page {type(page).__name__}, expected {tile.PAGE.__name__}'
+      check(host._shown is page and active is main and len(gui_app._nav_stack) == 1, f'tile {tid}: native page/application stack mismatch')
+      check(host.viewport() is None and mici_draws == before, f'tile {tid}: native page drew mici')
+    screenshot('page-' + tid)
+    cases.append({'name': tid, 'title': host._stack[-1][0], 'page': type(page).__name__, 'active': type(active).__name__,
+                  'stack': len(host._stack), 'nav_stack': len(gui_app._nav_stack), 'mici_draws': mici_draws - before})
+    if tid == 'plugins':
+      page._open_store()
+      yield 4
+      check(len(host._stack) == 2 and host._stack[-1][0] == 'Store' and type(host._stack[-1][1]).__name__ == 'StorePage', 'Plugins -> Store did not push a second detail level')
+      check(host._shown is host._stack[-1][1] and host.viewport() is None and mici_draws == before, 'Store did not show natively')
+      check(len(gui_app._nav_stack) == 1, 'Store grew the application nav stack')
+      screenshot('page-plugins-store')
+      yield from touch(center(BACK))
+      assert host._stack == [(tile.SPEC.title, page)] and host._shown is page, 'BACK from Store did not return to Plugins'
+      cases.append({'name': 'Plugins > Store > BACK', 'page': type(page).__name__, 'stack': len(host._stack)})
+    yield from touch(center(BACK))
+    tile_screen()
+    check(mici_draws == before or tile.MICI, f'BACK from {tid} drew mici')
+
+  layout_backup = (list(host._pinned), list(host._hidden), layout_bytes())
+  yield from hold_toggles()
+  screenshot('edit')
+  old_size = host._placed['toggles'][2]
+  yield from touch(tiles.corner_buttons(tiles.tile_rect(host._placed['toggles']))['resize'][:2])
+  check('toggles' in host._placed and host._placed['toggles'][2] != old_size, 'resize corner did not change Toggles size')
+  check(host._edit and host._selected == 'toggles', 'resize left edit mode or changed selection')
+  screenshot('edit-resized')
+  cell = tiles.add_cell(host._placed, False)
+  assert cell is not None, 'no add cell after resize'
+  yield from touch(center(tiles.cell_rect(*cell)))
+  assert len(host._stack) == 1 and host._stack[-1][0] == 'add tiles', '+ did not open add tiles'
+  check(type(host._shown).__name__ == 'AddTilesPage' and host._shown is host._stack[-1][1] and host.viewport() is None, 'wrong add tiles page')
+  screenshot('add-tiles')
+  yield from touch(center(BACK))
+  tile_screen()
+  assert host._edit and host._selected == 'toggles', 'BACK from add tiles lost edit mode'
+  yield from touch(center(tiles.tile_rect(host._placed['toggles'])))
+  check(not host._edit and host._selected is None and not host._stack, 'selected tile tap did not leave edit mode')
+  yield from hold_toggles()
+  add = tiles.add_cell(host._placed, False)
+  empty = next(((c, r) for c in range(tiles.COLS) for r in range(tiles.ROWS)
+                if (c, r) != add and tiles.hit(host._placed, *center(tiles.cell_rect(c, r))) is None), None)
+  assert empty is not None, 'no empty non-add cell to test edit exit'
+  yield from touch(center(tiles.cell_rect(*empty)))
+  check(not host._edit and host._selected is None and not host._stack, 'empty cell tap did not leave edit mode')
+  cases.append({'name': 'edit', 'old_size': old_size, 'new_size': host._placed['toggles'][2], 'empty_cell': empty})
+  restore_layout()
+  yield 4
+  tile_screen()
+
+  gui_app.pop_widgets_to(main, instant=True)
+  ui_state.started = True  # synthetic composition only; never write IsOffroad or send CAN
+  check(rect(host.viewport()) == list(tiles.VIEW), f'onroad viewport {rect(host.viewport())}')
+  lx, ly = host.to_logical(*tiles.VIEW[:2])
+  check(abs(lx) < 0.01 and abs(ly) < 0.01, f'onroad to_logical origin {lx},{ly}')
+  forced, drawn = [], []
+  for entry in host._overlays:
+    overlay = entry[1]
+    if type(overlay).__name__ == 'BlindspotEdges':
+      overlay.update = lambda sm, o=overlay: (setattr(o, 'left', True), setattr(o, 'right', True))
+
+      def draw(zones, original=overlay.draw):
+        original(zones)
+        drawn.append(True)
+
+      overlay.draw = draw
+      forced.append(entry)
+  check(bool(forced), 'blindspot_edges overlay not loaded (plugin off or import failed)')
+  original_render()
+  vx, vy, vw, vh = tiles.VIEW
+  for tid, placed in host._placed.items():
+    x, y, w, h = tiles.tile_rect(placed)
+    check(not (x < vx + vw and vx < x + w and y < vy + vh and vy < y + h), f'onroad tile {tid} overlaps VIEW')
+    col, row, size = placed
+    cols, rows = tiles.SIZES[size]
+    cells = {(col + c, row + r) for c in range(cols) for r in range(rows)}
+    check(not cells & tiles.blocked(True), f'onroad tile {tid} overlaps blocked cells')
+    check(tid not in SETTINGS and host._entries[tid].tile.SPEC.show != 'offroad', f'onroad settings tile {tid} placed')
+  for tid in ('speed_card', 'lead_card', 'speed_limit_card', 'car', 'map'):
+    check(tid in host._placed, f'onroad data tile {tid} not placed')
+  check(len(drawn) == len(forced), 'blindspot overlay did not draw successfully')
+  screenshot('onroad-blindspot')
+  check(all(e[2] == 0 for e in forced), 'blindspot overlay raised')
+  cases.append({'name': 'onroad', 'viewport': rect(host.viewport()), 'placed': dict(host._placed), 'blindspot_draws': len(drawn)})
+  ui_state.started = False
+  host.viewport()
+  completed = True
+  gui_app.request_close()
+  yield 1
+
+
+scenario = steps()
 
 
 def render():
-  global frame
+  global frame, next_step, pending_events
   frame += 1
-  if frame == 20:
-    check(host.viewport() is None, f'offroad Home viewport {host.viewport()}')
-    lx, ly = host.to_logical(1080, 540)
-    check(not (0 <= lx <= 536 and 0 <= ly <= 240), f'offroad screen centre maps inside mici ({lx},{ly})')
-    check(not hasattr(host, '_banner'), 'host still owns an alert banner')
-    cases.append({'name': 'offroad', 'viewport': None})
-  nav = NAV_START <= frame < NAV_START + NAV_STEP * len(NAV)
-  index, phase = divmod(frame - NAV_START, NAV_STEP)
-  if nav:
-    tap(NAV_W / 2, NAV_TOP + index * ROW_H + ROW_H / 2, phase)
-    if index == PLUGINS and phase in (26, 27):
-      tap(content_rect()[0] + 40, 40, phase - 26)  # "< Back" in the title band
-  if nav and phase == 5:
-    draws_before[0] = mici_draws
+  gui_app._mouse_events, pending_events = pending_events, []
   original_render()
-  if frame == 20:
-    screenshot('offroad')
-  if nav:
-    label = NAV[index]
-    if phase == 20:
-      active = gui_app.get_active_widget()
-      native = label in NATIVE
-      check(host._selected == index, f'nav {label} did not select')
-      check(len(gui_app._nav_stack) == (1 if native else 2), f'nav {label}: nav stack depth {len(gui_app._nav_stack)}')
-      if native:
-        check(active is main, f'nav {label}: {type(active).__name__} above main')
-        check(type(host._page()) is NATIVE[label] and host._shown is host._page(), f'nav {label} shows {type(host._page()).__name__}')
-        check(host.viewport() is None and mici_draws == draws_before[0], f'nav {label}: mici texture drawn on a native page')
-      else:
-        check(type(active).__name__ == 'ModelsLayoutMici', f'nav {label} shows {type(active).__name__}')
-        check(rect(host.viewport()) == list(FALLBACK_VIEW) and mici_draws > draws_before[0], f'nav {label}: mici fallback not drawn')
-      screenshot(f'nav-{index}-{label.lower()}')
-      cases.append({'name': label, 'active': type(active).__name__, 'page': type(host._page()).__name__, 'stack': len(gui_app._nav_stack),
-                    'mici_draws': mici_draws - draws_before[0]})
-    if index == PLUGINS and phase == 21:
-      host._page()._open_store()  # the "Plugin Store" row callback
-    if index == PLUGINS and phase == 24:
-      check(host._sub is not None and host._sub[0] == 'Store' and type(host._page()) is StorePage, f'store sub-page {host._sub}')
-      check(host.viewport() is None, 'store: mici viewport')
-      screenshot('plugins-store')
-      cases.append({'name': 'Plugins > Store', 'page': type(host._page()).__name__})
-    if index == PLUGINS and phase == 29:
-      check(host._sub is None, 'Back did not close the store sub-page')
-  if frame == ONROAD:
-    gui_app.pop_widgets_to(main, instant=True)
-    ui_state.started = True
-    check(rect(host.viewport()) == list(VIEW), f'onroad viewport {rect(host.viewport())}')
-    lx, ly = host.to_logical(VIEW[0], VIEW[1])
-    check(abs(lx) < 0.01 and abs(ly) < 0.01, f'onroad to_logical origin {lx},{ly}')
-    forced = []
-    for entry in host._overlays:
-      if type(entry[1]).__name__ == 'BlindspotEdges':
-        entry[1].update = lambda sm, o=entry[1]: (setattr(o, 'left', True), setattr(o, 'right', True))
-        forced.append(entry)
-    check(bool(forced), 'blindspot_edges overlay not loaded (plugin off or import failed)')
-    original_render()
-    tiles = {t.slot.SPEC.id: t.rect for t in host._tiles if t.rect is not None}
-    for sid, r in tiles.items():
-      zone = next((z for z, (x, y, w, h) in ZONES.items() if r[0] >= x and r[1] >= y and r[0] + r[2] <= x + w and r[1] + r[3] <= y + h), None)
-      spec_zone = next(t.slot.SPEC.zone for t in host._tiles if t.slot.SPEC.id == sid)
-      check(zone is not None and spec_zone in ('auto', zone), f'card {sid} {r} outside zone {spec_zone}')
-    for sid in ('speed_card', 'lead_card', 'speed_limit_card', 'car', 'map'):
-      check(sid in tiles, f'card {sid} not placed')
-    check(all(e[2] == 0 for e in forced), 'blindspot overlay raised')
-    screenshot('onroad-blindspot')
-    cases.append({'name': 'onroad', 'viewport': rect(host.viewport()), 'cards': tiles, 'overlays': len(host._overlays)})
-    ui_state.started = False
-  if frame == ONROAD + 5:
-    check(len(cases) == len(NAV) + 3, f'{len(cases)} cases, expected {len(NAV) + 3}')
-    gui_app.request_close()
+  assert not host._is_modal(gui_app.get_active_widget()), 'unexpected dialog; no confirmation was sent'
+  if frame >= next_step:
+    next_step = frame + next(scenario)
 
 
 host.render = render
-for should_render, *_ in gui_app.render():
-  ui_state.update()
-result = {'passed': not errors, 'head': subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip(),
-          'scope': 'real GPU, production widgets and mapped touch events; no setting changes or CAN transmission',
-          'cases': cases, 'errors': errors}
-(args.output / 'result.json').write_text(json.dumps(result, indent=2) + '\n')
-print(json.dumps(result, indent=2))
+try:
+  for should_render, *_ in gui_app.render():
+    ui_state.update()
+    assert not ui_state.started and not ui_state.engaged, 'device must remain offroad and unengaged'
+  check(completed, 'E2E closed before all steps completed')
+except Exception:
+  errors.append(traceback.format_exc())
+finally:
+  ui_state.started = False
+  try:
+    restore_layout()
+    if layout_backup is not None:
+      cases.append({'name': 'layout restored', 'file_matches': layout_bytes() == layout_backup[2],
+                    'pinned_matches': host._pinned == layout_backup[0], 'hidden_matches': host._hidden == layout_backup[1]})
+  except Exception:
+    errors.append('layout restore failed:\n' + traceback.format_exc())
+  rl.draw_texture_pro = original_draw_texture_pro
+  rl.begin_texture_mode = original_begin_texture_mode
+  host.render = original_render
+  result = {'passed': not errors, 'head': subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip(),
+            'scope': 'real GPU, production widgets and mapped touch events; layout restored; synthetic onroad; no CAN transmission',
+            'cases': cases, 'errors': errors}
+  (args.output / 'result.json').write_text(json.dumps(result, indent=2) + '\n')
+  print(json.dumps(result, indent=2))
 assert result['passed']
