@@ -10,8 +10,8 @@ Failure cases listed before implementation:
 - O4 switching a plugin on leaves a plugin with a shared exclusive claim on, switches off one without a shared claim,
      or leaves its fault mark
 - O5 a store row shows the wrong action/value for an index entry, a row acts while busy or onroad, or install/remove runs onroad
-- O6 offroad the mici texture gets a viewport outside onboarding and mici widgets pushed above main (Device's mici dialogs),
-     or loses it in those cases
+- O6 offroad the mici texture gets a viewport outside mici widgets pushed above main (onboarding and Device sub-pages are
+     native now), or loses it for such a widget
 - O7 offroad without a viewport a screen touch maps inside the mici logical screen (a hidden mici widget would react)
 - O8 offroad alerts are not most severe first, miss the %1 extra, or show inactive alerts
 - O9 the v2 pieces (PAGES factories, _hide_back) remain in screen.py, or the application.py no-viewport hook is missing
@@ -62,7 +62,8 @@ from openpilot.tesla.plugins import FAULTS_PARAM, LOAD_ERRORS, PLUGINS
 from openpilot.tesla.ui import offroad
 
 PAGE_MODULES = {"Home": "home", "Toggles": "toggles", "Plugins": "plugins", "Tesla": "tesla", "Network": "network",
-                "Device": "device", "Software": "software", "Developer": "developer", "Store": "store", "Models": "models"}
+                "Device": "device", "Software": "software", "Developer": "developer", "Store": "store", "Training": "training", "Terms": "terms",
+                "Regulatory": "regulatory", "Driver camera": "driver_camera", "Onboarding": "onboarding", "Models": "models"}
 PARAM_CALLS = {"get", "get_bool", "put", "put_bool", "remove"}
 
 
@@ -188,10 +189,10 @@ def check_view(errors: list) -> None:
     for main in (False, True):
       for modal in (False, True):
         mode, view = offroad.view_mode(onboarding, main, modal)
-        drawn = onboarding or not (main or modal)
+        drawn = not onboarding and not (main or modal)
         if (view is not None) != drawn:
           errors.append(f"O6 view_mode(onboarding={onboarding}, main={main}, modal={modal}) = {mode}, {view}")
-  for view in (offroad.ONBOARDING_VIEW, offroad.FALLBACK_VIEW):
+  for view in (offroad.FALLBACK_VIEW,):
     x, y = offroad.to_logical(view, *offroad.to_screen(view, 100, 50))
     if abs(x - 100) > 1e-6 or abs(y - 50) > 1e-6:
       errors.append(f"O6 to_logical/to_screen do not round trip for {view}")

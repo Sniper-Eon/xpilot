@@ -13,16 +13,16 @@ MICI = (536, 240)
 TITLE_H = 230  # detail page title band: back button, parent name, page title
 BACK = (0, 0, 140, TITLE_H)  # back button touch area
 CONTENT = (140, TITLE_H, 1920, 1080 - TITLE_H)  # x, y, w, h of a detail page's rows
-ONBOARDING_VIEW = (456, 180, 1608, 720)  # onboarding: mici at 3x, as in v2
 FALLBACK_VIEW = (CONTENT[0] + (CONTENT[2] - 1608) // 2, CONTENT[1] + (CONTENT[3] - 720) // 2, 1608, 720)  # mici pages: 3x in CONTENT
 FAR = 100000.0
 NATIVE_VIEW = (FAR, FAR, MICI[0], MICI[1])  # nothing drawn; touches map far outside every mici widget
 
 
 def view_mode(onboarding: bool, top_is_main: bool, top_is_modal: bool) -> tuple[str, tuple | None]:
-  """Offroad (mode, viewport): the mici texture is drawn only for onboarding and for mici pages pushed above main."""
+  """Offroad (mode, viewport): the mici texture is drawn only for a mici page pushed above main (none of the built-in pages
+  do any more); onboarding is the native pages/onboarding.py."""
   if onboarding:
-    return "onboarding", ONBOARDING_VIEW
+    return "onboarding", None
   if top_is_main or top_is_modal:
     return ("modal" if top_is_modal else "native"), None
   return "mici", FALLBACK_VIEW

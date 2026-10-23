@@ -218,9 +218,10 @@ typedef struct {
 - **详情页（WP 风格）**：整屏。左上角是返回圆钮（线画的箭头，点击区 `BACK=(0,0,140,230)`），右边小号大写的上级名（`XPILOT` 或父页面名），下面是大号小写标题；内容区 `CONTENT=(140,230,1920,850)`，由宿主按屏幕像素直接画 `ui/pages/` 里的原生列表页（tici 的 `list_view`/`scroller_tici` 控件）。页面打开的子页（如 Plugins 的 Store）压栈，返回一层层退回，退到底回到磁贴屏。
   - 每页一个模块：`openpilot/tesla/ui/pages/<页>.py`，带 `show_event` 的 Widget（`show_event` 时从 params 重新读状态）。共用部分在 `pages/base.py`。不画图的逻辑在 `ui/offroad.py`（视口模式、触摸映射、插件行、商店任务 `StoreJobs`、停车提示），`offroad_pages_check.py` 在本机测。
   - 页面内容和 mici 一致（同样的参数、动作和可用条件，行驶中或接合时不能改）。重置校准、重启、关机、卸载用 `ConfirmDialog`；这些 tici 弹窗压在导航栈上，在 mici 那一遍里隐藏，由宿主全屏画（弹窗打开时页面不接收触摸）。
-  - 仍显示 mici 页面（3 倍，`FALLBACK_VIEW=(296,295,1608,720)`，内容区居中）的只剩 Device 里的训练指南、条款、法规信息、车内摄像头（正在改成原生页面）。
+  - Device 的子页都是原生页面（`pages/training.py`、`terms.py`、`regulatory.py`、`driver_camera.py`），用 `ListPage.open()` 打开；训练指南和车内摄像头只在停车时可用，在 `hide_event` 和息屏超时时清掉 `IsDriverViewEnabled`（息屏后不再渲染；这个参数开着时 hardwared 不会进入 onroad）。`pages.base.back()` 调宿主的 `back()` 关闭当前页。
+  - 宿主里已经没有 3 倍的 mici 页面；`FALLBACK_VIEW=(296,295,1608,720)` 只留给意外压到 main 之上的 mici 控件。
   - 页面调用 `self.open(None, None)` 表示返回上一层。
-  - 开机引导（onboarding）在栈里时照旧全屏显示 mici（456,180,1608,720），不画磁贴。
+  - 开机引导：mici 的 `OnboardingWindow` 在栈里时，宿主不画 mici 纹理，改为全屏画原生 `pages/onboarding.py` 的 `OnboardingPage`（同样的参数：`HasAcceptedTerms`、`HasAcceptedTermsSP`、`CompletedTrainingVersion`、`DoUninstall`；拒绝前在页内再确认一次），完成后宿主 `pop_widgets_to(main)`，和 mici 的回调一样。
 - **不画 mici 纹理**靠 `system/ui/lib/application.py` 里一行钩子：`host.viewport()` 返回 `None` 时跳过 `draw_texture_pro`。此时 `to_logical` 把所有触摸映射到 mici 屏幕很远之外，下面继续运行的 mici 控件不会响应。这是对 SP 文件唯一的改动。
 - **整屏叠加层**：`ScreenOverlay`（`update(sm)`、`draw(zones)`），行驶时在磁贴之后绘制；`zones` 是 `VIEW` 四周的 left/right/top/bottom 和 view 本身的屏幕矩形。出错隔离同上，插件关闭时隐藏。例：`blindspot_edges`。
 - 已知：`NetworkUI` 自己建一个 `WifiManager`，mici 的 `NetworkLayoutMici` 只在 mici 设置里构造（大屏不构造），所以大屏进程里只有 Network 页那一个。

@@ -78,10 +78,9 @@ def confirm(text: str, action: str, callback) -> None:
 
 
 def back() -> None:
-  """Close the open native page, like the host's Back button.
-  ponytail: calls the host's private _back(); switch to a public host method once screen.py has one."""
+  """Close the open native page, like the host's Back button."""
   if gui_app.host is not None:
-    gui_app.host._back()
+    gui_app.host.back()
 
 
 def body(text: str) -> UnifiedLabel:

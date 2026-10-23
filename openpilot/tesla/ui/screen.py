@@ -28,12 +28,11 @@ from openpilot.tesla.ui import offroad, tiles
 from openpilot.tesla.ui.offroad import BACK, CONTENT, TITLE_H
 from openpilot.tesla.ui.pages.base import ListPage
 from openpilot.tesla.ui.pages.device import DevicePage
+from openpilot.tesla.ui.pages.onboarding import OnboardingPage
 from openpilot.tesla.ui.plugin_ui import MAX_FAILURES, EnabledPlugins, ScreenOverlay, load
 from openpilot.tesla.ui.tile import Tile
 from openpilot.tesla.ui.tiles import LAYOUT_PARAM, LAYOUT_SPEC, SCREEN, VIEW
 
-FALLBACK_TITLES = {"ReviewTrainingGuide": "training guide", "CabinCameraDialog": "cabin camera", "ReviewTermsPage": "terms",
-                   "MiciFccModal": "regulatory"}
 DIM = rl.Color(150, 152, 162, 255)
 SHADE = rl.Color(0, 0, 0, 120)      # over unselected tiles in edit mode
 PRESSED = rl.Color(0, 0, 0, 60)
@@ -123,6 +122,7 @@ class BigScreenHost:
     self._view: tuple | None = None  # set each frame by viewport(); to_logical runs on the touch thread
     self._mode = "native"
     self._host_pass = False
+    self._onboarding = OnboardingPage(self._onboarding_done)
 
   def bind_settings(self, main, _settings) -> None:
     self._main = main
@@ -191,6 +191,13 @@ class BigScreenHost:
     elif self._stack:
       self._stack.pop()
 
+  def _onboarding_done(self) -> None:
+    gui_app.pop_widgets_to(self._main, instant=True)  # what mici's OnboardingWindow callback does
+
+  def back(self) -> None:
+    """Close the open detail page (pages.base.back)."""
+    self._back()
+
   def _back(self) -> None:
     if self._mode == "mici":
       gui_app.pop_widgets_to(self._main, instant=True)
@@ -228,7 +235,13 @@ class BigScreenHost:
       self._edit, self._drag, self._selected, self._layout = False, None, None, "park"
       self._draw_tiles(self._place("drive"))
       self._draw_overlays()
-    elif self._mode != "onboarding":
+    elif self._mode == "onboarding":
+      events = [e._replace(pos=MousePos(*offroad.to_screen(None, e.pos.x, e.pos.y))) for e in gui_app.mouse_events]
+      self._show(self._onboarding if self._main is not None else None)
+      if self._main is not None:
+        with self._native(events):
+          self._onboarding.render(rl.Rectangle(0, 0, *SCREEN))
+    else:
       self._draw_offroad()
 
   def _face(self, e: _Entry, size: str, now: float) -> bool:
@@ -458,7 +471,7 @@ class BigScreenHost:
     title, page = self._stack[-1] if self._stack else ("", None)
     parent = self._stack[-2][0] if len(self._stack) > 1 else "xpilot"
     if self._mode == "mici" and page is not None:
-      parent, title = title, FALLBACK_TITLES.get(type(top).__name__, "")
+      parent, title = title, type(top).__name__
     self._draw_title(parent, title, events)
     if self._mode == "mici":
       self._show(None)
