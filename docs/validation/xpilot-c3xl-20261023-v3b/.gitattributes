@@ -1,0 +1,2 @@
+# Keep deployment screenshots fetchable from the GitHub docs commit without Hugging Face LFS credentials.
+*.png -filter -diff -merge -text

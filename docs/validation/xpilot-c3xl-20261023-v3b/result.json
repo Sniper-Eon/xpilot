@@ -1,0 +1,121 @@
+{
+  "passed": true,
+  "head": "7ee2e996515f9648be81dc3ce12d5551ead7ba05",
+  "scope": "real GPU, production widgets and mapped touch events; no setting changes or CAN transmission",
+  "cases": [
+    {
+      "name": "offroad",
+      "viewport": null
+    },
+    {
+      "name": "Home",
+      "active": "MiciMainLayout",
+      "page": "HomePage",
+      "stack": 1,
+      "mici_draws": 0
+    },
+    {
+      "name": "Toggles",
+      "active": "MiciMainLayout",
+      "page": "TogglesPage",
+      "stack": 1,
+      "mici_draws": 0
+    },
+    {
+      "name": "Models",
+      "active": "ModelsLayoutMici",
+      "page": "NoneType",
+      "stack": 2,
+      "mici_draws": 15
+    },
+    {
+      "name": "Plugins",
+      "active": "MiciMainLayout",
+      "page": "PluginsPage",
+      "stack": 1,
+      "mici_draws": 0
+    },
+    {
+      "name": "Plugins > Store",
+      "page": "StorePage"
+    },
+    {
+      "name": "Tesla",
+      "active": "MiciMainLayout",
+      "page": "TeslaPage",
+      "stack": 1,
+      "mici_draws": 0
+    },
+    {
+      "name": "Network",
+      "active": "MiciMainLayout",
+      "page": "NetworkPage",
+      "stack": 1,
+      "mici_draws": 0
+    },
+    {
+      "name": "Device",
+      "active": "MiciMainLayout",
+      "page": "DevicePage",
+      "stack": 1,
+      "mici_draws": 0
+    },
+    {
+      "name": "Software",
+      "active": "MiciMainLayout",
+      "page": "SoftwarePage",
+      "stack": 1,
+      "mici_draws": 0
+    },
+    {
+      "name": "Developer",
+      "active": "MiciMainLayout",
+      "page": "DeveloperPage",
+      "stack": 1,
+      "mici_draws": 0
+    },
+    {
+      "name": "onroad",
+      "viewport": [
+        360.0,
+        218.0,
+        1440.0,
+        644.0
+      ],
+      "cards": {
+        "car": [
+          372,
+          874,
+          336,
+          194
+        ],
+        "map": [
+          732,
+          874,
+          696,
+          194
+        ],
+        "lead_card": [
+          1812,
+          282,
+          336,
+          246
+        ],
+        "speed_card": [
+          12,
+          12,
+          336,
+          516
+        ],
+        "speed_limit_card": [
+          1812,
+          12,
+          336,
+          246
+        ]
+      },
+      "overlays": 1
+    }
+  ],
+  "errors": []
+}
