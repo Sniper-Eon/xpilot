@@ -22,7 +22,9 @@ Failure cases listed before implementation:
 - T9  edit ops: resize does not cycle through the tile's sizes or drops the position, unpin/pin do not move between pinned
       and hidden, a drop does not fix the tile at the drop cell (pulled back inside the grid), does not free other fixed
       tiles it now overlaps, moves a tile onto the drive view, or reorders the list
-- T17 edit bar: Park, Drive and Done buttons overlap, leave the screen, or are not at the bottom center
+- T17 edit bar: Park, Drive and Done buttons overlap each other or leave the screen; editing the park layout they cover a
+      tile while a free cell other than the "+" cell exists (they go into the last free cell), or cover the "+" cell;
+      editing the drive layout they are not inside the drive view
 - T10 hit tests: a gap hits a tile, a cell center does not map back to its cell, corner buttons leave their tile or
       overlap each other
 - T11 gestures: a short press without movement is not a tap, a held press is not one long press, a moved press still
@@ -264,15 +266,29 @@ def check_hits(errors):
 
 
 def check_bar(errors):
-  b = T.bar_buttons()
-  rects = list(b.values())
-  if set(b) != {"park", "drive", "done"} or any(overlap(x, y) for x, y in itertools.combinations(rects, 2)):
-    errors.append(f"T17 bar buttons {b}")
-  if any(not inside(r, (0, 0, *T.SCREEN)) for r in rects) or min(r[1] for r in rects) < T.SCREEN[1] * 0.8:
-    errors.append(f"T17 bar not at the bottom {b}")
-  left, right = min(r[0] for r in rects), max(r[0] + r[2] for r in rects)
-  if abs(left - (T.SCREEN[0] - right)) > 1:
-    errors.append(f"T17 bar not centered {b}")
+  rng = random.Random(7)
+  for n in range(200):
+    items = [(f"t{i}", rng.choice(ALL), ALL, None) for i in range(rng.randint(0, 14))]
+    for started in (False, True):
+      placed = T.place(items, started)
+      b = T.bar_buttons(placed, started)
+      rects = list(b.values())
+      if set(b) != {"park", "drive", "done"} or any(overlap(x, y) for x, y in itertools.combinations(rects, 2)):
+        errors.append(f"T17 bar buttons {b}")
+        return
+      if any(not inside(r, (0, 0, *T.SCREEN)) for r in rects):
+        errors.append(f"T17 bar off screen {b}")
+      if started:
+        if any(not inside(r, T.VIEW) for r in rects):
+          errors.append(f"T17 drive bar outside the view {b}")
+        continue
+      taken = set().union(*(cells(*p) for p in placed.values())) if placed else set()
+      free = [c for c in T.scan(False) if c not in taken]
+      add = T.add_cell(placed, False)
+      if len(free) > 1:
+        tile_rects = [T.tile_rect(p) for p in placed.values()] + [T.cell_rect(*add)]
+        if any(overlap(r, t) for r in rects for t in tile_rects):
+          errors.append(f"T17 n={n} bar covers a tile or the + cell with {len(free)} free cells: {b}")
 
 
 def check_gesture(errors):

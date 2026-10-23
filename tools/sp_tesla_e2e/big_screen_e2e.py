@@ -253,8 +253,12 @@ def steps():
         ('terms', 'Terms & conditions', 'TermsPage'),
         ('regulatory', 'Regulatory info', 'RegulatoryPage'),
       ):
-        next(row for row in page._scroller._items if row.title == row_title).callback()
-        yield 4
+        row = next(row for row in page._scroller._items if row.title == row_title)
+        if not row.is_visible:
+          cases.append({'name': 'Device > ' + title, 'skipped': True, 'reason': 'row hidden on this hardware'})
+          continue
+        row.callback()
+        yield 360 if title == 'driver camera' else 4  # camerad needs a few seconds after IsDriverViewEnabled
         assert len(host._stack) == 2 and host._stack[-1][0] == title, f'Device -> {title}: detail stack {host._stack}'
         sub = host._stack[-1][1]
         check(type(sub).__name__ == expected and host._shown is sub, f'Device -> {title}: page {type(sub).__name__}, expected {expected}')
@@ -303,7 +307,7 @@ def steps():
   cases.append({'name': 'edit', 'old_size': old_size, 'new_size': host._placed['toggles'][2], 'empty_cell': empty})
 
   host._layouts['drive'] = tiles.arrange([e.tile.SPEC for e in host._entries.values() if tiles.shows(e.tile.SPEC, True)], None, 'drive')
-  yield from touch(center(tiles.bar_buttons()['drive']))
+  yield from touch(center(tiles.bar_buttons(host._placed, host._layout == 'drive')['drive']))
   assert host._edit and host._layout == 'drive', 'Drive bar button did not select the drive layout'
   check(set(host._placed) == set(DATA), f'drive edit tiles: {list(host._placed)}')
   default_order = [tid for tid, _, _ in host._layouts['drive'][0] if tid in DATA]
@@ -333,7 +337,7 @@ def steps():
   check(moved in host._placed and host._placed[moved][:2] == drop_cell, f'dragged {moved} not placed at {drop_cell}')
   screenshot('edit-drive-moved')
   cases.append({'name': 'edit drive moved', 'tile': moved, 'fixed': fixed, 'expected': drop_cell, 'moves': 20})
-  yield from touch(center(tiles.bar_buttons()['done']))
+  yield from touch(center(tiles.bar_buttons(host._placed, host._layout == 'drive')['done']))
   check(not host._edit and host._layout == 'park', 'Done did not leave edit mode and restore the park layout')
   tile_screen()
 

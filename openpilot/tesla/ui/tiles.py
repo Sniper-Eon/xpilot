@@ -143,11 +143,27 @@ def hit(placed: dict[str, tuple[int, int, str]], x: float, y: float) -> str | No
   return None
 
 
-def bar_buttons() -> dict[str, tuple[int, int, int, int]]:
-  """Edit mode bar at the bottom center: switch to the park / drive layout, leave edit mode."""
-  w, h, gap = 220, 76, 12
-  x0, y = (SCREEN[0] - 3 * w - 2 * gap) // 2, SCREEN[1] - h - 16
-  return {name: (x0 + i * (w + gap), y, w, h) for i, name in enumerate(("park", "drive", "done"))}
+BAR_NAMES = ("park", "drive", "done")
+
+
+def bar_buttons(placed: dict[str, tuple[int, int, str]], started: bool) -> dict[str, tuple[int, int, int, int]]:
+  """Edit mode bar: switch to the park / drive layout, leave edit mode. Drive layout: a row at the bottom of the drive view.
+  Park layout: stacked in the last free cell (the first one holds "+"); with no second free cell, a row at the bottom
+  center over the tiles."""
+  gap = 10
+  if not started:
+    taken = set()
+    for col, row, size in placed.values():
+      taken |= _cells(col, row, size) or set()
+    free = [c for c in scan(False) if c not in taken]
+    if len(free) > 1:
+      x, y, w, h = cell_rect(*free[-1])
+      bh = (h - 2 * gap) // 3
+      return {name: (x, y + i * (bh + gap), w, bh) for i, name in enumerate(BAR_NAMES)}
+  w, h = 220, 76
+  x0 = (SCREEN[0] - 3 * w - 2 * gap) // 2
+  y = VIEW[1] + VIEW[3] - h - 24 if started else SCREEN[1] - h - 16
+  return {name: (x0 + i * (w + gap), y, w, h) for i, name in enumerate(BAR_NAMES)}
 
 
 def corner_buttons(rect) -> dict[str, tuple[float, float, float]]:

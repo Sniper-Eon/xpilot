@@ -384,13 +384,13 @@ class BigScreenHost:
       dx, dy = self._gesture.pos[0] - self._gesture.start[0], self._gesture.pos[1] - self._gesture.start[1]
       if self._face(e, placed[self._drag][2], now):
         self._blit(e, rl.Rectangle(x + dx, y + dy, w, h))
-    self._draw_bar()
+    self._draw_bar(placed)
 
-  def _draw_bar(self) -> None:
+  def _draw_bar(self, placed) -> None:
     medium = gui_app.font(FontWeight.MEDIUM)
-    for name, (x, y, w, h) in tiles.bar_buttons().items():
+    for name, (x, y, w, h) in tiles.bar_buttons(placed, self._layout == "drive").items():
       active = name == self._layout
-      rl.draw_rectangle(x, y, w, h, ACCENT if active else rl.Color(40, 42, 50, 240))
+      rl.draw_rectangle(x, y, w, h, ACCENT if active else rl.Color(72, 75, 88, 255))
       label = name.capitalize()
       width = rl.measure_text_ex(medium, label, 40, 0).x
       rl.draw_text_ex(medium, label, rl.Vector2(x + (w - width) / 2, y + (h - 40) / 2), 40, 0, rl.WHITE)
@@ -416,9 +416,10 @@ class BigScreenHost:
     if event is None or start is None:
       return
     sx, sy = start[:2]
-    if self._edit and any(x0 <= sx < x0 + w and y0 <= sy < y0 + h for x0, y0, w, h in tiles.bar_buttons().values()):
+    bar = tiles.bar_buttons(placed, self._layout == "drive")
+    if self._edit and any(x0 <= sx < x0 + w and y0 <= sy < y0 + h for x0, y0, w, h in bar.values()):
       if event == "tap":
-        self._bar_tap(sx, sy)
+        self._bar_tap(sx, sy, bar)
       return
     tid = tiles.hit(placed, sx, sy)
     if event == "long" and not self._edit:
@@ -436,8 +437,8 @@ class BigScreenHost:
     elif event == "tap":
       self._edit_tap(sx, sy, tid, placed)
 
-  def _bar_tap(self, x, y) -> None:
-    for name, (x0, y0, w, h) in tiles.bar_buttons().items():
+  def _bar_tap(self, x, y, bar) -> None:
+    for name, (x0, y0, w, h) in bar.items():
       if x0 <= x < x0 + w and y0 <= y < y0 + h:
         self._selected = None
         if name == "done":

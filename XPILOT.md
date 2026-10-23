@@ -207,7 +207,7 @@ typedef struct {
 - **排布**：先放固定了位置的磁贴（列表顺序；位置放不下、越界或压到 mici 画面就当作没固定），再把其余磁贴按列表顺序放进第一个放得下的位置。扫描顺序：停车时按列（第 0 列从上到下，再第 1 列……，Win 8 横屏）；行驶时按行、每行从两边往中间（第 0 列、第 7 列、第 1 列、第 6 列……），所以左右两边交替填充。前面留下的空洞会被后面的小磁贴填上；放不下的磁贴不显示（编辑模式里可以从"添加"重新放）。
 - **行驶时**：mici 画面固定在 `VIEW=(300,59,1560,699)`（第 1–6 列 × 第 0–2 行这块区域里按 536:240 居中，缩放约 2.91），这 18 格不放磁贴；磁贴绕着它排：第 0 列、第 7 列和第 3 行的第 1–6 列，共 14 格。没固定位置的磁贴在自己支持的尺寸里从保存的尺寸往小试，放得下就用。行驶时磁贴不接收触摸，报警只由 mici 在画面内显示一次。
 - **停车时**：显示停车布局。点一下磁贴打开它的详情页（有 `PAGE` 的）；长按（0.6 s）磁贴或空格进入编辑模式。
-- **编辑模式**（只在停车时）：底部居中一条工具栏 `Park | Drive | Done`（`tiles.bar_buttons()`）：Park/Drive 切换正在编辑的布局（编辑行驶布局时 mici 画面的位置画成一块灰色占位），Done 退出。其他磁贴变暗，选中的磁贴右上角是"取消固定"圆钮、右下角是"改尺寸"圆钮（图形用线画，不用字符）。点改尺寸按 `sizes` 的顺序循环；点取消固定把它移到隐藏列表；按住拖动磁贴，松手处的格子成为它的固定位置（磁贴左上角落在这格，超出网格就往回挪；压到 mici 画面则不动），和它重叠的其他固定磁贴变回不固定；点别的磁贴改选它；第一个空格显示"+"，点它打开"Add tiles"页，列出隐藏和放不下的磁贴，点一个就以它最小的尺寸固定到最后（不固定位置）；点其他空格或再点一次选中的磁贴取消选中。
+- **编辑模式**（只在停车时）：三个按钮 `Park | Drive | Done`（`tiles.bar_buttons(placed, started)`）：编辑停车布局时竖排放进最后一个空格（第一个空格是"+"），只剩不到两个空格时才横排压在底部居中；编辑行驶布局时横排在 mici 画面占位的底部：Park/Drive 切换正在编辑的布局（编辑行驶布局时 mici 画面的位置画成一块灰色占位），Done 退出。其他磁贴变暗，选中的磁贴右上角是"取消固定"圆钮、右下角是"改尺寸"圆钮（图形用线画，不用字符）。点改尺寸按 `sizes` 的顺序循环；点取消固定把它移到隐藏列表；按住拖动磁贴，松手处的格子成为它的固定位置（磁贴左上角落在这格，超出网格就往回挪；压到 mici 画面则不动），和它重叠的其他固定磁贴变回不固定；点别的磁贴改选它；第一个空格显示"+"，点它打开"Add tiles"页，列出隐藏和放不下的磁贴，点一个就以它最小的尺寸固定到最后（不固定位置）；点其他空格或再点一次选中的磁贴取消选中。
 - **保存**：布局存在 `XpilotTileLayout`（JSON `{"park": {"tiles": [[id, 尺寸, 列, 行], ...], "hidden": [id, ...]}, "drive": {...}}`，列/行为 `null` 表示不固定；旧格式 `{"tiles": [[id, 尺寸]], "hidden": [...]}` 读作停车布局），不进 `params_keys.h`，由 `plugin_params.ParamsView` 存成文件 `/data/xpilot_plugins/.params/XpilotTileLayout`。读取时丢掉不认识的 id、不属于这套布局的磁贴和不支持的尺寸；新出现的磁贴按 (`order`, `id`) 用默认尺寸排到最后；插件关闭时它的磁贴不显示但位置保留。
 - **加磁贴**：插件的写在 `plugins/<名字>/ui.py`；不属于插件的放 `openpilot/tesla/ui/slots/`。继承 `Tile`，写 `SPEC = TileSpec(id, title, sizes, services, show, hz, order, color)`，会被自动发现。
   - `sizes`：支持的尺寸，第一个是默认；要在行驶时显示必须包含 `small`。
@@ -218,7 +218,7 @@ typedef struct {
 - **详情页（WP 风格）**：整屏。左上角是返回圆钮（线画的箭头，点击区 `BACK=(0,0,140,230)`），右边小号大写的上级名（`XPILOT` 或父页面名），下面是大号小写标题；内容区 `CONTENT=(140,230,1920,850)`，由宿主按屏幕像素直接画 `ui/pages/` 里的原生列表页（tici 的 `list_view`/`scroller_tici` 控件）。页面打开的子页（如 Plugins 的 Store）压栈，返回一层层退回，退到底回到磁贴屏。
   - 每页一个模块：`openpilot/tesla/ui/pages/<页>.py`，带 `show_event` 的 Widget（`show_event` 时从 params 重新读状态）。共用部分在 `pages/base.py`。不画图的逻辑在 `ui/offroad.py`（视口模式、触摸映射、插件行、商店任务 `StoreJobs`、停车提示），`offroad_pages_check.py` 在本机测。
   - 页面内容和 mici 一致（同样的参数、动作和可用条件，行驶中或接合时不能改）。重置校准、重启、关机、卸载用 `ConfirmDialog`；这些 tici 弹窗压在导航栈上，在 mici 那一遍里隐藏，由宿主全屏画（弹窗打开时页面不接收触摸）。
-  - Device 的子页都是原生页面（`pages/training.py`、`terms.py`、`regulatory.py`、`driver_camera.py`），用 `ListPage.open()` 打开；训练指南和车内摄像头只在停车时可用，在 `hide_event` 和息屏超时时清掉 `IsDriverViewEnabled`（息屏后不再渲染；这个参数开着时 hardwared 不会进入 onroad）。`pages.base.back()` 调宿主的 `back()` 关闭当前页。
+  - Device 的子页都是原生页面（`pages/training.py`、`terms.py`、`regulatory.py`、`driver_camera.py`），用 `ListPage.open()` 打开；法规信息（`mici_fcc.html` 是 comma four 的标签）只在 mici 硬件上显示；训练指南和车内摄像头只在停车时可用，在 `hide_event` 和息屏超时时清掉 `IsDriverViewEnabled`（息屏后不再渲染；这个参数开着时 hardwared 不会进入 onroad）。`pages.base.back()` 调宿主的 `back()` 关闭当前页。
   - 宿主里已经没有 3 倍的 mici 页面；`FALLBACK_VIEW=(296,295,1608,720)` 只留给意外压到 main 之上的 mici 控件。
   - 页面调用 `self.open(None, None)` 表示返回上一层。
   - 开机引导：mici 的 `OnboardingWindow` 在栈里时，宿主不画 mici 纹理，改为全屏画原生 `pages/onboarding.py` 的 `OnboardingPage`（同样的参数：`HasAcceptedTerms`、`HasAcceptedTermsSP`、`CompletedTrainingVersion`、`DoUninstall`；拒绝前在页内再确认一次），完成后宿主 `pop_widgets_to(main)`，和 mici 的回调一样。
