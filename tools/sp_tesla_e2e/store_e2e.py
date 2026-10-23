@@ -10,6 +10,8 @@ Failure cases listed before running:
 - E4 after switching on, its alert hook is not collected or gives no alert when it should (overspeed_warning)
 - E5 the alert fires below the margin or without a known limit
 - E6 a setting written through the params view does not reach the plugin on the next start
+- E7 an installed model plugin (op_models) owns role:perception.model while off, does not take it from sp_models when
+     switched on, or does not start its own op_modeld process
 """
 import argparse
 import http.server
@@ -100,6 +102,18 @@ def main() -> int:
         errors.append(f"E4/E6 alert at +10 km/h with margin 8: {over}")
       if src.update(sm(limit + 6 / 3.6, limit)) or src.update(sm(30.0, 0.0)):
         errors.append("E5 alert below margin or without a limit")
+
+  if "op_models" in found:
+    core = CoreParams()
+    role = "role:perception.model"
+    view = ParamsView(core, plugins.INSTALLED_SPECS)
+    off = plugins.owner(core, role)
+    view.put_bool("ExtOpModels", True)
+    on = plugins.owner(core, role)
+    procs = [p for p in plugins.processes() if p.name == "op_modeld"]
+    runs = bool(procs) and procs[0].should_run(True, core, None) and not procs[0].should_run(False, core, None)
+    if off != "sp_models" or on != "op_models" or not runs:
+      errors.append(f"E7 owner off={off} on={on}, op_modeld onroad-only={runs}")
 
   server.shutdown()
   print(json.dumps({"installed": sorted(found), "errors": errors}, indent=1))
