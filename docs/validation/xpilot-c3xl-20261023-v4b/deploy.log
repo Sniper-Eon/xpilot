@@ -1,0 +1,128 @@
+kj/filesystem-disk-unix.c++:1734: warning: PWD environment variable doesn't match current directory; pwd = /data/openpilot
+/data/xpilot-install-20261022/xpilot-20261023-v4b.bundle is okay
+The bundle contains this ref:
+00f7924ca05272103dd7cd2063cd5c66d1767b87 refs/remotes/origin/xpilot
+The bundle requires this ref:
+3e0b8ba896e876166b86639881f7ead288c846dd 
+The bundle uses this hash algorithm: sha1
+kj/filesystem-disk-unix.c++:1734: warning: PWD environment variable doesn't match current directory; pwd = /data/openpilot
+From /data/xpilot-install-20261022/xpilot-20261023-v4b.bundle
+   3e0b8ba..00f7924  origin/xpilot -> origin/xpilot
+Updating 3e0b8ba..00f7924
+Fast-forward
+ XPILOT.md                                          |    4 +-
+ .../xpilot-c3xl-20261023-v4/.gitattributes         |    1 +
+ docs/validation/xpilot-c3xl-20261023-v4/REPORT.md  |  263 +++
+ .../XpilotTileLayout.after-e2e                     |    1 +
+ .../XpilotTileLayout.user-final                    |    1 +
+ .../xpilot-c3xl-20261023-v4/add-tiles.png          |  Bin 0 -> 131084 bytes
+ .../xpilot-c3xl-20261023-v4/after-e2e.json         |   57 +
+ .../xpilot-c3xl-20261023-v4/artifacts.json         |  573 +++++
+ .../validation/xpilot-c3xl-20261023-v4/before.json | 2362 ++++++++++++++++++++
+ docs/validation/xpilot-c3xl-20261023-v4/build.log  |  662 ++++++
+ .../xpilot-c3xl-20261023-v4/e2e-exit-code.txt      |    1 +
+ docs/validation/xpilot-c3xl-20261023-v4/e2e.log    |  332 +++
+ .../xpilot-c3xl-20261023-v4/edit-drive-moved.png   |  Bin 0 -> 171843 bytes
+ .../xpilot-c3xl-20261023-v4/edit-drive.png         |  Bin 0 -> 164700 bytes
+ .../xpilot-c3xl-20261023-v4/edit-resized.png       |  Bin 0 -> 269526 bytes
+ docs/validation/xpilot-c3xl-20261023-v4/edit.png   |  Bin 0 -> 281081 bytes
+ .../final-preservation.json                        |   97 +
+ .../xpilot-c3xl-20261023-v4/final-runtime.json     | 1979 ++++++++++++++++
+ .../layout-restoration.json                        |    7 +
+ .../xpilot-c3xl-20261023-v4/log-end.json           |    1 +
+ .../xpilot-c3xl-20261023-v4/log-start.json         |    1 +
+ .../xpilot-c3xl-20261023-v4/onboarding.png         |  Bin 0 -> 249748 bytes
+ .../xpilot-c3xl-20261023-v4/onroad-blindspot.png   |  Bin 0 -> 315901 bytes
+ .../xpilot-c3xl-20261023-v4/page-developer.png     |  Bin 0 -> 213219 bytes
+ .../page-device-driver-camera.png                  |  Bin 0 -> 141753 bytes
+ .../page-device-regulatory.png                     |  Bin 0 -> 307633 bytes
+ .../xpilot-c3xl-20261023-v4/page-device-terms.png  |  Bin 0 -> 163298 bytes
+ .../page-device-training-guide.png                 |  Bin 0 -> 304483 bytes
+ .../xpilot-c3xl-20261023-v4/page-device.png        |  Bin 0 -> 234097 bytes
+ .../xpilot-c3xl-20261023-v4/page-models.png        |  Bin 0 -> 284735 bytes
+ .../xpilot-c3xl-20261023-v4/page-network.png       |  Bin 0 -> 151794 bytes
+ .../xpilot-c3xl-20261023-v4/page-plugins-store.png |  Bin 0 -> 138508 bytes
+ .../xpilot-c3xl-20261023-v4/page-plugins.png       |  Bin 0 -> 227358 bytes
+ .../xpilot-c3xl-20261023-v4/page-software.png      |  Bin 0 -> 242294 bytes
+ .../xpilot-c3xl-20261023-v4/page-status.png        |  Bin 0 -> 191675 bytes
+ .../xpilot-c3xl-20261023-v4/page-tesla.png         |  Bin 0 -> 221333 bytes
+ .../xpilot-c3xl-20261023-v4/page-toggles.png       |  Bin 0 -> 228690 bytes
+ .../xpilot-c3xl-20261023-v4/panda-post-build.json  |   40 +
+ .../xpilot-c3xl-20261023-v4/panda-pre.json         |   44 +
+ .../xpilot-c3xl-20261023-v4/panda-safety.diffstat  |    0
+ .../perf-attempt1-method.txt                       |   65 +
+ .../xpilot-c3xl-20261023-v4/perf-attempt1.log      |    6 +
+ .../xpilot-c3xl-20261023-v4/perf-method.txt        |   95 +
+ .../xpilot-c3xl-20261023-v4/perf-samples.json      |    1 +
+ docs/validation/xpilot-c3xl-20261023-v4/perf.json  |   38 +
+ docs/validation/xpilot-c3xl-20261023-v4/perf.log   |   39 +
+ .../production-runtime.json                        | 1979 ++++++++++++++++
+ .../xpilot-c3xl-20261023-v4/production-startup.log |  240 ++
+ .../validation/xpilot-c3xl-20261023-v4/result.json |  317 +++
+ docs/validation/xpilot-c3xl-20261023-v4/start.png  |  Bin 0 -> 278256 bytes
+ docs/validation/xpilot-c3xl-20261023-v4/ui-60s.log |  129 ++
+ .../xpilot-c3xl-20261023-v4/ui-asleep-stack.txt    |   67 +
+ openpilot/tesla/ui/pages/device.py                 |    5 +-
+ openpilot/tesla/ui/screen.py                       |   17 +-
+ openpilot/tesla/ui/tiles.py                        |   26 +-
+ tools/sp_tesla_e2e/big_screen_e2e.py               |   12 +-
+ tools/sp_tesla_e2e/tile_layout_check.py            |   36 +-
+ 57 files changed, 9468 insertions(+), 30 deletions(-)
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4/.gitattributes
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4/REPORT.md
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4/XpilotTileLayout.after-e2e
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4/XpilotTileLayout.user-final
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4/add-tiles.png
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4/after-e2e.json
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4/artifacts.json
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4/before.json
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4/build.log
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4/e2e-exit-code.txt
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4/e2e.log
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4/edit-drive-moved.png
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4/edit-drive.png
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4/edit-resized.png
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4/edit.png
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4/final-preservation.json
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4/final-runtime.json
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4/layout-restoration.json
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4/log-end.json
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4/log-start.json
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4/onboarding.png
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4/onroad-blindspot.png
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4/page-developer.png
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4/page-device-driver-camera.png
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4/page-device-regulatory.png
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4/page-device-terms.png
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4/page-device-training-guide.png
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4/page-device.png
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4/page-models.png
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4/page-network.png
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4/page-plugins-store.png
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4/page-plugins.png
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4/page-software.png
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4/page-status.png
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4/page-tesla.png
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4/page-toggles.png
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4/panda-post-build.json
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4/panda-pre.json
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4/panda-safety.diffstat
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4/perf-attempt1-method.txt
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4/perf-attempt1.log
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4/perf-method.txt
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4/perf-samples.json
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4/perf.json
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4/perf.log
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4/production-runtime.json
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4/production-startup.log
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4/result.json
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4/start.png
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4/ui-60s.log
+ create mode 100644 docs/validation/xpilot-c3xl-20261023-v4/ui-asleep-stack.txt
+kj/filesystem-disk-unix.c++:1734: warning: PWD environment variable doesn't match current directory; pwd = /data/openpilot
+00f7924ca05272103dd7cd2063cd5c66d1767b87
+Building compilation database compile_commands.json
+scons: done building targets.
+real 12.89
+user 11.34
+sys 1.59

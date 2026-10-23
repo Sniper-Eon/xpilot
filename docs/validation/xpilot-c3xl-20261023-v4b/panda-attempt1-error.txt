@@ -1,0 +1,6 @@
+Before deployment, panda-read.py asserted `info[12]==9 and not info[13]` and failed.
+Readback info hex: 1d002d000a5130343632383809cc.
+The source Panda.spi_connect decodes 0xCC as application and 0xEE as bootstub.
+The evidence script was corrected to require 0xCC; no product source was edited.
+The EXIT trap restored comma.service. Device HEAD was still 3e0b8ba896.
+This was a check-script decoding error, not a firmware/version mismatch.

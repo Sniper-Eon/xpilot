@@ -1,0 +1,11 @@
+set -e
+export PATH=/usr/local/venv/bin:/usr/local/bin:/usr/bin:/bin
+export PYTHONPATH=/data/openpilot:/data/openpilot/opendbc_repo:/data/openpilot/msgq_repo:/data/openpilot/tinygrad_repo:/data/openpilot/rednose_repo
+cd /data/openpilot
+python3 /data/xpilot-ui-check-v4b-evidence/gate.py > /data/xpilot-ui-check-v4b-evidence/pre-e2e-gate.json
+trap 'sudo systemctl start comma' EXIT
+sudo systemctl stop comma
+e2e_rc=0
+python3 tools/sp_tesla_e2e/big_screen_e2e.py --output /data/xpilot-ui-check-v4b > /data/xpilot-ui-check-v4b-e2e.log 2>&1 || e2e_rc=$?
+printf '%s\n' "$e2e_rc" > /data/xpilot-ui-check-v4b-evidence/e2e-exit-code.txt
+exit "$e2e_rc"

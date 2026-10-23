@@ -1,0 +1,11 @@
+set -e
+export PATH=/usr/local/venv/bin:/usr/local/bin:/usr/bin:/bin
+export PYTHONPATH=/data/openpilot:/data/openpilot/opendbc_repo:/data/openpilot/msgq_repo:/data/openpilot/tinygrad_repo:/data/openpilot/rednose_repo
+cd /data/openpilot
+python3 /data/xpilot-ui-check-v4b-evidence/gate.py > /data/xpilot-ui-check-v4b-evidence/pre-perf-gate.json
+trap 'python3 /data/xpilot-ui-check-v4b-evidence/timeout.py restore >> /data/xpilot-ui-check-v4b-evidence/timeout.log; sudo systemctl start comma' EXIT
+sudo systemctl stop comma
+python3 /data/xpilot-ui-check-v4b-evidence/timeout.py begin > /data/xpilot-ui-check-v4b-evidence/timeout.log
+sudo systemctl start comma
+python3 /data/xpilot-ui-check-v4b-evidence/perf.py > /data/xpilot-ui-check-v4b-perf.log 2>&1
+cat /data/xpilot-ui-check-v4b-perf.json

@@ -1,0 +1,25 @@
+set -e
+export PATH=/usr/local/venv/bin:/usr/local/bin:/usr/bin:/bin
+export PYTHONPATH=/data/openpilot:/data/openpilot/opendbc_repo:/data/openpilot/msgq_repo:/data/openpilot/tinygrad_repo:/data/openpilot/rednose_repo
+cd /data/openpilot
+python3 /data/xpilot-ui-check-v4b-evidence/gate.py > /data/xpilot-ui-check-v4b-evidence/after-e2e.json
+python3 /data/xpilot-ui-check-v4b-evidence/runtime-check.py > /data/xpilot-ui-check-v4b-evidence/final-runtime.log 2>&1
+cp /data/xpilot-ui-check-v4b-evidence/runtime-check.json /data/xpilot-ui-check-v4b-evidence/final-runtime.json
+python3 - <<'PY'
+import hashlib,json
+from pathlib import Path
+root=Path('/data/xpilot-ui-check-v4b-evidence')
+a=json.loads((root/'before.json').read_text())
+b=json.loads((root/'after-e2e.json').read_text())
+r=json.loads((root/'final-runtime.json').read_text())
+changed=[k for k,v in a['dirty_files'].items() if v!=b['dirty_files'].get(k)]
+result={'head':b['head'],'hostname':b['hostname'],'service':b['service'],'IsOffroad':b['IsOffroad'],'IsEngaged':b['IsEngaged'],'started':b['started'],'layout_before':a['layout'],'layout_after':b['layout'],'layout_unchanged':a['layout']==b['layout'],'protected_params_unchanged':a['protected_params']==b['protected_params'],'protected_params':b['protected_params'],'prior_dirty_files':len(a['dirty_files']),'final_dirty_files':len(b['dirty_files']),'prior_dirty_content_changed':changed,'critical_processes':[p for p in r['processes'] if p['name'] in ('ui','pandad','hardwared')],'panda_samples':len(r['panda_samples']),'runtime_passed':r['passed'],'e2e_script':b['e2e_script']}
+(root/'final-preservation.json').write_text(json.dumps(result,indent=2)+'\n')
+(root/'XpilotTileLayout.user-final').write_bytes(Path('/data/xpilot_plugins/.params/XpilotTileLayout').read_bytes())
+print(json.dumps(result,indent=2))
+assert b['head']=='00f7924ca05272103dd7cd2063cd5c66d1767b87' and b['service']=='active'
+assert result['layout_unchanged'] and result['protected_params_unchanged'] and not changed
+assert r['passed'] and not r['started']
+assert all(p['running'] and p['exitCode']==0 for p in result['critical_processes'])
+PY
+tmux capture-pane -p -S -600 -t comma:0.0 > /data/xpilot-ui-check-v4b-evidence/restored-startup.log

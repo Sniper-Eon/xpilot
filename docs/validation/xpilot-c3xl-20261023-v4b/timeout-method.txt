@@ -1,0 +1,21 @@
+"""Failures: concurrent parameter edit, failed write or byte-different restoration.
+Temporarily use existing UI timeout to avoid non-E2E touch injection.
+"""
+import hashlib,json,sys,time
+from pathlib import Path
+from openpilot.common.params import Params
+p=Params()
+path=Path('/data/params/d/InteractivityTimeout')
+root=Path('/data/xpilot-ui-check-v4b-evidence')
+if sys.argv[1]=='begin':
+ original=path.read_bytes()
+ assert original==b'0'
+ (root/'InteractivityTimeout.before').write_bytes(original)
+ p.put('InteractivityTimeout',120,block=True)
+ assert path.read_bytes()==b'120'
+else:
+ original=(root/'InteractivityTimeout.before').read_bytes()
+ assert path.read_bytes() in (b'120',original)
+ p.put('InteractivityTimeout',int(original),block=True)
+ assert path.read_bytes()==original
+print(json.dumps({'action':sys.argv[1],'epoch':time.time(),'before_sha256':hashlib.sha256(original).hexdigest(),'current_bytes':path.read_text(),'current_sha256':hashlib.sha256(path.read_bytes()).hexdigest()}))

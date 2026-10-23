@@ -1,0 +1,18 @@
+{
+  "head": "00f7924ca05272103dd7cd2063cd5c66d1767b87",
+  "passed": false,
+  "error": "AssertionError at perf.py:49; samples[-1][0] > 29.5 failed",
+  "requested_seconds": 30,
+  "frame_samples": 1215,
+  "first_frame_seconds": 0.007784857001752243,
+  "last_frame_seconds": 20.896271211000567,
+  "process_cpu_percent": null,
+  "valid_30_second_frame_summary": null,
+  "partial_only_frame_time_ms": {
+    "avg": 17.195136628327546,
+    "p95": 17.204569816589355,
+    "max": 17.28839111328125
+  },
+  "uiDebug_valid_samples": 0,
+  "wake_method": "temporary InteractivityTimeout=120; restored to original 0; no touch injection"
+}

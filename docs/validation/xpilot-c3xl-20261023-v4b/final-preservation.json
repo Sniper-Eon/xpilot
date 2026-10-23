@@ -1,0 +1,112 @@
+{
+  "head": "00f7924ca05272103dd7cd2063cd5c66d1767b87",
+  "hostname": "comma-9c13c9f5",
+  "service": "active",
+  "IsOffroad": true,
+  "IsEngaged": false,
+  "started": false,
+  "layout_before": {
+    "exists": true,
+    "size": 729,
+    "sha256": "bbfa8eb72310ee2e77e8322de689f69e969fbdb599f69695ce6600b0c3749034"
+  },
+  "layout_after": {
+    "exists": true,
+    "size": 729,
+    "sha256": "bbfa8eb72310ee2e77e8322de689f69e969fbdb599f69695ce6600b0c3749034"
+  },
+  "layout_unchanged": true,
+  "protected_params_unchanged": true,
+  "protected_params": {
+    "DoReboot": {
+      "exists": false,
+      "size": null,
+      "sha256": null
+    },
+    "DoShutdown": {
+      "exists": false,
+      "size": null,
+      "sha256": null
+    },
+    "DoUninstall": {
+      "exists": false,
+      "size": null,
+      "sha256": null
+    },
+    "HasAcceptedTerms": {
+      "exists": true,
+      "size": 1,
+      "sha256": "d4735e3a265e16eee03f59718b9b5d03019c07d8b6c51f90da3a666eec13ab35"
+    },
+    "HasAcceptedTermsSP": {
+      "exists": true,
+      "size": 3,
+      "sha256": "d0ff5974b6aa52cf562bea5921840c032a860a91a3512f7fe8f768f6bbe005f6"
+    },
+    "CompletedTrainingVersion": {
+      "exists": true,
+      "size": 5,
+      "sha256": "911fc0c48cb0c70601db5775a9bef1b740dc4cc9f9b46389b9f0563fe7eb94d7"
+    },
+    "IsDriverViewEnabled": {
+      "exists": true,
+      "size": 1,
+      "sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+    },
+    "CalibrationParams": {
+      "exists": false,
+      "size": null,
+      "sha256": null
+    },
+    "LiveTorqueParameters": {
+      "exists": false,
+      "size": null,
+      "sha256": null
+    },
+    "LiveParametersV2": {
+      "exists": false,
+      "size": null,
+      "sha256": null
+    },
+    "LiveDelay": {
+      "exists": false,
+      "size": null,
+      "sha256": null
+    },
+    "InteractivityTimeout": {
+      "exists": true,
+      "size": 1,
+      "sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+    }
+  },
+  "prior_dirty_files": 287,
+  "final_dirty_files": 287,
+  "prior_dirty_content_changed": [],
+  "critical_processes": [
+    {
+      "name": "ui",
+      "running": true,
+      "pid": 180706,
+      "exitCode": 0
+    },
+    {
+      "name": "pandad",
+      "running": true,
+      "pid": 180714,
+      "exitCode": 0
+    },
+    {
+      "name": "hardwared",
+      "running": true,
+      "pid": 180718,
+      "exitCode": 0
+    }
+  ],
+  "panda_samples": 151,
+  "runtime_passed": true,
+  "e2e_script": {
+    "exists": true,
+    "size": 21709,
+    "sha256": "5dfba7d29b294ae2a7e215522329187bc4d0e77063adc51bd1dba01a4aca4156"
+  }
+}

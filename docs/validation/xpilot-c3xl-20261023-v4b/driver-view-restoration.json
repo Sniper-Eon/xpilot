@@ -1,0 +1,23 @@
+{
+  "record_type": "host reconstruction from preserved before/after snapshots and executed Params.put_bool call",
+  "parameter": "IsDriverViewEnabled",
+  "before_round": {
+    "exists": true,
+    "size": 1,
+    "sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+  },
+  "after_service_restart": {
+    "exists": false,
+    "size": null,
+    "sha256": null
+  },
+  "restoration": "Params().put_bool(\"IsDriverViewEnabled\", False, block=True)",
+  "final": {
+    "exists": true,
+    "size": 1,
+    "sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+  },
+  "effective_boolean_remained_false": true,
+  "source_flag": "CLEAR_ON_MANAGER_START; openpilot/common/params_keys.h:58",
+  "device_restoration_log": "not present at collection; before/after files are authoritative evidence"
+}

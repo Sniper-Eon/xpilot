@@ -1,0 +1,16 @@
+set -e
+export PATH=/usr/local/venv/bin:/usr/local/bin:/usr/bin:/bin
+export PYTHONPATH=/data/openpilot:/data/openpilot/opendbc_repo:/data/openpilot/msgq_repo:/data/openpilot/tinygrad_repo:/data/openpilot/rednose_repo
+cd /data/openpilot
+python3 /data/xpilot-ui-check-v4b-evidence/gate.py > /data/xpilot-ui-check-v4b-evidence/pre-stop-gate.json
+git bundle verify /data/xpilot-install-20261022/xpilot-20261023-v4b.bundle
+trap 'sudo systemctl start comma' EXIT
+sudo systemctl stop comma
+python3 /data/xpilot-ui-check-v4b-evidence/panda-read.py > /data/xpilot-ui-check-v4b-evidence/panda-pre.json
+git branch xpilot-ui-v4b-before-20261023 HEAD
+git fetch /data/xpilot-install-20261022/xpilot-20261023-v4b.bundle refs/remotes/origin/xpilot:refs/remotes/origin/xpilot
+git merge --ff-only 00f7924ca05272103dd7cd2063cd5c66d1767b87
+/usr/bin/time -p scons -C /data/xpilot-install-20261022/candidate -j4 > /data/xpilot-ui-check-v4b-build.log 2>&1
+python3 /data/xpilot-ui-check-v4b-evidence/panda-read.py > /data/xpilot-ui-check-v4b-evidence/panda-post-build.json
+git rev-parse HEAD
+tail -5 /data/xpilot-ui-check-v4b-build.log

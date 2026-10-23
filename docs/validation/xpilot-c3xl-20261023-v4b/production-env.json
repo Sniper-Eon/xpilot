@@ -1,0 +1,13 @@
+{
+  "ui_pid": 180706,
+  "cmdline": "openpilot.selfdrive.ui.ui",
+  "cwd": "/data/xpilot-install-20261022/candidate/openpilot/system/manager",
+  "environment": {
+    "PATH": null,
+    "PYTHONPATH": null,
+    "SUNNYPILOT_UI": null,
+    "SUNNYPILOT_HARDWARE_PROFILE": null,
+    "BLOCK": null,
+    "BIG": null
+  }
+}

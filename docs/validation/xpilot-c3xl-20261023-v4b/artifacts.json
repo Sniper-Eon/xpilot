@@ -1,0 +1,217 @@
+{
+  "source_head": "00f7924ca05272103dd7cd2063cd5c66d1767b87",
+  "png_count": 21,
+  "png_max_bytes": 310631,
+  "pngs": [
+    {
+      "name": "add-tiles.png",
+      "width": 2160,
+      "height": 1080,
+      "bytes": 131084,
+      "sha256": "087b3aa5d2ffbf4144b2143291bc75b80399e363018203617fe4c3ee1e80031a",
+      "device_original": "/data/xpilot-ui-check-v4b/add-tiles.png",
+      "host_original": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/validation-X-20261023-08/xpilot-ui-check-v4b/add-tiles.png",
+      "unchanged_copy": true
+    },
+    {
+      "name": "edit-drive-moved.png",
+      "width": 2160,
+      "height": 1080,
+      "bytes": 171859,
+      "sha256": "89568f604354d95b654b7567cc5c3ac3aa7e48e22b2cdc4f12d2292abc2c9508",
+      "device_original": "/data/xpilot-ui-check-v4b/edit-drive-moved.png",
+      "host_original": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/validation-X-20261023-08/xpilot-ui-check-v4b/edit-drive-moved.png",
+      "unchanged_copy": true
+    },
+    {
+      "name": "edit-drive.png",
+      "width": 2160,
+      "height": 1080,
+      "bytes": 164695,
+      "sha256": "5671fe38d4378a968d0c9a5880ed7481c952202d517718a392bf3240e5635f4c",
+      "device_original": "/data/xpilot-ui-check-v4b/edit-drive.png",
+      "host_original": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/validation-X-20261023-08/xpilot-ui-check-v4b/edit-drive.png",
+      "unchanged_copy": true
+    },
+    {
+      "name": "edit-resized.png",
+      "width": 2160,
+      "height": 1080,
+      "bytes": 266635,
+      "sha256": "63859fb2b3f503467c2fcd7bdb44da3efc216688726044af89dcc8eb5212a052",
+      "device_original": "/data/xpilot-ui-check-v4b/edit-resized.png",
+      "host_original": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/validation-X-20261023-08/xpilot-ui-check-v4b/edit-resized.png",
+      "unchanged_copy": true
+    },
+    {
+      "name": "edit.png",
+      "width": 2160,
+      "height": 1080,
+      "bytes": 261889,
+      "sha256": "820e910349441a1b05b0b5bedfbf88a972dc48b3b73b2827b8a4618ceb264c11",
+      "device_original": "/data/xpilot-ui-check-v4b/edit.png",
+      "host_original": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/validation-X-20261023-08/xpilot-ui-check-v4b/edit.png",
+      "unchanged_copy": true
+    },
+    {
+      "name": "onboarding.png",
+      "width": 2160,
+      "height": 1080,
+      "bytes": 249748,
+      "sha256": "e7c150cd45d3c184eec74cb99e23e801c7299e352800b8c2d1c115c4003787e7",
+      "device_original": "/data/xpilot-ui-check-v4b/onboarding.png",
+      "host_original": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/validation-X-20261023-08/xpilot-ui-check-v4b/onboarding.png",
+      "unchanged_copy": true
+    },
+    {
+      "name": "onroad-blindspot.png",
+      "width": 2160,
+      "height": 1080,
+      "bytes": 310631,
+      "sha256": "f4c55921fa8d0411031ae5eea80a437d5bb194524652d3ae210216c772fb252b",
+      "device_original": "/data/xpilot-ui-check-v4b/onroad-blindspot.png",
+      "host_original": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/validation-X-20261023-08/xpilot-ui-check-v4b/onroad-blindspot.png",
+      "unchanged_copy": true
+    },
+    {
+      "name": "page-developer.png",
+      "width": 2160,
+      "height": 1080,
+      "bytes": 213219,
+      "sha256": "077bdef348d76b88bffe10288b70960585c130f29917cf3e2858609bf6b5f7bf",
+      "device_original": "/data/xpilot-ui-check-v4b/page-developer.png",
+      "host_original": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/validation-X-20261023-08/xpilot-ui-check-v4b/page-developer.png",
+      "unchanged_copy": true
+    },
+    {
+      "name": "page-device-driver-camera.png",
+      "width": 2160,
+      "height": 1080,
+      "bytes": 141753,
+      "sha256": "7be6497596b390de58d474b10a2774b63512b69f0d2cfb1f26bfff29c8f29d01",
+      "device_original": "/data/xpilot-ui-check-v4b/page-device-driver-camera.png",
+      "host_original": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/validation-X-20261023-08/xpilot-ui-check-v4b/page-device-driver-camera.png",
+      "unchanged_copy": true
+    },
+    {
+      "name": "page-device-terms.png",
+      "width": 2160,
+      "height": 1080,
+      "bytes": 163298,
+      "sha256": "808b0a26e275d1460b5e00c6ab1497710e7a52365362ee880f5446c24a33a3f1",
+      "device_original": "/data/xpilot-ui-check-v4b/page-device-terms.png",
+      "host_original": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/validation-X-20261023-08/xpilot-ui-check-v4b/page-device-terms.png",
+      "unchanged_copy": true
+    },
+    {
+      "name": "page-device-training-guide.png",
+      "width": 2160,
+      "height": 1080,
+      "bytes": 304483,
+      "sha256": "f9b475f004dcdcc9a1115121474514705b5d1e205805141f51a79f43e6cd4d1f",
+      "device_original": "/data/xpilot-ui-check-v4b/page-device-training-guide.png",
+      "host_original": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/validation-X-20261023-08/xpilot-ui-check-v4b/page-device-training-guide.png",
+      "unchanged_copy": true
+    },
+    {
+      "name": "page-device.png",
+      "width": 2160,
+      "height": 1080,
+      "bytes": 234097,
+      "sha256": "4d44b9c47029f89136a5b6a8b274a7056a8eb428895778b1e8e677d3b38f6068",
+      "device_original": "/data/xpilot-ui-check-v4b/page-device.png",
+      "host_original": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/validation-X-20261023-08/xpilot-ui-check-v4b/page-device.png",
+      "unchanged_copy": true
+    },
+    {
+      "name": "page-models.png",
+      "width": 2160,
+      "height": 1080,
+      "bytes": 284735,
+      "sha256": "2a3a36253233c7272696ed089ceaad775456766c94ddb24fcae4caeca9628704",
+      "device_original": "/data/xpilot-ui-check-v4b/page-models.png",
+      "host_original": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/validation-X-20261023-08/xpilot-ui-check-v4b/page-models.png",
+      "unchanged_copy": true
+    },
+    {
+      "name": "page-network.png",
+      "width": 2160,
+      "height": 1080,
+      "bytes": 151794,
+      "sha256": "0ab461b0f60060885d453bf77e7b1396b546097b941773b374d3279cf56c7a20",
+      "device_original": "/data/xpilot-ui-check-v4b/page-network.png",
+      "host_original": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/validation-X-20261023-08/xpilot-ui-check-v4b/page-network.png",
+      "unchanged_copy": true
+    },
+    {
+      "name": "page-plugins-store.png",
+      "width": 2160,
+      "height": 1080,
+      "bytes": 138508,
+      "sha256": "c4f767aa95b60cbad668997877d5ee917a486e297799479274f9115f3360cc59",
+      "device_original": "/data/xpilot-ui-check-v4b/page-plugins-store.png",
+      "host_original": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/validation-X-20261023-08/xpilot-ui-check-v4b/page-plugins-store.png",
+      "unchanged_copy": true
+    },
+    {
+      "name": "page-plugins.png",
+      "width": 2160,
+      "height": 1080,
+      "bytes": 227358,
+      "sha256": "60c2ed112fce024e9e83fc572d985a1fb16e1c709df309df5497a1843f476350",
+      "device_original": "/data/xpilot-ui-check-v4b/page-plugins.png",
+      "host_original": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/validation-X-20261023-08/xpilot-ui-check-v4b/page-plugins.png",
+      "unchanged_copy": true
+    },
+    {
+      "name": "page-software.png",
+      "width": 2160,
+      "height": 1080,
+      "bytes": 241288,
+      "sha256": "eca1a47eb8542eafc01fc98e20e45c0fe4122fad4fedaffaa8260e3640e7930d",
+      "device_original": "/data/xpilot-ui-check-v4b/page-software.png",
+      "host_original": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/validation-X-20261023-08/xpilot-ui-check-v4b/page-software.png",
+      "unchanged_copy": true
+    },
+    {
+      "name": "page-status.png",
+      "width": 2160,
+      "height": 1080,
+      "bytes": 189850,
+      "sha256": "0273427fcc4fb77d106e278eb9e6515885b78febe1d273242c6c33b513bf323e",
+      "device_original": "/data/xpilot-ui-check-v4b/page-status.png",
+      "host_original": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/validation-X-20261023-08/xpilot-ui-check-v4b/page-status.png",
+      "unchanged_copy": true
+    },
+    {
+      "name": "page-tesla.png",
+      "width": 2160,
+      "height": 1080,
+      "bytes": 221333,
+      "sha256": "4804c18e6f4c0d5959ad1e523a852796d319d7156ba7f702c01771d9833264b6",
+      "device_original": "/data/xpilot-ui-check-v4b/page-tesla.png",
+      "host_original": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/validation-X-20261023-08/xpilot-ui-check-v4b/page-tesla.png",
+      "unchanged_copy": true
+    },
+    {
+      "name": "page-toggles.png",
+      "width": 2160,
+      "height": 1080,
+      "bytes": 228690,
+      "sha256": "6c48eeb28dd3312d33ccf8f756d71e75baba240be3396f6b7491782bd3ce4651",
+      "device_original": "/data/xpilot-ui-check-v4b/page-toggles.png",
+      "host_original": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/validation-X-20261023-08/xpilot-ui-check-v4b/page-toggles.png",
+      "unchanged_copy": true
+    },
+    {
+      "name": "start.png",
+      "width": 2160,
+      "height": 1080,
+      "bytes": 251938,
+      "sha256": "a547009278f1872763f331fc2421d4779c93ad539c4490ec9d68629a1752c75b",
+      "device_original": "/data/xpilot-ui-check-v4b/start.png",
+      "host_original": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/validation-X-20261023-08/xpilot-ui-check-v4b/start.png",
+      "unchanged_copy": true
+    }
+  ]
+}
