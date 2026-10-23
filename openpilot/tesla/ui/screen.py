@@ -31,12 +31,11 @@ from openpilot.tesla.ui.pages.device import DevicePage
 from openpilot.tesla.ui.pages.onboarding import OnboardingPage
 from openpilot.tesla.ui.plugin_ui import MAX_FAILURES, EnabledPlugins, Overlays, ScreenOverlay, load
 from openpilot.tesla.ui.tile import Tile
-from openpilot.tesla.ui.tiles import LAYOUT_PARAM, LAYOUT_SPEC, SCREEN, VIEW
+from openpilot.tesla.ui.tiles import LAYOUT_PARAM, LAYOUT_SPEC, SCREEN, THEME_PARAM, THEMES, VIEW
 
 DIM = rl.Color(150, 152, 162, 255)
 SHADE = rl.Color(0, 0, 0, 120)      # over unselected tiles in edit mode
 PRESSED = rl.Color(0, 0, 0, 60)
-ACCENT = rl.Color(*tiles.ACCENT, 255)
 
 
 def is_big_screen() -> bool:
@@ -123,6 +122,18 @@ class BigScreenHost:
     self._mode = "native"
     self._host_pass = False
     self._onboarding = OnboardingPage(self._onboarding_done)
+    self._theme()
+
+  def _theme(self) -> None:
+    """Apply the tile color chosen on the Toggles page; read when the tile screen shows again."""
+    try:
+      color = THEMES.get(self._layout_params.get(THEME_PARAM), tiles.ACCENT)
+    except Exception:
+      color = tiles.ACCENT
+    if color != Tile.COLOR:
+      Tile.COLOR = color
+      for e in self._entries.values():
+        e.poll.invalidate()
 
   def bind_settings(self, main, _settings) -> None:
     self._main = main
@@ -331,6 +342,8 @@ class BigScreenHost:
         self._shown.hide_event()
       if page is not None:
         page.show_event()
+      else:
+        self._theme()
       self._shown = page
 
   # tile screen and edit mode
@@ -380,7 +393,7 @@ class BigScreenHost:
     medium = gui_app.font(FontWeight.MEDIUM)
     for name, (x, y, w, h) in tiles.bar_buttons(placed, self._layout == "drive").items():
       active = name == self._layout
-      rl.draw_rectangle(x, y, w, h, ACCENT if active else rl.Color(72, 75, 88, 255))
+      rl.draw_rectangle(x, y, w, h, rl.Color(*Tile.COLOR, 255) if active else rl.Color(72, 75, 88, 255))
       label = name.capitalize()
       width = rl.measure_text_ex(medium, label, 40, 0).x
       rl.draw_text_ex(medium, label, rl.Vector2(x + (w - width) / 2, y + (h - 40) / 2), 40, 0, rl.WHITE)

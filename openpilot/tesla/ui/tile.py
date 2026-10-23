@@ -5,7 +5,7 @@ from typing import ClassVar
 import pyray as rl
 
 from openpilot.system.ui.lib.application import FontWeight, gui_app
-from openpilot.tesla.ui.tiles import TileSpec
+from openpilot.tesla.ui.tiles import ACCENT, TileSpec
 
 DIM = rl.Color(255, 255, 255, 170)
 TITLE, UNIT, SUB = 30, 40, 36  # font sizes, px
@@ -25,6 +25,7 @@ class Tile:
   SPEC: ClassVar[TileSpec]
   PAGE: ClassVar[type | None] = None
   MICI: ClassVar[bool] = False
+  COLOR: ClassVar[tuple[int, int, int]] = ACCENT  # the chosen tiles.THEMES color, set on Tile by the host
 
   def state(self, sm):
     """What the face shows, as a comparable value; polled at most SPEC.hz times per second. sm has ui_state services plus
@@ -36,8 +37,8 @@ class Tile:
     self.face(rect)
 
   def face(self, rect: rl.Rectangle, icon: str | None = None) -> None:
-    """Square tile in SPEC.color with the title at the bottom left and an optional centered icon (assets path)."""
-    rl.draw_rectangle_rec(rect, rl.Color(*self.SPEC.color, 255))
+    """Square tile in COLOR with the title at the bottom left and an optional centered icon (assets path)."""
+    rl.draw_rectangle_rec(rect, rl.Color(*self.COLOR, 255))
     if icon is not None:
       side = int(min(rect.width, rect.height) * 0.36)
       tex = gui_app.texture(icon, side, side)

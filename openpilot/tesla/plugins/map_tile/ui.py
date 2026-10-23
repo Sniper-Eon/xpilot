@@ -3,12 +3,11 @@
 from openpilot.common.constants import CV
 from openpilot.selfdrive.ui.ui_state import ui_state
 from openpilot.tesla.ui.tile import Tile
-from openpilot.tesla.ui.tiles import DARK, TileSpec
+from openpilot.tesla.ui.tiles import TileSpec
 
 
 class MapTile(Tile):
-  SPEC = TileSpec("map", "Map", sizes=("small", "medium", "wide"), services=("liveMapDataSP", "navInstruction"), hz=2, order=60,
-                  color=DARK)
+  SPEC = TileSpec("map", "Map", sizes=("small", "medium", "wide"), services=("liveMapDataSP", "navInstruction"), hz=2, order=60)
 
   def state(self, sm):
     lines = []

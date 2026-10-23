@@ -17,13 +17,15 @@ CELL, GAP = 250, 12
 PITCH = CELL + GAP
 ORIGIN = ((SCREEN[0] - COLS * PITCH + GAP) // 2, (SCREEN[1] - ROWS * PITCH + GAP) // 2)
 SIZES = {"small": (1, 1), "medium": (2, 2), "wide": (4, 2), "large": (4, 4)}
-ACCENT = (0, 80, 239)  # WP cobalt
-DARK = (22, 24, 30)
+THEMES = {"Cobalt": (0, 80, 239), "Teal": (0, 140, 140), "Emerald": (0, 128, 0), "Crimson": (162, 0, 37), "Violet": (106, 0, 255),
+          "Graphite": (52, 56, 66)}  # tile colors (WP accents); every tile uses the chosen one
+ACCENT = THEMES["Cobalt"]
 
 DRIVE_CELLS = (1, 0, 6, 3)  # col, row, cols, rows under the mici driving view
 MICI = (536, 240)
 LAYOUT_PARAM = "XpilotTileLayout"
-LAYOUT_SPEC = {LAYOUT_PARAM: {"type": "JSON"}}  # kept by plugin_params.ParamsView as a file, not a compiled param
+THEME_PARAM = "XpilotTileTheme"  # a THEMES name
+LAYOUT_SPEC = {LAYOUT_PARAM: {"type": "JSON"}, THEME_PARAM: {"type": "STRING"}}  # kept by plugin_params.ParamsView as files, not compiled params
 
 LONG_PRESS = 0.6  # s held without moving: enters edit mode
 SLOP = 24         # px a press may move and still tap / long-press
@@ -74,7 +76,6 @@ class TileSpec:
   show: Literal["always", "onroad", "offroad"] = "always"
   hz: float = 10.0                          # max state() polls per second; the face is redrawn only when state changes
   order: int = 100                          # default position, lower first
-  color: tuple[int, int, int] = ACCENT      # background
 
   def __post_init__(self):
     if not self.sizes or any(s not in SIZES for s in self.sizes):

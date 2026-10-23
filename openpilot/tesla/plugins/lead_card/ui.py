@@ -2,11 +2,11 @@
 from openpilot.common.constants import CV
 from openpilot.selfdrive.ui.ui_state import ui_state
 from openpilot.tesla.ui.tile import Tile
-from openpilot.tesla.ui.tiles import DARK, TileSpec
+from openpilot.tesla.ui.tiles import TileSpec
 
 
 class LeadCardTile(Tile):
-  SPEC = TileSpec("lead_card", "Lead", sizes=("small", "medium", "wide"), hz=5, order=30, color=DARK)
+  SPEC = TileSpec("lead_card", "Lead", sizes=("small", "medium", "wide"), hz=5, order=30)
 
   def state(self, sm):
     lead = sm['radarState'].leadOne

@@ -3,7 +3,9 @@ from openpilot.selfdrive.ui.mici.layouts.settings.common import restart_needed_c
 from openpilot.selfdrive.ui.mici.layouts.settings.initial_cruise_speed import get_speed_options, set_initial_cruise_speed
 from openpilot.selfdrive.ui.ui_state import ui_state
 from openpilot.system.ui.widgets.list_view import ButtonAction, ListItem, multiple_button_item
+from openpilot.tesla.plugin_params import ParamsView
 from openpilot.tesla.ui.pages.base import ListPage, ParamToggle
+from openpilot.tesla.ui.tiles import LAYOUT_SPEC, THEME_PARAM, THEMES
 
 PERSONALITY_DESC = "Standard is recommended. Aggressive follows closer with firmer gas and braking; relaxed leaves more space."
 
@@ -33,7 +35,10 @@ class TogglesPage(ListPage):
                   "Enable to use sunnypilot driver assistance. Disable to use your car's stock driver assistance.",
                   enabled=not_engaged, after=restart_needed_callback),
     ]
-    self.add(self.personality, self.cruise, *(t.item for t in self.toggles))
+    self.theme_params = ParamsView(ui_state.params, LAYOUT_SPEC)
+    self.theme = multiple_button_item("Tile color", "Color of every tile on the home screen.", list(THEMES), 0, button_width=200,
+                                      callback=lambda i: self.theme_params.put(THEME_PARAM, list(THEMES)[i]))
+    self.add(self.personality, self.cruise, *(t.item for t in self.toggles), self.theme)
 
   def _set_personality(self, index: int) -> None:
     ui_state.params.put("LongitudinalPersonality", index, block=True)
@@ -52,6 +57,8 @@ class TogglesPage(ListPage):
     self.personality.action_item.set_selected_button(min(2, max(0, int(ui_state.params.get("LongitudinalPersonality", return_default=True) or 0))))
     for toggle in self.toggles:
       toggle.refresh()
+    theme = self.theme_params.get(THEME_PARAM)
+    self.theme.action_item.set_selected_button(list(THEMES).index(theme) if theme in THEMES else 0)
 
   def show_event(self):
     super().show_event()

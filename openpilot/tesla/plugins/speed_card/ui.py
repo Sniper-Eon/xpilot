@@ -2,13 +2,13 @@
 from openpilot.common.constants import CV
 from openpilot.selfdrive.ui.ui_state import ui_state
 from openpilot.tesla.ui.tile import Tile
-from openpilot.tesla.ui.tiles import DARK, TileSpec
+from openpilot.tesla.ui.tiles import TileSpec
 
 SET_SPEED_NA = 255  # vCruiseCluster (km/h) when cruise is not set
 
 
 class SpeedCardTile(Tile):
-  SPEC = TileSpec("speed_card", "Speed", sizes=("small", "medium", "wide"), hz=10, order=10, color=DARK)
+  SPEC = TileSpec("speed_card", "Speed", sizes=("small", "medium", "wide"), hz=10, order=10)
 
   def state(self, sm):
     cs = sm['carState']
