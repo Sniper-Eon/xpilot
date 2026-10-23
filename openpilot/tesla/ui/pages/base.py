@@ -5,7 +5,9 @@ import pyray as rl
 from openpilot.selfdrive.ui.ui_state import ui_state
 from openpilot.system.ui.lib.application import FontWeight, gui_app
 from openpilot.system.ui.widgets import DialogResult, Widget
+from openpilot.system.ui.widgets.button import Button
 from openpilot.system.ui.widgets.confirm_dialog import ConfirmDialog, alert_dialog
+from openpilot.system.ui.widgets.label import UnifiedLabel, gui_label
 from openpilot.system.ui.widgets.list_view import ListItem, MultipleButtonAction, ButtonAction, toggle_item
 from openpilot.system.ui.widgets.scroller_tici import Scroller
 from openpilot.tesla.plugins import view
@@ -14,6 +16,11 @@ from openpilot.tesla.ui.settings_meta import setting_choices, setting_label
 
 HEADER_COLOR = rl.Color(140, 144, 156, 255)
 HEADER_H = 110
+PAD = 60
+TITLE_SIZE = 80
+BODY_SIZE = 52
+BUTTON_H = 150
+BUTTON_W = 700
 
 
 class Header(Widget):
@@ -68,6 +75,33 @@ def confirm(text: str, action: str, callback) -> None:
     return
   gui_app.push_widget(ConfirmDialog(text, action.capitalize(),
                                     callback=lambda result: result == DialogResult.CONFIRM and not ui_state.engaged and callback()))
+
+
+def back() -> None:
+  """Close the open native page, like the host's Back button.
+  ponytail: calls the host's private _back(); switch to a public host method once screen.py has one."""
+  if gui_app.host is not None:
+    gui_app.host._back()
+
+
+def body(text: str) -> UnifiedLabel:
+  return UnifiedLabel(text, BODY_SIZE)
+
+
+def draw_card(rect: rl.Rectangle, title: str, text: UnifiedLabel | None, buttons: list[Button]) -> rl.Rectangle:
+  """Big-screen card: bold title, wrapped body text and a row of buttons along the bottom right. Returns the body rect."""
+  if title:
+    gui_label(rl.Rectangle(rect.x + PAD, rect.y + PAD, rect.width - 2 * PAD, TITLE_SIZE), title, TITLE_SIZE, font_weight=FontWeight.BOLD)
+  top = rect.y + (2 * PAD + TITLE_SIZE if title else PAD)
+  area = rl.Rectangle(rect.x + PAD, top, rect.width - 2 * PAD, rect.y + rect.height - top - (BUTTON_H + 2 * PAD if buttons else PAD))
+  if text is not None:
+    text.render(area)
+  w = min(BUTTON_W, (rect.width - 2 * PAD - PAD * (len(buttons) - 1)) / max(len(buttons), 1))
+  x = rect.x + rect.width - PAD - len(buttons) * (w + PAD) + PAD
+  for b in buttons:
+    b.render(rl.Rectangle(x, rect.y + rect.height - PAD - BUTTON_H, w, BUTTON_H))
+    x += w + PAD
+  return area
 
 
 def params():
