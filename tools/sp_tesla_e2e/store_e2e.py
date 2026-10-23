@@ -9,6 +9,8 @@ Failure cases listed before running:
 - E3 a plugin that is off by default is active before it is switched on
 - E4 after switching on, its alert hook is not collected or gives no alert when it should (overspeed_warning)
 - E5 the alert fires below the margin or without a known limit
+- E4b the alert hook reads a service selfdrived does not subscribe (selfdrived has no carState unless a plugin
+      declares it in SERVICES; overspeed_warning 1.0.0 raised KeyError every frame on the car)
 - E6 a setting written through the params view does not reach the plugin on the next start
 - E7 an installed model plugin (op_models) owns role:perception.model while off, does not take it from sp_models when
      switched on, or does not start its own op_modeld process
@@ -52,8 +54,11 @@ class CP:
 
 
 def sm(v_ego: float, limit: float) -> dict:
+  """What selfdrived's SubMaster holds: longitudinalPlanSP always, carState only via plugins.services()."""
+  from openpilot.tesla import plugins
   plan = types.SimpleNamespace(speedLimit=types.SimpleNamespace(resolver=types.SimpleNamespace(speedLimit=limit)))
-  return {"carState": types.SimpleNamespace(vEgo=v_ego), "longitudinalPlanSP": plan}
+  out = {"carState": types.SimpleNamespace(vEgo=v_ego), "longitudinalPlanSP": plan}
+  return {k: v for k, v in out.items() if k != "carState" or k in plugins.services()}
 
 
 def main() -> int:
@@ -97,11 +102,14 @@ def main() -> int:
     else:
       src = sources[0]
       limit = 50 / 3.6
-      over = src.update(sm(limit + 10 / 3.6, limit))
-      if [a.severity for a in over] != ["warning"] or "10 km/h" not in over[0].title:
-        errors.append(f"E4/E6 alert at +10 km/h with margin 8: {over}")
-      if src.update(sm(limit + 6 / 3.6, limit)) or src.update(sm(30.0, 0.0)):
-        errors.append("E5 alert below margin or without a limit")
+      try:
+        over = src.update(sm(limit + 10 / 3.6, limit))
+        if [a.severity for a in over] != ["warning"] or "10 km/h" not in over[0].title:
+          errors.append(f"E4/E6 alert at +10 km/h with margin 8: {over}")
+        if src.update(sm(limit + 6 / 3.6, limit)) or src.update(sm(30.0, 0.0)):
+          errors.append("E5 alert below margin or without a limit")
+      except KeyError as e:
+        errors.append(f"E4b hook read {e} that selfdrived does not subscribe; add it to the plugin's SERVICES")
 
   if "op_models" in found:
     core = CoreParams()
