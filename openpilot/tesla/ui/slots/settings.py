@@ -1,5 +1,4 @@
-"""Built-in settings tiles (offroad only): each opens its native page from tesla/ui/pages, Models its mici layout."""
-from openpilot.selfdrive.ui.sunnypilot.mici.layouts.models import ModelsLayoutMici
+"""Built-in settings tiles (offroad only): each opens its native page from tesla/ui/pages."""
 from openpilot.selfdrive.ui.ui_state import ui_state
 from openpilot.system.ui.lib.application import FontWeight
 from openpilot.tesla.plugins import FAULTS_PARAM, LOAD_ERRORS, resolve
@@ -7,6 +6,7 @@ from openpilot.tesla.ui.offroad import offroad_alerts
 from openpilot.tesla.ui.pages.developer import DeveloperPage
 from openpilot.tesla.ui.pages.device import DevicePage
 from openpilot.tesla.ui.pages.home import HomePage
+from openpilot.tesla.ui.pages.models import ModelsPage
 from openpilot.tesla.ui.pages.network import NetworkPage
 from openpilot.tesla.ui.pages.plugins import PluginsPage
 from openpilot.tesla.ui.pages.software import SoftwarePage
@@ -74,8 +74,7 @@ class TeslaTile(_Settings):
 
 class ModelsTile(_Settings):
   SPEC = TileSpec("models", "Models", sizes=("small", "medium", "wide"), show="offroad", order=4)
-  PAGE = ModelsLayoutMici
-  MICI = True
+  PAGE = ModelsPage
   ICON = "icons_mici/chestnut.png"
 
 
