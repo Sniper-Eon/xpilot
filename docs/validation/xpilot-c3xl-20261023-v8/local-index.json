@@ -1,0 +1,29 @@
+{
+  "api": 1,
+  "plugins": [
+    {
+      "id": "op_models",
+      "name": "openpilot Model",
+      "version": "1.0.0",
+      "api": 1,
+      "category": "perception_model",
+      "author": "xpilot",
+      "description": "Drive with the model that ships with openpilot (selfdrive/modeld, no downloads). Replaces the SP model manager while on; switch it off to go back.",
+      "url": "file:///data/xpilot-install-20261022/xpilot-X-20261023-11-plugins/dist/op_models-1.0.0.tar.gz",
+      "sha256": "6f160751d990e1ba11e42b6d42f94eb5b9c4ce10175b87f5aabc3fcaf095a4a1",
+      "platform": null
+    },
+    {
+      "id": "overspeed_warning",
+      "name": "Overspeed Warning",
+      "version": "1.0.0",
+      "api": 1,
+      "category": "alerts",
+      "author": "xpilot",
+      "description": "Example plugin: warns when driving faster than the resolved speed limit plus a margin. Shows the manifest, store-backed params, a settings row, an alert hook and a relative import.",
+      "url": "file:///data/xpilot-install-20261022/xpilot-X-20261023-11-plugins/dist/overspeed_warning-1.0.0.tar.gz",
+      "sha256": "0d3b47b7b6241445f75490f06e8dcbc3d418cbbb7e9b8deea6d3527865e4bf8a",
+      "platform": null
+    }
+  ]
+}

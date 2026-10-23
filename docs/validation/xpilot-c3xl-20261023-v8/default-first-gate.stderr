@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "/data/xpilot-ui-check-v8-evidence/preflight.py", line 44, in <module>
+    assert p.get_bool('IsOffroad') and not p.get_bool('IsEngaged')
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError

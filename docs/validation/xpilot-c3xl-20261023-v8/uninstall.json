@@ -1,0 +1,9 @@
+{
+  "action": "uninstall",
+  "install_dir": "/data/xpilot_plugins",
+  "owner": "sp_models",
+  "load_errors": {},
+  "installed_versions": {
+    "overspeed_warning": "1.0.0"
+  }
+}
