@@ -17,10 +17,10 @@ class MapTile(Tile):
       if m.speedLimitValid:
         lines.append(f"Limit {m.speedLimit * factor:.0f}")
       if m.roadName:
-        lines.append(m.roadName[:32])
+        lines.append(m.roadName)
     if sm.alive['navInstruction'] and sm['navInstruction'].maneuverPrimaryText:
       nav = sm['navInstruction']
-      lines.append(f"{nav.maneuverDistance:.0f} m {nav.maneuverPrimaryText}"[:32])
+      lines.append(f"{nav.maneuverDistance:.0f} m {nav.maneuverPrimaryText}")
     return tuple(lines) or ("No map data",)
 
   def draw(self, rect, size, state):

@@ -1,14 +1,17 @@
 """Tile base and the shared Windows Phone tile look (UI v4). Format (TileSpec) and layout live in tiles.py.
-The host keeps one texture per tile and redraws it only when state() returns something new (or the size changes)."""
+The host keeps one texture per tile and redraws it only when state() returns something new (or the size changes).
+Text fits the tile by itself: fonts grow with the tile (tiles.scale), shrink to fit the width down to tiles.MIN_FONT, then
+the text is cut with "..."; draw_lines drops the last lines that do not fit, so list the important ones first."""
 from typing import ClassVar
 
 import pyray as rl
 
 from openpilot.system.ui.lib.application import FontWeight, gui_app
-from openpilot.tesla.ui.tiles import ACCENT, TileSpec
+from openpilot.tesla.ui.tiles import ACCENT, MIN_FONT, TileSpec, fit_lines, scale
 
 DIM = rl.Color(255, 255, 255, 170)
-TITLE, UNIT, SUB = 30, 40, 36  # font sizes, px
+TITLE, UNIT, SUB = 30, 40, 36  # font sizes on a small tile, px
+PAD = 16
 
 
 def text_w(weight: FontWeight, text: str, size: int) -> float:
@@ -17,6 +20,27 @@ def text_w(weight: FontWeight, text: str, size: int) -> float:
 
 def text(weight: FontWeight, s: str, x: float, y: float, size: int, color=rl.WHITE) -> None:
   rl.draw_text_ex(gui_app.font(weight), s, rl.Vector2(x, y), size, 0, color)
+
+
+def clip(weight: FontWeight, s: str, size: int, w: float) -> str:
+  """s, or its longest prefix plus "..." that fits w px."""
+  if text_w(weight, s, size) <= w:
+    return s
+  while s and text_w(weight, s + "...", size) > w:
+    s = s[:-1]
+  return s + "..."
+
+
+def fit(weight: FontWeight, s: str, size: float, w: float) -> int:
+  """size, made smaller (not below MIN_FONT) until s fits w px."""
+  return fit_lines([text_w(weight, s, 100) / 100], w, size, size)[0]
+
+
+def lines_in(rect: rl.Rectangle, lines: list[str], cap: float, weight=FontWeight.SEMI_BOLD, color=rl.WHITE) -> None:
+  """Left-aligned lines from the top of rect, sized and cut to fit it."""
+  size, n = fit_lines([text_w(weight, s, 100) / 100 for s in lines], rect.width, rect.height, cap)
+  for i, line in enumerate(lines[:n]):
+    text(weight, clip(weight, line, size, rect.width), rect.x, rect.y + i * (size + 6), size, color)
 
 
 class Tile:
@@ -36,6 +60,9 @@ class Tile:
     """Draw the face into rect (texture px, origin 0,0); size is the placed size name."""
     self.face(rect)
 
+  def title_size(self, rect: rl.Rectangle) -> int:
+    return int(TITLE * (1 + scale(rect.width, rect.height)) / 2)  # 30 px small, 45 px medium and up
+
   def face(self, rect: rl.Rectangle, icon: str | None = None) -> None:
     """Square tile in COLOR with the title at the bottom left and an optional centered icon (assets path)."""
     rl.draw_rectangle_rec(rect, rl.Color(*self.COLOR, 255))
@@ -43,25 +70,34 @@ class Tile:
       side = int(min(rect.width, rect.height) * 0.36)
       tex = gui_app.texture(icon, side, side)
       rl.draw_texture(tex, int(rect.x + (rect.width - tex.width) / 2), int(rect.y + (rect.height - tex.height) / 2 - 16), rl.WHITE)
-    text(FontWeight.MEDIUM, self.SPEC.title, rect.x + 16, rect.y + rect.height - TITLE - 14, TITLE)
+    size = self.title_size(rect)
+    text(FontWeight.MEDIUM, clip(FontWeight.MEDIUM, self.SPEC.title, size, rect.width - 2 * PAD), rect.x + PAD,
+         rect.y + rect.height - size - 14, size)
 
   def draw_value(self, rect: rl.Rectangle, value: str, unit: str = "", sub: str = "") -> None:
     """Face, then one big value (with an optional unit after it) centered above the title, and an optional line below it."""
     self.face(rect)
-    bottom = rect.height - TITLE - 28
-    size = int(max(40, min(150, bottom - (SUB + 8 if sub else 0) - 24, rect.width * 0.42)))
-    unit_w = text_w(FontWeight.MEDIUM, unit, UNIT) + 8 if unit else 0
+    s = scale(rect.width, rect.height)
+    room = rect.width - 2 * PAD
+    sub_size = fit(FontWeight.MEDIUM, sub, SUB * s, room) if sub else 0
+    below = sub_size + 8 if sub else 0
+    bottom = rect.height - self.title_size(rect) - 28
+    unit_size = int(UNIT * s)
+    unit_w = text_w(FontWeight.MEDIUM, unit, unit_size) + 8 if unit else 0
+    size = fit(FontWeight.BOLD, value, max(MIN_FONT, min(150 * s, bottom - below - 24)), room - unit_w)
     value_w = text_w(FontWeight.BOLD, value, size)
-    y = rect.y + (bottom - size - (SUB + 8 if sub else 0)) / 2
+    y = rect.y + (bottom - size - below) / 2
     x = rect.x + (rect.width - value_w - unit_w) / 2
     text(FontWeight.BOLD, value, x, y, size)
     if unit:
-      text(FontWeight.MEDIUM, unit, x + value_w + 8, y + size - UNIT - size * 0.12, UNIT, DIM)
+      text(FontWeight.MEDIUM, unit, x + value_w + 8, y + size - unit_size - size * 0.12, unit_size, DIM)
     if sub:
-      text(FontWeight.MEDIUM, sub, rect.x + (rect.width - text_w(FontWeight.MEDIUM, sub, SUB)) / 2, y + size + 8, SUB, DIM)
+      sub = clip(FontWeight.MEDIUM, sub, sub_size, room)
+      text(FontWeight.MEDIUM, sub, rect.x + (rect.width - text_w(FontWeight.MEDIUM, sub, sub_size)) / 2, y + size + 8, sub_size, DIM)
 
   def draw_lines(self, rect: rl.Rectangle, lines: list[str], size: int = 40) -> None:
-    """Face, then one left-aligned line per entry from the top."""
+    """Face, then left-aligned lines from the top, at most size px on a small tile (scaled up on bigger ones); lines that do
+    not fit above the title are dropped from the end."""
     self.face(rect)
-    for i, line in enumerate(lines):
-      text(FontWeight.SEMI_BOLD, line, rect.x + 16, rect.y + 16 + i * (size + 6), size)
+    box = rl.Rectangle(rect.x + PAD, rect.y + PAD, rect.width - 2 * PAD, rect.height - self.title_size(rect) - 14 - 2 * PAD)
+    lines_in(box, lines, size * scale(rect.width, rect.height))

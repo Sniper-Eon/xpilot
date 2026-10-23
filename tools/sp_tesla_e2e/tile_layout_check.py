@@ -36,6 +36,9 @@ Failure cases listed before implementation:
       left-out tile
 - T15 a tile face is redrawn while its state and size are unchanged, not redrawn after either changes, or state() is
       polled more than hz times a second
+- T18 tile text does not fit its tile: the font scale is not 1 on a small tile and 2 on bigger ones, a fitted font
+      leaves the box width or height while above MIN_FONT, goes over its cap or under MIN_FONT, drops a line that fits,
+      or keeps one that does not
 """
 import ast
 import itertools
@@ -324,6 +327,31 @@ def check_poll(errors):
     errors.append("T15 no redraw after invalidate")
 
 
+def check_fit(errors):
+  sizes = {n: T.size_rect(0, 0, c)[2:] for n, c in T.SIZES.items()}
+  if [T.scale(*sizes[n]) for n in ("small", "medium", "wide", "large")] != [1, 2, 2, 2]:
+    errors.append(f"T18 scale {[T.scale(*sizes[n]) for n in sizes]}")
+  if T.fit_lines([], 200, 200, 40) != (40, 0):
+    errors.append("T18 no lines")
+  rng = random.Random(7)
+  for _ in range(2000):
+    widths = [rng.uniform(0.2, 12) for _ in range(rng.randint(1, 6))]
+    w, h, cap = rng.uniform(100, 1000), rng.uniform(20, 900), rng.uniform(24, 150)
+    size, n = T.fit_lines(widths, w, h, cap)
+    if not (1 <= n <= len(widths)) or not (T.MIN_FONT <= size <= max(cap, T.MIN_FONT)):
+      errors.append(f"T18 {widths} {w:.0f}x{h:.0f} cap {cap:.0f} gave {size}, {n}")
+      break
+    if size > T.MIN_FONT and (n * (size + 6) - 6 > h + 1 or any(k * size > w + 1 for k in widths[:n])):
+      errors.append(f"T18 {widths} {w:.0f}x{h:.0f} gave {size} px, {n} lines: leaves the box")
+      break
+    if n < len(widths) and (n + 1) * (T.MIN_FONT + 6) - 6 <= h:
+      errors.append(f"T18 {widths} {w:.0f}x{h:.0f} dropped a line that fits at MIN_FONT")
+      break
+    if n > 1 and n * (T.MIN_FONT + 6) - 6 > h:
+      errors.append(f"T18 {widths} {w:.0f}x{h:.0f} kept {n} lines that do not fit")
+      break
+
+
 def ascii_strings(path: Path):
   tree = ast.parse(path.read_text())
   docs = {id(n.body[0].value) for n in ast.walk(tree) if isinstance(n, (ast.Module, ast.ClassDef, ast.FunctionDef))
@@ -348,7 +376,7 @@ def check_text(errors):
 def main() -> int:
   errors: list[str] = []
   for check in (check_grid, check_view, check_place, check_show, check_spec, check_layout, check_edit, check_hits, check_bar, check_gesture,
-                check_poll, check_text):
+                check_poll, check_fit, check_text):
     try:
       check(errors)
     except Exception as e:

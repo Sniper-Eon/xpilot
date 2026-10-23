@@ -60,6 +60,27 @@ def _view() -> tuple[int, int, int, int]:
 VIEW = _view()  # mici onroad view, 536:240 centered in DRIVE_CELLS
 
 
+MIN_FONT = 24  # px; smaller is not readable from the driver's seat
+
+
+def scale(w: float, h: float) -> float:
+  """Font scale of a tile face: 1 for a small tile, 2 for medium and up (the short side sets it)."""
+  return min(2.0, max(1.0, min(w, h) / CELL))
+
+
+def fit_lines(widths: list[float], w: float, h: float, cap: float, gap: float = 6) -> tuple[int, int]:
+  """(font px, lines shown) for lines stacked in a w x h box; widths are each line's width per font px. The font is the
+  largest <= cap at which every shown line fits the width and all fit the height, but not below MIN_FONT: a line still too
+  wide there is cut by the caller, and lines that do not fit the height are dropped from the end (put the important first)."""
+  if not widths:
+    return int(cap), 0
+  n = len(widths)
+  while n > 1 and (h + gap) / n - gap < MIN_FONT:
+    n -= 1
+  by_width = min((w / k for k in widths[:n] if k > 0), default=cap)
+  return int(max(MIN_FONT, min(cap, (h + gap) / n - gap, by_width))), n
+
+
 def blocked(started: bool) -> set[tuple[int, int]]:
   if not started:
     return set()

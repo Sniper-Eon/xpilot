@@ -1,4 +1,6 @@
 """Built-in settings tiles (offroad only): each opens its native page from tesla/ui/pages."""
+import pyray as rl
+
 from openpilot.selfdrive.ui.ui_state import ui_state
 from openpilot.system.ui.lib.application import FontWeight
 from openpilot.tesla.plugins import FAULTS_PARAM, LOAD_ERRORS, resolve
@@ -12,8 +14,8 @@ from openpilot.tesla.ui.pages.plugins import PluginsPage
 from openpilot.tesla.ui.pages.software import SoftwarePage
 from openpilot.tesla.ui.pages.tesla import TeslaPage
 from openpilot.tesla.ui.pages.toggles import TogglesPage
-from openpilot.tesla.ui.tile import DIM, SUB, Tile, text
-from openpilot.tesla.ui.tiles import TileSpec
+from openpilot.tesla.ui.tile import DIM, PAD, SUB, Tile, lines_in
+from openpilot.tesla.ui.tiles import TileSpec, scale
 
 SIZES = ("medium", "small", "wide")
 
@@ -28,8 +30,9 @@ class _Settings(Tile):
   def draw(self, rect, size, state):
     self.face(rect, self.ICON)
     if size != "small":
-      for i, line in enumerate(self.lines(state)):
-        text(FontWeight.MEDIUM, line, rect.x + 16, rect.y + 14 + i * (SUB + 4), SUB, DIM)
+      icon_top = (rect.height - int(min(rect.width, rect.height) * 0.36)) / 2 - 16  # face() centers the icon there
+      box = rl.Rectangle(rect.x + PAD, rect.y + 14, rect.width - 2 * PAD, icon_top - 22)
+      lines_in(box, self.lines(state), SUB * scale(rect.width, rect.height), FontWeight.MEDIUM, DIM)
 
 
 class StatusTile(_Settings):
