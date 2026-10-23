@@ -69,12 +69,6 @@ for index,_ in enumerate(gui_app.render()):
     assert target.x < 536 and target.x + target.width > 0
     rl.rl_draw_render_batch_active()
     rl.take_screenshot(str(out/'cooperative-steering.png'))
-    settings._tuning_page(__import__('openpilot.tesla.long.registry',fromlist=['ordered_backends']).ordered_backends()[2])
-    gui_app._nav_stack[-1]._scroller.scroll_to(1688,smooth=False)
-  if index==94:
-    rl.rl_draw_render_batch_active()
-    rl.take_screenshot(str(out/'tn-tuning.png'))
-    gui_app.pop_widget()
   if index==100:
     settings._scroller._items[0]._click_callback()
     assert gui_app._nav_stack[-1] is root
