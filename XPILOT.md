@@ -49,7 +49,7 @@ openpilot/tesla/
   ui/offroad.py ui/pages/   大屏停车时的详情页（见第 9 节）
   ui/settings_page.py ui/settings_meta.py        Tesla 设置页（上游 Tesla 选项、DM、地图）
 opendbc_repo/opendbc/safety/plugins/
-  plugin.h registry.h auto_speed.h ambient_light.h   panda safety 插件（见第 6 节，已接入，未编译验证）
+  plugin.h registry.h auto_speed.h ambient_light.h   panda safety 插件（见第 6 节）
 ```
 
 ## 4. Python 插件接口（`openpilot/tesla/plugin.py`）
@@ -149,7 +149,7 @@ class MyFeature(Plugin):   # 名字、开关、设置都来自 plugin.json，代
 
 2. 不用注册：插件会被自动发现，Plugins 页按类别显示它的开关和设置。
 3. 运行 `python3 openpilot/tesla/plugins/gen_params.py`，把 `params` 生成到 `common/plugin_params.inc`，一起提交。
-4. 有 CAN 发送的：写 `opendbc/safety/plugins/<名字>.h` 并加进 `registry.h`。`safetyParam` 位要和 Python 侧一致（auto_speed 用的是 `0x4000`）。
+4. 有 CAN 发送的：写 `opendbc/safety/plugins/<名字>.h` 并加进 `registry.h`。`safetyParam` 位要和 Python 侧一致（auto_speed 用 `0x4000`，ambient_light 用 `0x2000`，新插件从 `0x1000` 往下取）。
 5. 有 UI 的：写 `plugins/<名字>/ui.py`，里面的 `Tile` 子类（大屏磁贴，`SPEC = TileSpec(...)`，见第 9 节）、`HudOverlay` 子类（mici 行车画面叠加层，无参构造）和 `ScreenOverlay` 子类（大屏整屏叠加层，无参构造）会被自动加载；插件关闭时自动隐藏。不属于任何插件的磁贴放 `openpilot/tesla/ui/slots/`。
 6. 先写失败模式和检查，再写实现；能在本机跑的就跑（`plugin_host_check.py` 和 `manifest_check.py` 会检查清单、资源声明和参数）。
 
@@ -167,7 +167,7 @@ typedef struct {
 
 规则：一个插件只负责一个报文，原有 safety 模式的白名单和检查一律不改；校验内容至少包括报文模板、新鲜度、频率限制、`controls_allowed`、只在 Tesla 模式下生效，以及会话上限。
 
-**当前状态：Mac Apple clang 16 已编译 libsafety；Tesla stock 381 项运行（338 passed、43 skipped），xpilot 插件 28 项运行（22 passed、6 个 TX inventory skipped）；MISRA 已运行但因 stock safety 的既有 8.7/unusedFunction 报告未通过。** `safety.h` 里有 4 处调用：
+**当前状态：libsafety 在 Mac（Apple clang 16）和 Linux 主机上编译；`test_tesla.py` 和 `test_xpilot_plugins.py` 通过；MISRA（cppcheck）在 Linux 主机上 0 条报告。** 只保留 Tesla 后，lateral.h/longitudinal.h/safety.h 里给其他车型用的共用函数没人调用，在 `tests/misra/main.c` 里用 `SAFETY_UNUSED` 标出，stock 头文件不改。会话上限：auto_speed 每次最多 50 格、空闲 3 秒算新会话；ambient_light 每次最多 150 帧/15 秒、空闲 1 秒算新会话。 `safety.h` 里有 4 处调用：
 1. include `opendbc/safety/plugins/registry.h`；
 2. `safety_rx_hook` 里，`valid` 为真时调用 `safety_plugins_rx(msg)`；
 3. `safety_tx_hook` 里，属于插件的报文交给 `plugin->tx(msg)` 校验，其余报文仍走原模式；
@@ -242,7 +242,7 @@ typedef struct {
 |---|---|---|---|
 | `auto_speed` | 按车辆限速（DAS_fusedSpeedLimit）加偏移，用右滚轮单格报文调整巡航设定速度；手动拨滚轮后暂停，反方向拨两下恢复 | `TeslaAutoSpeedLimit`、`TeslaAutoSpeedLimitOffset` | `auto_speed.h`（0x3C2，需要 vehicle bus 和 openpilot 纵向） |
 | `traffic_light` | 读取 Tesla 自身的红绿灯感知（APP_trafficControl），由 trafficcontrold 和计划仲裁器在红灯前停车（只收紧） | `TeslaTrafficSignalControlEnabled`、`TeslaTrafficStopReference`、`TeslaTrafficControlMaxSpeed` | 无发送 |
-| `ambient_light` | 盲区有车时把氛围灯点成红色；区分昼夜亮度 | `TeslaBlindspotAmbient*` | `ambient_light.h`（0x679） |
+| `ambient_light` | 盲区有车时把氛围灯点成红色；区分昼夜亮度 | `TeslaBlindspotAmbient*` | `ambient_light.h`（0x679，`safetyParam` 位 `0x2000`，需要 vehicle bus） |
 | `external_compute` | 外接算力桥接（见 8b），本身不控制车辆 | `XpilotExternal*` | 无发送 |
 | `speed_card` | 大屏磁贴：车速（仪表车速）和 SET 设定车速；默认开启 | `XpilotSpeedCard` | 无发送 |
 | `lead_card` | 大屏磁贴：前车距离和相对速度（radarState.leadOne）；默认开启 | `XpilotLeadCard` | 无发送 |

@@ -10,10 +10,10 @@ auto_speed (0x3C2, bus 1, 8 bytes):
 - controls_allowed false blocks TX.
 - A safety-mode reset clears both the template and rate-limit state.
 - Plugin RX does not change stock Tesla controls_allowed or relay-malfunction state.
-- No session cap exists; report this finding without adding one.
+- At most 50 ticks per session; a 3-second idle gap starts a new session.
 
 ambient_light (0x679, bus 1, 7 bytes):
-- Inactive outside SAFETY_TESLA or without the vehicle bus; no independent safetyParamSP bit exists.
+- Inactive outside SAFETY_TESLA, without the 0x2000 safetyParamSP bit, or without the vehicle bus.
 - Wrong address, bus, or length is not plugin-owned and remains blocked by stock Tesla safety.
 - TX is blocked before a template exists or after that template is stale.
 - TX is blocked for a non-red color, excessive brightness, an invalid target, or a changed protected template bit.
@@ -32,6 +32,7 @@ from opendbc.sunnypilot.car.tesla.values import TeslaSafetyFlagsSP
 
 
 AUTO_SPEED_PARAM = 0x4000
+AMBIENT_PARAM = 0x2000
 AUTO_SPEED_TEMPLATE = bytes((0xA5, 0x12, 0x34, 0xC0, 0x9A, 0xBC, 0xDE, 0xF0))
 AMBIENT_TEMPLATE = bytes((0x01, 0x12, 0x34, 0x56, 0xA8, 0x06, 0xA0))
 AMBIENT_ALERT = bytes((0x03, 0xFF, 0x00, 0x00, 0x9E, 0xAE, 0xA0))
@@ -131,6 +132,23 @@ class TestAutoSpeedPluginSafety(XpilotPluginSafetyBase):
     self.safety.set_controls_allowed(False)
     self.assertFalse(self._tx(self._tick()))
 
+  def test_session_cap_and_idle_restart(self):
+    now = 100
+    for tick in range(50):
+      now = 100 + tick * 500_000
+      self.safety.set_timer(now)
+      self.assertTrue(self._rx(self._template()))
+      self.safety.set_controls_allowed(True)
+      self.assertTrue(self._tx(self._tick()), tick)
+
+    for gap in (500_000, 2_999_999):
+      self.safety.set_timer(now + gap)
+      self.assertTrue(self._rx(self._template()))
+      self.assertFalse(self._tx(self._tick()), gap)
+    self.safety.set_timer(now + 3_000_000)
+    self.assertTrue(self._rx(self._template()))
+    self.assertTrue(self._tx(self._tick()))
+
   def test_mode_reset_clears_template_and_rate_state(self):
     self._prime()
     self.assertTrue(self._tx(self._tick()))
@@ -155,7 +173,7 @@ class TestAutoSpeedPluginSafety(XpilotPluginSafetyBase):
 
 
 class TestAmbientLightPluginSafety(XpilotPluginSafetyBase):
-  ACTIVE_PARAM_SP = TeslaSafetyFlagsSP.HAS_VEHICLE_BUS
+  ACTIVE_PARAM_SP = TeslaSafetyFlagsSP.HAS_VEHICLE_BUS | AMBIENT_PARAM
 
   def setUp(self):
     super().setUp()
@@ -182,10 +200,12 @@ class TestAmbientLightPluginSafety(XpilotPluginSafetyBase):
     self.assertTrue(self._rx(self._template()))
     self.assertFalse(self._tx(self._alert(brightness=100)))
 
-    self._set_tesla(0)
-    self.safety.set_controls_allowed(True)
-    self.assertTrue(self._rx(self._template()))
-    self.assertFalse(self._tx(self._alert()))
+    for param_sp in (0, TeslaSafetyFlagsSP.HAS_VEHICLE_BUS, AMBIENT_PARAM):
+      with self.subTest(param_sp=param_sp):
+        self._set_tesla(param_sp)
+        self.safety.set_controls_allowed(True)
+        self.assertTrue(self._rx(self._template()))
+        self.assertFalse(self._tx(self._alert()))
 
   def test_wrong_address_bus_or_length_not_owned(self):
     self._prime()
@@ -263,7 +283,7 @@ class TestAmbientLightPluginSafety(XpilotPluginSafetyBase):
     self.assertTrue(self._tx(self._alert()))
 
   def test_inactive_message_remains_stock_blocked(self):
-    self._set_tesla(0)
+    self._set_tesla(TeslaSafetyFlagsSP.HAS_VEHICLE_BUS)
     self.safety.set_controls_allowed(True)
     self.assertFalse(self._tx(self._alert()))
 
