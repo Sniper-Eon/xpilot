@@ -43,7 +43,7 @@ openpilot/tesla/
   plugins/ambient_light/    盲区氛围灯
   plugins/external_compute/ 外接算力桥接
   plugins/speed_card/ lead_card/ speed_limit_card/ blindspot_edges/   大屏磁贴和盲区边框（只显示）
-  ui/screen.py ui/tile.py ui/tiles.py ui/slots/   大屏磁贴宿主、磁贴基类、布局模型（无 pyray）、内置磁贴（slots/settings.py 设置，car.py、map.py 车况和地图）
+  ui/screen.py ui/tile.py ui/tiles.py ui/slots/   大屏磁贴宿主、磁贴基类、布局模型（无 pyray）、内置磁贴（slots/settings.py 设置页磁贴）
   ui/plugin_ui.py           UI 侧插件加载：找到 Tile、HudOverlay 和 ScreenOverlay，插件关闭时隐藏
   ui/plugins_page.py ui/store_page.py   mici 设置里的"Plugins"页和商店页（小屏用）
   ui/offroad.py ui/pages/   大屏停车时的详情页（见第 9 节）
@@ -239,6 +239,8 @@ typedef struct {
 | `speed_card` | 大屏磁贴：车速（仪表车速）和 SET 设定车速；默认开启 | `XpilotSpeedCard` | 无发送 |
 | `lead_card` | 大屏磁贴：前车距离和相对速度（radarState.leadOne）；默认开启 | `XpilotLeadCard` | 无发送 |
 | `speed_limit_card` | 大屏磁贴：SP 解析出的限速（longitudinalPlanSP）；默认开启 | `XpilotSpeedLimitCard` | 无发送 |
+| `car_tile` | 大屏磁贴：仪表车速、挡位、转向灯、盲区；默认开启 | `XpilotCarTile` | 无发送 |
+| `map_tile` | 大屏磁贴：限速、路名、下一个转弯（liveMapDataSP、navInstruction，任何地图或导航来源）；默认开启 | `XpilotMapTile` | 无发送 |
 | `blindspot_edges` | 大屏：盲区有车时画面左/右侧显示红色渐变边框（ScreenOverlay）；默认开启 | `XpilotBlindspotEdges` | 无发送 |
 
 ## 11. 本机可以跑的检查

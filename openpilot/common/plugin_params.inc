@@ -8,12 +8,16 @@
     {"TeslaAutoSpeedLimitOffset", {PERSISTENT | BACKUP, INT, "0"}},
 // blindspot_edges
     {"XpilotBlindspotEdges", {PERSISTENT | BACKUP, BOOL, "1"}},
+// car_tile
+    {"XpilotCarTile", {PERSISTENT | BACKUP, BOOL, "1"}},
 // external_compute
     {"XpilotExternalEnabled", {PERSISTENT | BACKUP, BOOL, "0"}},
     {"XpilotExternalPort", {PERSISTENT | BACKUP, INT, "8770"}},
     {"XpilotExternalToken", {PERSISTENT | DONT_LOG, STRING}},
 // lead_card
     {"XpilotLeadCard", {PERSISTENT | BACKUP, BOOL, "1"}},
+// map_tile
+    {"XpilotMapTile", {PERSISTENT | BACKUP, BOOL, "1"}},
 // speed_card
     {"XpilotSpeedCard", {PERSISTENT | BACKUP, BOOL, "1"}},
 // speed_limit_card
