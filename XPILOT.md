@@ -36,7 +36,7 @@
    - 不准把静态检查说成编译、safety 测试或上车已通过。
    - 本地 commit 和设备上实际运行的 commit 分开报告。
 9. **提交**：在 `xpilot` 分支上，一个连贯改动一个提交，只包含这次改动的文件。只有在用户要求时才推送。
-10. **按插件拆分**：加功能就是加一个带 `plugin.json` 的插件目录，删功能就是删目录（然后重新运行 `gen_params.py`）。插件自动被发现，没有手写的注册表。
+10. **按插件拆分**：加功能就是加一个带 `plugin.json` 的插件目录，删功能就是删目录（然后重新运行 `gen_params.py`）。插件自动被发现，没有手写的注册表。插件内部按 5.3 拆分文件（入口 ≤150 行、其他 ≤400 行、只有 `ui.py` 画图），检查强制执行。
 11. **只用声明过的资源**：插件只能使用 `plugin.json` 里 `claims` 声明过的资源；宿主会拒绝未声明的 CAN 发送、钩子和进程。
 12. **车端数据只读、只经插件**：插件在 card 里用 `observe_can` 自己解析，再写进 `carStateSP` 里自己的字段（cereal 规则见第 7 条）；UI 和其他进程只读这些消息，不直接读 CAN。
 13. **UI**：文字只用英文和 ASCII（设备字体没有 `‹ › · —` 等字）；磁贴只读消息、不写参数（设置写在详情页）；`hz` 按需要取最低值。
@@ -240,7 +240,7 @@ class MyTile(Tile):
 
 | 类 | 接口 | 用途 |
 |---|---|---|
-| `ui.tile.Tile` | `SPEC`、`state(sm)`、`draw(rect, size, state)`；画图用 `face(rect)`、`draw_value(rect, value, unit, sub)`、`draw_lines(rect, lines, size)`，以及模块函数 `text(...)`、`text_w(...)` 和颜色 `DIM`；颜色只用 `Tile.COLOR` | 大屏磁贴 |
+| `ui.tile.Tile` | `SPEC`、`state(sm)`、`draw(rect, size, state)`；画图用 `face(rect)`、`draw_value(rect, value, unit, sub)`、`draw_lines(rect, lines, size)`，以及模块函数 `text(...)`、`text_w(...)`、`fit(...)`、`clip(...)`、`lines_in(...)` 和颜色 `DIM`；颜色只用 `Tile.COLOR` | 大屏磁贴 |
 | `ui.tiles.TileSpec` | `id, title, sizes, services, show, hz, order`（见第 9 节） | 磁贴声明 |
 | `ui.plugin_ui.ScreenOverlay` | `update(sm)`、`draw(zones)` | 大屏行驶时的整屏叠加层 |
 | `ui.plugin_ui.HudOverlay` | Widget：`update()`、`render(rect)`；读 `ui_state.sm` | mici 行驶画面叠加层 |
@@ -250,6 +250,22 @@ class MyTile(Tile):
 **panda safety**（C，内置插件才可以）：`safety_plugin` 结构（`msg`、`active`、`rx`、`tx`、`reset`），见第 6 节。
 
 **商店**（8c）：插件包和内置插件同样格式；代码按 `xpilot_ext.<id>` 导入、内部用相对导入；参数存在 `.params` 文件里；二进制要在清单写 `platform`。
+
+### 5.3 插件代码结构规范（强制）
+
+一个插件不能把所有代码写在一个文件里。按职责分文件：
+
+| 文件 | 放什么 | 限制 |
+|---|---|---|
+| `plugin.json` | 清单：名字、类别、claims、参数、设置（4.1） | 名字、开关和设置只写在这里 |
+| `plugin.py`（入口模块） | 只做钩子胶水：接收钩子参数，调用逻辑模块，返回结果 | 不超过 150 行 |
+| `ui.py` | 磁贴和叠加层 | 只有这个文件可以 `import pyray` |
+| 其他 `*.py` | 逻辑，按职责一个模块（例 `decode.py` 解析 CAN、`planner.py` 算目标） | 每个不超过 400 行；纯逻辑和 I/O（CAN、参数、消息）分开，纯逻辑才能在本机检查 |
+| `tests/` | 插件自己的检查 | 不计行数 |
+
+- 文件超过限制就按职责拆分，不要压缩代码、删注释或合并行来凑行数。
+- 检查：内置插件由 `manifest_check.py` M11 检查（`manifest.layout_problems`）；商店插件在安装时检查，不符合就拒绝安装（`store_check.py` S16）。
+- 历史遗留：`traffic_light` 的 `controller.py`、`final_plan_arbitrator.py` 超过 400 行，列在 `manifest_check.LAYOUT_DEBT` 里只跳过行数检查。下次改它们时拆分并移出列表；不要往列表里加新文件。
 
 ## 6. panda safety 插件接口（`opendbc/safety/plugins/`）
 
@@ -318,7 +334,8 @@ typedef struct {
 - **加磁贴**：插件的写在 `plugins/<名字>/ui.py`；不属于插件的放 `openpilot/tesla/ui/slots/`。继承 `Tile`，写 `SPEC = TileSpec(id, title, sizes, services, show, hz, order)`，会被自动发现。磁贴没有自己的颜色：都画成 `Tile.COLOR`。
   - `sizes`：支持的尺寸，第一个是默认；要在行驶时显示必须包含 `small`。
   - `state(sm)`：读数据，返回这块磁贴要显示的内容（可比较的值）。最多每秒调用 `hz` 次；**只有返回值变了（或尺寸变了）才重画**，其余帧画缓存的纹理。`draw(rect, size, state)` 画磁贴正面。
-  - 外观用 `Tile.face(rect, ...)`（底色、左下角标题）、`draw_value`（大数字、单位、灰色副行）或 `draw_lines`，保持统一。文字只用 ASCII（设备字体缺 `‹ › · —` 等字，会显示成 `?`；`tile_layout_check.py` 检查）。
+  - 外观用 `Tile.face(rect, ...)`（底色、左下角标题）、`draw_value`（大数字、单位、灰色副行）或 `draw_lines`，保持统一。
+  - **文字自动适配尺寸**（`tile.py`、`tiles.py`）：不要自己算字号。字号随磁贴变大（`tiles.scale`：small 1，medium 及以上 2；标题 30/45 px），宽度放不下就缩小，最小 `tiles.MIN_FONT`（24 px），还放不下就截断加 `...`（`tile.clip`）。`draw_lines` 放不下的行从末尾丢掉，所以重要的行放前面。自己画文字时用 `tile.fit`、`tile.clip`、`tile.lines_in`。文字只用 ASCII（设备字体缺 `‹ › · —` 等字，会显示成 `?`；`tile_layout_check.py` 检查）。
   - 连续出错 3 次停止绘制，不影响其他磁贴。
 - **配色**：`tiles.THEMES`（Cobalt、Teal、Emerald、Crimson、Violet、Graphite），在 Toggles 页的"Tile color"里选，存在 `XpilotTileTheme`（STRING，和布局一样存成 `.params` 文件，不进 `params_keys.h`）。宿主启动时和每次回到磁贴屏时读取，设置 `Tile.COLOR` 并让所有磁贴重画；编辑栏的选中按钮也用这个颜色。
 - **插件市场**（Plugins 磁贴，`pages/plugins.py`）：左边一列是 `manifest.CATEGORIES` 里有插件的分类（加载失败时最前面多一个 "Failed"），左下角是商店的 Refresh；右边是选中分类的列表：每个插件一行开关，标题下是版本、作者和简介，后面是商店里有、这次没加载的插件（Install）。点插件行（开关以外）打开插件页：开关、设置项、Version/Author/Category/Claims/Priority，商店下载的插件还有 Update/Remove。分类和行由 `offroad.market_sections` 生成（`offroad_pages_check.py` O12），分类未知的商店插件归到 tools。原来单独的 Store 子页已删除。
@@ -335,7 +352,7 @@ typedef struct {
 - **整屏叠加层**：`ScreenOverlay`（`update(sm)`、`draw(zones)`），行驶时在磁贴之后绘制；`zones` 是 `VIEW` 四周的 left/right/top/bottom 和 view 本身的屏幕矩形。出错隔离同上，插件关闭时隐藏。例：`blindspot_edges`。
 - 已知：`NetworkUI` 自己建一个 `WifiManager`，mici 的 `NetworkLayoutMici` 只在 mici 设置里构造（大屏不构造），所以大屏进程里只有 Network 页那一个。
 - 主机检查只验证逻辑和静态结构，**没有渲染过**；字号、间距、弹窗位置要在设备上用 `big_screen_e2e.py` 截图确认。
-- 检查：`tools/sp_tesla_e2e/tile_layout_check.py`（网格、排布、行驶避让、编辑操作、手势、保存格式、ASCII）、`offroad_pages_check.py`（本机）；渲染和触摸：`tools/sp_tesla_e2e/big_screen_e2e.py`（只能在设备上跑，截图磁贴屏、编辑模式、每个设置详情页、插件市场的分类和插件页，检查停车时除 Models 外不画 mici 纹理）。
+- 检查：`tools/sp_tesla_e2e/tile_layout_check.py`（网格、排布、行驶避让、编辑操作、手势、保存格式、ASCII、文字适配）、`offroad_pages_check.py`（本机）；渲染和触摸：`tools/sp_tesla_e2e/big_screen_e2e.py`（只能在设备上跑，截图磁贴屏、编辑模式、每个设置详情页、插件市场的分类和插件页，检查停车时除 Models 外不画 mici 纹理）。
 
 ## 10. 现有插件
 
@@ -359,13 +376,13 @@ typedef struct {
 
 ```
 python3 tools/sp_tesla_e2e/static_imports.py --baseline <基线 json>   # 有没有断掉的 import
-python3 tools/sp_tesla_e2e/tile_layout_check.py                       # 大屏磁贴：网格、排布、行驶避让、编辑操作、手势、重画判断、ASCII 文字
+python3 tools/sp_tesla_e2e/tile_layout_check.py                       # 大屏磁贴：网格、排布、行驶避让、编辑操作、手势、重画判断、ASCII 文字、文字适配磁贴
 python3 tools/sp_tesla_e2e/plugin_host_check.py                       # 插件宿主：出错隔离、总开关、元数据、参数、目标车速、雷达/地图/外接 provider
 python3 tools/sp_tesla_e2e/external_bridge_check.py                   # 外接算力 TCP 桥接（本机真实 socket）
-python3 tools/sp_tesla_e2e/manifest_check.py                          # 插件清单、资源声明、冲突裁决
+python3 tools/sp_tesla_e2e/manifest_check.py                          # 插件清单、资源声明、冲突裁决、代码结构（5.3）
 python3 tools/sp_tesla_e2e/phase2_check.py                            # 插件报警、变道策略、横向修正
 python3 tools/sp_tesla_e2e/phase3_check.py                            # 可替换的横向控制器和纵向规划
-python3 tools/sp_tesla_e2e/store_check.py                             # 插件商店：下载、校验、安装、参数（本机 HTTP 服务）
+python3 tools/sp_tesla_e2e/store_check.py                             # 插件商店：下载、校验、安装、代码结构、参数（本机 HTTP 服务）
 python3 tools/sp_tesla_e2e/offroad_pages_check.py                     # 大屏停车页面：页面模块、参数名、插件行、商店行、视口、触摸映射
 python3 tools/sp_tesla_e2e/store_e2e.py --repo ~/xpilot-plugins       # 插件仓库端到端：索引 → 安装 → 发现 → 钩子生效
 python3 tools/dev_sp_release/upstream_watch.py                        # 列出值得 cherry-pick 的上游提交
