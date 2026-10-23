@@ -16,9 +16,12 @@ Failure cases listed before implementation:
 - O8 offroad alerts are not most severe first, miss the %1 extra, or show inactive alerts
 - O9 the v2 pieces (PAGES factories, _hide_back) remain in screen.py, or the application.py no-viewport hook is missing
 - O10 the content rect is wider than MAX_W, not centered right of the nav column, or overlaps the title band
+- O11 a tesla UI module uses a pyray type in a | union annotation without from __future__ import annotations
+     (pyray types are functions on the device: TypeError at import, UI exits)
 """
 import ast
 import json
+import re
 from pathlib import Path
 import sys
 import types
@@ -207,6 +210,10 @@ def check_sources(errors: list) -> None:
   cx, cy, cw, ch = offroad.CONTENT
   if w > offroad.MAX_W or abs((x - cx) - (cx + cw - x - w)) > 1e-6 or x < offroad.NAV_W or y < offroad.TITLE_H or y + h > 1080:
     errors.append(f"O10 content rect {(x, y, w, h)}")
+  for path in sorted((PKG / "tesla").rglob("*.py")):
+    text = path.read_text()
+    if re.search(r"rl\.[A-Z]\w* *\||\| *rl\.[A-Z]", text) and "from __future__ import annotations" not in text:
+      errors.append(f"O11 {path.relative_to(ROOT)}: rl type in a | union without from __future__ import annotations")
 
 
 def main() -> int:

@@ -6,6 +6,8 @@ texture is not drawn (viewport() -> None) except during onboarding and for mici 
 guide, terms, regulatory, cabin camera), which show at 3x in the content area. Without a viewport every touch maps far
 outside the mici screen, so the mici widgets running underneath never react. tici dialogs (ConfirmDialog, Keyboard) the
 native pages push onto the nav stack are hidden in the mici pass and drawn full-screen here."""
+from __future__ import annotations  # pyray types are functions: rl.Rectangle | None fails at import
+
 from contextlib import contextmanager
 import math
 import time
