@@ -5,6 +5,7 @@
 - Python setup uses a hard-coded bit instead of its manifest; disabled vehicle/longitudinal gates are bypassed.
 Run from the repo root with the task venv. CLI tests use real files in a disposable miniature repository.
 """
+
 import json
 from pathlib import Path
 import shutil
@@ -35,7 +36,7 @@ def main():
 
     def run(label, expected=0, check=False):
       proc = subprocess.run([sys.executable, str(root / SCRIPT), *(['--check'] if check else [])], capture_output=True, text=True)
-      records.append(dict(label=label, exit_code=proc.returncode, output=proc.stdout + proc.stderr))
+      records.append({'label': label, 'exit_code': proc.returncode, 'output': proc.stdout + proc.stderr})
       assert proc.returncode == expected, records[-1]
 
     run('generate')
@@ -67,6 +68,7 @@ def main():
   sys.path[:0] = [str(ROOT), str(ROOT / 'opendbc_repo'), str(ROOT / 'msgq_repo')]
   sys.modules['openpilot.common.params'] = types.SimpleNamespace(Params=object, UnknownKeyName=KeyError)
   from openpilot.tesla import plugins
+
   for cls in plugins.PLUGINS:
     if cls.NAME not in ('auto_speed', 'ambient_light'):
       continue
@@ -86,9 +88,10 @@ def main():
         cp_sp = types.SimpleNamespace(flags=1, safetyParam=0)
         plugin.setup(cp_sp)
         assert cp_sp.safetyParam == 0
-      records.append(dict(label=cls.NAME + '-manifest-bit-setup', exit_code=0))
+      records.append({'label': cls.NAME + '-manifest-bit-setup', 'exit_code': 0})
     finally:
       cls.MANIFEST.safety['param_bit'] = original_bit
+  assert len(records) == 11, records
   print(json.dumps(records, indent=2))
 
 

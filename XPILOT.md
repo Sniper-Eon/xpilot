@@ -177,7 +177,7 @@ typedef struct {
 
 主机证明：macOS arm64、Apple clang 16、CPython 3.12.13；`test_tesla_plugins.py` 189 项（170 通过、19 跳过），包含原有 Tesla stock/longitudinal 测试在插件位开启时的回归。45/45 个突变均编译成功，并被 RX/TX 断言检出。插件可执行行覆盖率 118/118 = 100%（auto 47/47、ambient 50/50、registry 21/21；`plugin.h` 无可执行行），`safety.h` 插件接入的可执行行全部命中，include 由编译证明。
 
-原始 `test.sh` 的基线两轮各 420 项（375 通过、45 跳过），测试无失败；全局行覆盖率 778/1094 = 71.1%，未达到脚本的 100% 门禁。非 Tesla 模式及其测试已删除，通用 helpers/lateral/longitudinal 仍有未覆盖代码；按协调决定记录为已知问题，不改上游测试或放宽脚本，单独要求插件和接入处 100%。`test.sh` 不运行 MISRA/cppcheck，此任务未声称通过它们。
+原始 `test.sh` 的基线两轮各 420 项（375 通过、45 跳过），测试无失败；全局行覆盖率 778/1094 = 71.1%，未达到脚本的 100% 门禁。非 Tesla 模式及其测试已删除，通用 helpers/lateral/longitudinal 仍有未覆盖代码；按协调决定记录为已知问题，不改上游测试或放宽脚本，单独要求插件和接入处 100%。生成注册表后完整重跑两轮各 609 项（545 通过、64 跳过），全局覆盖率 855/1102 = 77.6%，脚本仍仅因全局 100% 门禁退出 1；插件仍为 118/118 = 100%。`test.sh` 不运行 MISRA/cppcheck，此任务未声称通过它们。
 
 复现（任务 venv 内，仓库根目录，`PYTHONPATH=opendbc_repo:msgq_repo:.`）：
 ```
