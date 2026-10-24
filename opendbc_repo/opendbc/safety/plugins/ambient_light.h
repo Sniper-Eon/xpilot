@@ -2,7 +2,6 @@
 
 // xpilot plugin "ambient_light": blindspot ambient lighting on 0x679 (vehicle bus 1), cloned from a fresh
 // car frame, red palette only, rate and session limited. Python side: openpilot/tesla/plugins/ambient_light/.
-#define XPILOT_PARAM_SP_AMBIENT_LIGHT 0x2000U  // CarParamsSP.safetyParam bit set by the plugin when enabled
 
 static uint8_t ambient_template[7] = {0U, 0U, 0U, 0U, 0U, 0U, 0U};
 static bool ambient_template_valid = false;

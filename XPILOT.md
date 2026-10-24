@@ -214,7 +214,7 @@ class MyTile(Tile):
 
 4. **新消息字段**：加在 `cereal/custom.capnp`（只追加，见规则 7），设备上要重新编译（scons）。
 5. **参数**：写进 `plugin.json` 的 `params` 和 `settings`，运行 `python3 openpilot/tesla/plugins/gen_params.py`，把 `common/plugin_params.inc` 一起提交。
-6. **跑本机检查**（第 11 节），全部通过后按功能拆分提交；有 C 代码的再编译 panda、跑 safety 测试和 MISRA；最后上设备实测，报告设备上的 commit。
+6. **跑本机检查**（第 11 节），全部通过后按功能拆分提交；有 CAN 发送的在 `plugin.json` 写 `safety` 声明（第 6 节），运行 `python3 openpilot/tesla/plugins/gen_safety.py` 生成 `registry.h` 一起提交，再编译 panda、跑 safety 测试和 MISRA；最后上设备实测，报告设备上的 commit。
 7. **不用注册**：插件自动被发现，插件市场按类别显示它的开关、版本、作者、简介和设置。也可以放进插件商店仓库发布（8c）。
 
 ### 5.2 API 一览
@@ -287,15 +287,15 @@ typedef struct {
 } safety_plugin;
 ```
 
-规则：一个插件只负责一个报文，原有 safety 模式的白名单和检查一律不改；校验内容至少包括报文模板、新鲜度、频率限制、`controls_allowed`、只在 Tesla 模式下生效，以及会话上限。
+规则：一个插件只负责一个报文，原有 safety 模式的白名单和检查一律不改；校验报文模板、新鲜度、频率、Tesla 模式、vehicle bus、自有 `safetyParam` 位和会话上限。`auto_speed` 必须有 `controls_allowed`；`ambient_light` 是车身盲区告警，允许未接管时告警。两个插件都不再允许在 `nooutput` 模式发报。
+
+声明在各自 `plugin.json` 的 `safety` 字段：`header`、十六进制字符串 `param_bit`、唯一一条 `tx`（`0x地址:总线`）。`gen_safety.py` 只用标准库，生成注册表及 C 参数位宏，拒绝重复位、未声明的头文件、声明的头文件缺失，以及 `can.tx` claims 和 safety tx 的任一方向不一致；还检查位为单个 uint16 位、头文件名、重复头和头内 `.msg` 地址/总线。`plugin.h` 是公共接口，`registry.h` 是生成文件，其余头都必须由一个内置插件声明。panda safety 插件仍只能内置。当前位：ambient_light `0x2000`，auto_speed `0x4000`（和设备上刷入的 panda 一致）。Python 插件用 `self.MANIFEST.safety["param_bit"]` 读同一声明，不能硬编码位值。
 
 **当前状态：libsafety 在 Mac（Apple clang 16）和 Linux 主机上编译；`test_tesla.py` 和 `test_xpilot_plugins.py` 通过；MISRA（cppcheck）在 Linux 主机上 0 条报告。** 只保留 Tesla 后，lateral.h/longitudinal.h/safety.h 里给其他车型用的共用函数没人调用，在 `tests/misra/main.c` 里用 `SAFETY_UNUSED` 标出，stock 头文件不改。会话上限：auto_speed 每次最多 50 格、空闲 3 秒算新会话；ambient_light 每次最多 150 帧/15 秒、空闲 1 秒算新会话。 `safety.h` 里有 4 处调用：
 1. include `opendbc/safety/plugins/registry.h`；
 2. `safety_rx_hook` 里，`valid` 为真时调用 `safety_plugins_rx(msg)`；
 3. `safety_tx_hook` 里，属于插件的报文交给 `plugin->tx(msg)` 校验，其余报文仍走原模式；
 4. `set_safety_hooks` 里调用 `safety_plugins_reset()`。
-
-上车前必须在 Mac 或设备上编译 panda 和 libsafety，跑 safety 测试，并补上插件的 safety 测试。
 
 ## 7. 雷达接入接口
 
@@ -390,6 +390,7 @@ python3 tools/sp_tesla_e2e/tile_layout_check.py                       # 大屏�
 python3 tools/sp_tesla_e2e/plugin_host_check.py                       # 插件宿主：出错隔离、总开关、元数据、参数、目标车速、雷达/地图/外接 provider
 python3 tools/sp_tesla_e2e/external_bridge_check.py                   # 外接算力 TCP 桥接（本机真实 socket）
 python3 tools/sp_tesla_e2e/manifest_check.py                          # 插件清单、资源声明、冲突裁决、代码结构（5.3）
+python3 tools/sp_tesla_e2e/safety_manifest_check.py                   # plugin.json safety 声明和 registry.h 一致（gen_safety.py --check）
 python3 tools/sp_tesla_e2e/phase2_check.py                            # 插件报警、变道策略、横向修正
 python3 tools/sp_tesla_e2e/phase3_check.py                            # 可替换的横向控制器和纵向规划
 python3 tools/sp_tesla_e2e/phase4_check.py                            # 可替换的接管和安全兜底：宿主底线、出错锁定、card 门控

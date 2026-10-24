@@ -10,7 +10,6 @@ from openpilot.tesla.plugins.ambient_light.controller import AmbientLightingCont
 LIGHTING_STALE_NS = 2_000_000_000
 LIGHTING_MESSAGE = "ID3F5VCFRONT_lighting"
 DISPLAY_MESSAGE = "UI_status2"
-SAFETY_PARAM_SP = 0x2000  # must match XPILOT_PARAM_SP_AMBIENT_LIGHT in opendbc/safety/plugins/ambient_light.h
 
 
 class AmbientLight(Plugin):
@@ -26,9 +25,8 @@ class AmbientLight(Plugin):
     self.ambient.service_params(params)
 
   def setup(self, CP_SP) -> None:
-    # the panda only passes 0x679 with this bit set, and needs the vehicle-bus harness to see and send it
     if CP_SP.flags & TeslaFlagsSP.HAS_VEHICLE_BUS:
-      CP_SP.safetyParam |= SAFETY_PARAM_SP
+      CP_SP.safetyParam |= int(self.MANIFEST.safety["param_bit"], 0)
 
   def _night(self, now_ns: int) -> bool:
     if self.lighting is None:

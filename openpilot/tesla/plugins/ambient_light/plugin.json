@@ -49,5 +49,12 @@
       "type": "INT",
       "default": "100"
     }
+  },
+  "safety": {
+    "header": "ambient_light.h",
+    "param_bit": "0x2000",
+    "tx": [
+      "0x679:1"
+    ]
   }
 }
