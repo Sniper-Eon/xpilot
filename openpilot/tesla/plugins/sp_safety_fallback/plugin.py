@@ -1,7 +1,11 @@
-"""SP Safety Fallback: the default role:safety.fallback plugin. SP's code stays in selfdrived; openpilot/tesla/core_host.py
-only steps in when another plugin owns the role."""
+"""Keep the events SP's update_events already produced."""
 from openpilot.tesla.plugin import Plugin
 
 
 class SpSafetyFallback(Plugin):
-  pass
+  @classmethod
+  def safety_fallback(cls, ctx):
+    return cls(ctx.CP, ctx.params)
+
+  def update(self, ctx, CS, names, names_sp):
+    return names, names_sp

@@ -1,9 +1,9 @@
 """Host for the replaceable engagement (role:engagement.state) and safety fallback (role:safety.fallback) in selfdrived,
 and the card gate. Design: docs/design/xpilot-replaceable-core.md, committee X-20261023-12, user floors 2026-10-23.
 
-With the default owners (sp_engagement, sp_safety_fallback) nothing here runs and selfdrived is SP's own. Otherwise:
-- fallback: SP's update_events runs first (DM lockout and every floor detector stay SP's), then the plugin edits
-  s.events / s.events_sp in place (it may clear them and build its own); the host puts back every floor event.
+Every Tesla owner, including the defaults, runs through the same hooks and guards:
+- fallback: SP's update_events runs first (DM lockout and every floor detector stay SP's), then the plugin returns
+  event-name lists through a narrow context; the host rebuilds the same Events objects and restores every floor.
 - engagement: the plugin's ordinary state machine and MADS replace SP's behind guards that clamp their outputs:
   floor USER/IMMEDIATE disable wins, an engage needs SP's driver ENABLE event (MADS: the LKAS button or an ordinary
   ENABLE) and no floor NO_ENTRY, active implies enabled and matches the state, soft disable ends within
@@ -14,20 +14,21 @@ With the default owners (sp_engagement, sp_safety_fallback) nothing here runs an
 Hangs inside a hook stop selfdrived; the card gate and the panda heartbeat cover them. In-process plugins are trusted
 code (claims are not a sandbox); panda safety stays the floor against anything else."""
 import time
+from types import SimpleNamespace
 
 from openpilot.cereal import custom, log
 from opendbc.car.structs import car
 from openpilot.selfdrive.selfdrived.events import EVENTS, ET
 from openpilot.selfdrive.selfdrived.state import ACTIVE_STATES, ENABLED_STATES, SOFT_DISABLE_TIME, State
 from openpilot.sunnypilot.mads.state import ACTIVE_STATES as MADS_ACTIVE, ENABLED_STATES as MADS_ENABLED, State as MadsState
-from openpilot.tesla.plugins import FAULTS_PARAM, _collect, owner, record_fault
+from openpilot.tesla.plugins import FAULTS_PARAM, _collect, owner, record_fault, view
 
 ENGAGEMENT, FALLBACK = "role:engagement.state", "role:safety.fallback"
-DEFAULTS = {ENGAGEMENT: "sp_engagement", FALLBACK: "sp_safety_fallback"}
 EN, ENSP = log.OnroadEvent.EventName, custom.OnroadEventSP.EventName
 LKAS = car.CarState.ButtonEvent.Type.lkas
 SOFT_BOUND = SOFT_DISABLE_TIME + 1.0  # s
 MISMATCH_FRAMES = 200  # same as SP's MADS lateral mismatch
+IGNORED_SAFETY_MODES = (car.CarParams.SafetyModel.silent, car.CarParams.SafetyModel.noOutput)
 
 FLOOR = {EN.pedalPressed, EN.buttonCancel, EN.pcmDisable, EN.fcw, EN.stockAeb, EN.stockFcw, EN.controlsMismatch,
          EN.relayMalfunction, EN.canError, EN.canBusMissing, EN.selfdrivedLagging, EN.commIssue, EN.commIssueAvgFreq,
@@ -47,6 +48,7 @@ def _floor(names, et, exempt=()) -> bool:
 class _Host:
   def __init__(self, s, names):
     self.s, self.names = s, names
+    self.ctx = SimpleNamespace(sm=s.sm, CP=s.CP, CP_SP=s.CP_SP, params=view(s.params))
     faults = s.params.get(FAULTS_PARAM) or {}
     self.latched = any(n in faults for n in names)
     self.sp_enable = False  # SP's update_events produced a driver ENABLE event this frame
@@ -67,6 +69,7 @@ class _Host:
 
 def _fallback(host, orig, plugin):
   s = host.s
+  ctx = host.ctx
 
   def update_events(CS):
     orig(CS)
@@ -77,11 +80,15 @@ def _fallback(host, orig, plugin):
     host.lkas_press = any(be.type == LKAS and be.pressed for be in CS.buttonEvents)
     if plugin is not None and not host.latched:
       try:
-        plugin.update(s, CS)
-        if s.events is not ev or s.events_sp is not ev_sp:
-          raise TypeError("safety_fallback must edit s.events/s.events_sp in place")
+        names, names_sp = plugin.update(ctx, CS, ev.names.copy(), ev_sp.names.copy())
+        for events, proposed in ((ev, names), (ev_sp, names_sp)):
+          if not isinstance(proposed, list) or any(type(e) is not int or e not in events.get_events_mapping() for e in proposed):
+            raise ValueError("safety_fallback must return lists of known event names")
+        for events, proposed in ((ev, names), (ev_sp, names_sp)):
+          events.names.clear()  # EventsBase.clear() would advance SP's alert counters twice this frame.
+          for e in proposed:
+            events.add(e)
       except Exception as e:
-        s.events, s.events_sp = ev, ev_sp
         host.fault(getattr(plugin, "plugin_name", "?"), "selfdrived.safety_fallback.update", e)
     for e in floor:
       if not ev.has(e):
@@ -123,19 +130,16 @@ class _GuardedStateMachine:
     forced = None
     if h.latched:
       forced = ET.IMMEDIATE_DISABLE
-    elif _floor(names, ET.IMMEDIATE_DISABLE):
+    elif enabled and _floor(names, ET.IMMEDIATE_DISABLE):
       forced = ET.IMMEDIATE_DISABLE
-    elif _floor(names, ET.USER_DISABLE):
+    elif enabled and _floor(names, ET.USER_DISABLE):
       forced = ET.USER_DISABLE
     elif enabled and not h.enabled_prev and (not h.sp_enable or _floor(names, ET.NO_ENTRY)):
       forced = ET.NO_ENTRY if h.sp_enable else ""  # engage without a driver ENABLE, or into a floor NO_ENTRY
     soft = enabled and (inner.state == State.softDisabling or _floor(names, ET.SOFT_DISABLE))
     h.soft_t = (h.soft_t if h.soft_t is not None else now()) if soft else None
-    if forced is None and soft:
-      if now() - h.soft_t > SOFT_BOUND:
-        forced = ET.SOFT_DISABLE
-      elif ET.SOFT_DISABLE not in types:
-        types.append(ET.SOFT_DISABLE)
+    if forced is None and soft and now() - h.soft_t > SOFT_BOUND:
+      forced = ET.SOFT_DISABLE
     if forced is not None:
       if (enabled or h.enabled_prev or forced == ET.NO_ENTRY) and forced and forced not in types:
         types.append(forced)
@@ -187,8 +191,11 @@ class _GuardedMads:
         enabled = active = False
     prev = self._enabled
     names, names_sp = s.events.names, s.events_sp.names
-    lateral_off = any(not ps.controlsAllowedLateral for ps in s.sm["pandaStates"] if hasattr(ps, "controlsAllowedLateral"))
-    h.mismatch = h.mismatch + 1 if (prev and self._active and not s.enabled and lateral_off) else 0
+    lateral_off = any(not ps.controlsAllowedLateral for ps in s.sm["pandaStates"] if ps.safetyModel not in IGNORED_SAFETY_MODES)
+    if not self._active or s.enabled:
+      h.mismatch = 0
+    elif lateral_off:
+      h.mismatch += 1
     disable = (h.latched or _floor(names, ET.IMMEDIATE_DISABLE, MADS_EXEMPT) or h.mismatch >= MISMATCH_FRAMES or
                ENSP.controlsMismatchLateral in names_sp or ENSP.lkasDisable in names_sp or
                (prev and h.lkas_press and not s.enabled))
@@ -200,46 +207,59 @@ class _GuardedMads:
     inner.enabled, inner.active = enabled, active
     object.__setattr__(self, "_enabled", enabled)
     object.__setattr__(self, "_active", active)
-    s.enabled_prev = s.enabled
+
+
+class _MadsOff:
+  """No lateral engagement when the role owner supplies no MADS."""
+
+  enabled = active = enabled_toggle = False
+
+  def __init__(self):
+    self.state_machine = SimpleNamespace(state=MadsState.disabled)
+
+  def update(self, CS):
+    pass
+
+  def read_params(self):
+    pass
 
 
 def install(s) -> None:
-  """selfdrived, end of SelfdriveD.__init__: wrap SP's engagement and fallback when a plugin replaces either."""
+  """selfdrived, end of SelfdriveD.__init__: every Tesla role owner uses the guarded path."""
   if s.CP.brand != "tesla":
     return
-  owners = {role: owner(s.params, role) for role in DEFAULTS}
-  if all(o in (None, DEFAULTS[r]) for r, o in owners.items()):
-    return
-  host = _Host(s, [o for r, o in owners.items() if o not in (None, DEFAULTS[r])])
-  owners = {r: (DEFAULTS[r] if o is None else o) for r, o in owners.items()}
-  fb = _collect(s.params, "safety_fallback", FALLBACK, "selfdrived", s) if owners[FALLBACK] != DEFAULTS[FALLBACK] else []
-  eng = _collect(s.params, "engagement", ENGAGEMENT, "selfdrived", s) if owners[ENGAGEMENT] != DEFAULTS[ENGAGEMENT] else []
-  if (owners[FALLBACK] != DEFAULTS[FALLBACK] and not fb) or (owners[ENGAGEMENT] != DEFAULTS[ENGAGEMENT] and not eng):
-    host.latched = True  # a replacement's hook raised or returned nothing: no engagement this drive
+  owners = {role: owner(s.params, role) for role in (ENGAGEMENT, FALLBACK)}
+  host = _Host(s, [o or role for role, o in owners.items()])
+  fb = _collect(s.params, "safety_fallback", FALLBACK, "selfdrived", host.ctx)
+  eng = _collect(s.params, "engagement", ENGAGEMENT, "selfdrived", s)
+  for role, objects in ((ENGAGEMENT, eng), (FALLBACK, fb)):
+    if owners[role] is None or not objects:
+      host.fault(owners[role] or role, "selfdrived.install", ValueError(f"{role} has no owner or hook output"))
   s.update_events = _fallback(host, s.update_events, fb[0] if fb else None)
-  name = getattr(eng[0], "plugin_name", "?") if eng else DEFAULTS[ENGAGEMENT]
-  sm_inner, mads_inner = (eng[0].state_machine, eng[0].mads) if eng else (s.state_machine, s.mads)
+  name = owners[ENGAGEMENT] or ENGAGEMENT
+  sm_inner, mads_inner = s.state_machine, _MadsOff()
+  if eng:
+    try:
+      sm_inner, mads_inner = eng[0].state_machine, eng[0].mads
+    except Exception as e:
+      host.fault(name, "selfdrived.engagement", e)
   s.state_machine = _GuardedStateMachine(host, sm_inner, name)
   if mads_inner is None:
-    from openpilot.sunnypilot.mads.mads import ModularAssistiveDrivingSystem
-    mads_inner = ModularAssistiveDrivingSystem(s)  # SP's MADS bound to the plugin's state machine
-  s.mads = _GuardedMads(host, mads_inner, name, s.params.get_bool("Mads"))
+    mads_inner = _MadsOff()
+  s.mads = _GuardedMads(host, mads_inner, name, s.params.get_bool("Mads") and mads_inner.enabled_toggle)
   if host.latched:
     host.mark()
 
 
 class CardGate:
-  """card: with a replaced engagement or fallback, send only while selfdriveState is alive."""
+  """Tesla card: send only while selfdriveState is alive, including with default owners."""
 
   def __init__(self, params, sm=None):
-    replaced = any(owner(params, role) not in (None, DEFAULTS[role]) for role in DEFAULTS)
-    if replaced and sm is None:
+    if sm is None:
       from openpilot.cereal import messaging
       sm = messaging.SubMaster(["selfdriveState"])
-    self.sm = sm if replaced else None
+    self.sm = sm
 
   def alive(self) -> bool:
-    if self.sm is None:
-      return True
     self.sm.update(0)
     return bool(self.sm.alive["selfdriveState"])

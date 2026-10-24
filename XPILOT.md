@@ -165,7 +165,7 @@ opendbc_repo/opendbc/safety/plugins/
 | `role:long.planner` | 替换纵向规划（`long_planner`），可以自带跟车逻辑 | 是 |
 | `role:perception.model` | 整体替换模型（下载、选择、缓存、推理）。宿主 `ROLE_PROCESSES` 保留 `models_manager`、`modeld`、`modeld_tinygrad`、`modeld_warmup` 四个名字，`fork_processes.py` 把原进程对象交给宿主；只有声明该 role 的插件会收到 `role_processes(role, procs)`，可返回全部、部分或不返回，且必须是传入字典里的原对象（按身份校验）。返回的进程只在该插件持有 role 且原 `should_run` 条件成立时运行；无人持有时四个都不运行。默认 `sp_models`（优先级 10000、一直开启）返回全部；替换插件也可保持空选择、用 `processes()` 自带进程，不能借此占用这四个保留名。hook 抛异常或返回外来对象时记录故障、拒绝本次选择，其他插件继续注册。必须按原语义发布 `modelV2`、`drivingModelData`、`cameraOdometry`、`modelDataV2SP`。替换插件优先级要小于 10000；切换只在停车时改开关、下次启动进程时生效 | 是 |
 | `role:engagement.state` | 用 `engagement(selfdrive)` 整体替换接管：普通状态机和 MADS。默认 `sp_engagement`（优先级 10000、一直开启） | 是 |
-| `role:safety.fallback` | 用 `safety_fallback(selfdrive)` 整体替换兜底策略（哪些事件触发退出、禁止接管、软退出）。默认 `sp_safety_fallback` | 是 |
+| `role:safety.fallback` | 用 `safety_fallback(ctx)` 整体替换兜底策略（哪些事件触发退出、禁止接管、软退出）。默认 `sp_safety_fallback` | 是 |
 | `msg:<类型>` | 发布这一类 `pluginMsg` 消息（见 8d 节），如 `msg:lanes.hint` | 否，多个插件可发同一类，用 `source` 区分 |
 
 - **冲突裁决**：两个已开启的插件声明了同一个独占资源时，`priority` 小的生效（相同则按 id），另一个整体不生效，Plugins 页显示 "conflict"。在 Plugins 页打开一个插件，会自动关掉和它冲突的插件。
@@ -192,15 +192,15 @@ opendbc_repo/opendbc/safety/plugins/
 | `lat_controller(CP, CP_SP, CI, params)`（类方法） | controlsd | 返回和 `LatControl` 接口一致的对象（`update(...) -> (steer, 转角, lac_log)`、`reset()`），替换 SP 的横向控制器。输出不和 SP 比较、不额外限制，只靠车端转角速率限制和 panda 兜底。SP 的控制器一直并行运行；插件出错或输出 NaN/inf 时，本次运行剩下的时间都改用 SP 的输出 |
 | `long_planner(CP, CP_SP, params)`（类方法） | plannerd，SP 算完之后 | 返回带 `update(sm, sp) -> plan 或 None` 的对象。`sp` 是 SP 的结果（`speeds`、`accels`、`jerks` 各 17 个点，`a_target`、`should_stop`）；返回同样字段的 plan 就替换 SP 的计划，**包括跟车**。`a_target` 限制在 ACCEL_MIN/MAX；长度不对、NaN/inf 或 None 时保留 SP 的计划；出错的规划器被停用。SP 的 MPC 仍然运行，FCW 仍由它决定 |
 | `plan_filter(CP, params)`（类方法） | plannerd | 返回带 `publisher(pm, sm)` 的对象，用来收紧纵向计划；不需要就返回 None |
-| `engagement(selfdrive)`（类方法） | selfdrived，启动时一次 | 返回带 `state_machine`（SP `StateMachine` 接口）和 `mads`（MADS 接口，None 表示用 SP 的 MADS）的对象，替换 SP 的整个接管。宿主底线（`openpilot/tesla/core_host.py`，用户 2026-10-23 决定）：底线里的 USER/IMMEDIATE 退出事件一定生效；接管必须有 SP 产生的驾驶员 ENABLE 事件（MADS：LKAS 按钮或屏幕手势，或普通 ENABLE）且没有底线 NO_ENTRY；`active` 必须和 `enabled`、状态一致；软退出最多 SOFT_DISABLE_TIME + 1 秒；`ET.PERMANENT` 一直显示（FCW、原车 AEB）；MADS 开启时按 LKAS 按钮一定退出；遵守 `Mads` 开关 |
-| `safety_fallback(selfdrive)`（类方法） | selfdrived，每周期在 SP 的 `update_events` 之后 | 返回带 `update(selfdrive, CS)` 的对象，原地修改 `selfdrive.events` / `events_sp`（可以全清再自己加）。之后宿主把底线事件放回：踩油门/刹车/取消（pedalPressed、buttonCancel、pcmDisable）、fcw、stockAeb、stockFcw、controlsMismatch(+Lateral)、relayMalfunction、canError、canBusMissing、selfdrivedLagging、commIssue(AvgFreq)、processNotRunning、selfdriveInitializing、DM 事件、lkasDisable。DM 锁定仍由 SP 处理 |
+| `engagement(selfdrive)`（类方法） | selfdrived，启动时一次 | 返回带 `state_machine`（SP `StateMachine` 接口）和 `mads`（MADS 接口，None 表示关闭 MADS 横向接管）的对象。插件可以保存、读取 `selfdrive`，只通过这两个输出改变接管，由宿主限幅；默认插件返回 `SelfdriveD.__init__` 已建好的 SP 实例，也走相同宿主路径。宿主底线（`openpilot/tesla/core_host.py`，用户 2026-10-23 决定）：底线里的 USER/IMMEDIATE 退出事件一定生效；接管必须有 SP 产生的驾驶员 ENABLE 事件（MADS：LKAS 按钮或屏幕手势，或普通 ENABLE）且没有底线 NO_ENTRY；`active` 必须和 `enabled`、状态一致；软退出最多 SOFT_DISABLE_TIME + 1 秒；`ET.PERMANENT` 一直显示（FCW、原车 AEB）；MADS 开启时按 LKAS 按钮一定退出；遵守 `Mads` 开关 |
+| `safety_fallback(ctx)`（类方法） | selfdrived，启动时一次；返回对象每周期在 SP 的 `update_events` 之后执行 | 返回带 `update(ctx, CS, names, names_sp) -> (names, names_sp)` 的对象。`ctx = SimpleNamespace(sm, CP, CP_SP, params=view(params))` 由宿主只建一次，不暴露 `selfdrive` 或事件对象。返回两份已知事件名列表（保留或增加的事件）；宿主在原 `events` / `events_sp` 对象中重建，保持报警计数，再把底线事件放回。默认插件原样返回 SP 列表。底线：踩油门/刹车/取消（pedalPressed、buttonCancel、pcmDisable）、fcw、stockAeb、stockFcw、controlsMismatch(+Lateral)、relayMalfunction、canError、canBusMissing、selfdrivedLagging、commIssue(AvgFreq)、processNotRunning、selfdriveInitializing、DM 事件、lkasDisable。DM 锁定仍由 SP 处理 |
 | `radar_interface(CP, CP_SP, params)`（类方法） | card，启动时 | 需要 `source:radar`。返回和 `RadarInterfaceBase` 接口一致的对象（`update(can_list) -> RadarData 或 None`），替换车型自带的雷达。原车雷达一直并行运行；插件出错后本次运行剩下的时间回到原车雷达 |
 | `external_provider(params)`（类方法） | externald，启动时 | 需要 `external.provider`。返回一个 provider（`poll`、`send`、`close`），见 8b |
 | `SERVICES` | plannerd、selfdrived、controlsd | 钩子需要额外订阅的服务；这些服务不参与存活和有效性检查，不会影响接管 |
 
-SP 里的调用位置：`selfdrive/car/card.py`（`CarPlugins`、`radar_interface`）、`selfdrive/controls/plannerd.py`（`services`、`plan_filters`、`plan_sink`、`long_targets`）、`sunnypilot/selfdrive/controls/lib/longitudinal_planner.py`（`apply_long_targets`）、`selfdrive/selfdrived/selfdrived.py`（`alert_sources`、`update_alerts`）、`sunnypilot/selfdrive/selfdrived/events.py`（插件报警定义，见 `openpilot/tesla/alerts.py`）、`selfdrive/controls/lib/desire_helper.py`（`lane_change_policies`、`lane_change_allowed`）、`selfdrive/controls/controlsd.py`（`lat_corrections`、`apply_lat_corrections`、`lateral_controller`）、`selfdrive/controls/lib/longitudinal_planner.py`（`apply_long_planner`）、`sunnypilot/system/fork_processes.py`（`processes`，以及 `holds(params, "source:map")` 关掉 SP 的地图进程）、`selfdrive/selfdrived/selfdrived.py`（`install_core`）、`selfdrive/car/card.py`（`core_alive`：有替换的接管或兜底时，`selfdriveState` 断了就不发控制，selfdrived 卡死约 0.1 秒内停止）。
+SP 里的调用位置：`selfdrive/car/card.py`（`CarPlugins`、`radar_interface`）、`selfdrive/controls/plannerd.py`（`services`、`plan_filters`、`plan_sink`、`long_targets`）、`sunnypilot/selfdrive/controls/lib/longitudinal_planner.py`（`apply_long_targets`）、`selfdrive/selfdrived/selfdrived.py`（`alert_sources`、`update_alerts`）、`sunnypilot/selfdrive/selfdrived/events.py`（插件报警定义，见 `openpilot/tesla/alerts.py`）、`selfdrive/controls/lib/desire_helper.py`（`lane_change_policies`、`lane_change_allowed`）、`selfdrive/controls/controlsd.py`（`lat_corrections`、`apply_lat_corrections`、`lateral_controller`）、`selfdrive/controls/lib/longitudinal_planner.py`（`apply_long_planner`）、`sunnypilot/system/fork_processes.py`（`processes`，以及 `holds(params, "source:map")` 关掉 SP 的地图进程）、`selfdrive/selfdrived/selfdrived.py`（`install_core`）、`selfdrive/car/card.py`（`core_alive`：Tesla 安装宿主后始终门控，包括默认插件；启动尚无 `selfdriveState` 时不发控制，发布后恢复；断流约 0.1 秒内停止）。
 
-**接管/兜底出错**：替换插件抛异常、输出不合法或换掉了事件对象，本次行驶两轴都锁定为退出并显示 `xpilotPluginFault`（selfdrived 重启也保持，靠 `XpilotPluginFaults`），停车重启 manager 后才清除；行驶中不切回默认。卡死由 card 的 `core_alive` 和 panda 心跳兜底。进程内插件是受信任的已审核代码，claims 不是沙箱，最终底线是 panda safety。
+**接管/兜底出错**：每个角色都只取当前 owner，没有 owner、钩子抛异常或返回 None、更新输出不合法（兜底非列表或未知事件名），本次行驶两轴都锁定为退出并显示 `xpilotPluginFault`（selfdrived 重启也保持，靠 `XpilotPluginFaults`），停车重启 manager 后才清除；行驶中不切回其他实现。兜底输出先整体校验，出错保持 SP 原事件和底线。宿主只认识角色，不认识默认插件 id。卡死由 card 的 `core_alive` 和 panda 心跳兜底。进程内插件是受信任的已审核代码，claims 不是沙箱，最终底线是 panda safety。
 
 ## 5. 写一个新插件
 
@@ -420,7 +420,7 @@ typedef struct {
 
 | 插件 | 功能 | 参数 | panda |
 |---|---|---|---|
-| `sp_engagement` / `sp_safety_fallback` | 默认接管和兜底：SP 原样运行；装一个持有 `role:engagement.state` / `role:safety.fallback` 的插件并打开即替换，宿主底线见第 4.4 节 | 无（一直开启） | 无发送 |
+| `sp_engagement` / `sp_safety_fallback` | 默认接管和兜底：返回 SP 已建好的状态机/MADS 和事件列表，与其他实现走相同宿主底线；装一个持有 `role:engagement.state` / `role:safety.fallback` 的插件并打开即替换，宿主底线见第 4.4 节 | 无（一直开启） | 无发送 |
 | `sp_models` | 默认模型：SP 的模型管理器和 modeld 原样运行，只是归到插件下；装一个持有 `role:perception.model` 的插件（如 OP、Jetlink、Chipmunk 模型）并打开即替换 | 无（一直开启） | 无发送 |
 
 其他插件（auto_speed、traffic_light、ambient_light、external_compute、bms 和大屏显示插件）的列表和说明在插件仓库的 `README.md`。它们保留原来的参数名，从旧版本升级的设备要把旧参数值复制到 `/data/xpilot_plugins/.params/`。panda 部分仍在系统仓库：`auto_speed.h`（0x3C2，`0x4000`）、`ambient_light.h`（0x679，`0x2000`）。

@@ -6,7 +6,7 @@
   "category": "safety_fallback",
   "entry": "plugin:SpSafetyFallback",
   "author": "sunnypilot",
-  "description": "Default safety fallback: SP's events (disengage, no-entry and soft-disable policy). Always on; a plugin that claims role:safety.fallback replaces it behind the host floor (core_host.py).",
+  "description": "Keeps SP's events through the shared host floor. Always on; another owner of role:safety.fallback replaces its event policy.",
   "priority": 10000,
   "enable_param": null,
   "claims": [

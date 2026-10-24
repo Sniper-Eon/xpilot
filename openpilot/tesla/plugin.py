@@ -128,18 +128,20 @@ class Plugin:
   def engagement(cls, selfdrive):
     """None, or an object with state_machine (SP StateMachine interface: update(events) -> (enabled, active), state,
     current_alert_types, soft_disable_timer) and mads (ModularAssistiveDrivingSystem interface: update(CS), enabled,
-    active, state_machine.state, read_params(); None keeps SP's MADS bound to this state machine). Replaces SP's whole
+    active, enabled_toggle, state_machine.state, read_params(); None disables MADS). Plugins may retain/read
+    selfdrive, but change engagement only through these outputs, which the host clamps. Replaces SP's whole
     engagement. The host clamps the outputs: floor disables win, an engage needs SP's driver ENABLE event (MADS: the
     LKAS button), active implies enabled, soft disable ends within 4 s, ET.PERMANENT always shows. Raising or an
     invalid output latches both axes off for the rest of the drive."""
     return None
 
   @classmethod
-  def safety_fallback(cls, selfdrive):
-    """None, or an object with update(selfdrive, CS), called every selfdrived cycle after SP's update_events. It
-    replaces SP's fallback policy by editing selfdrive.events / events_sp in place (it may clear them and add its own);
-    the host puts back every floor event (pedals, cancel, FCW, stock AEB, panda/CAN faults, core-data liveness,
-    selfdrivedLagging, DM). Raising or replacing the event objects latches both axes off for the rest of the drive."""
+  def safety_fallback(cls, ctx):
+    """Return an object with update(ctx, CS, names, names_sp) -> (names, names_sp), after SP's update_events.
+    ctx is built once: SimpleNamespace(sm, CP, CP_SP, params=view(params)); it exposes no selfdrive or Events.
+    Return lists of known event names to keep/add. The host rebuilds the same Events objects, preserving counters,
+    then restores every floor (pedals, cancel, FCW, stock AEB, panda/CAN faults, core-data liveness, DM).
+    Missing owner/output, raising or invalid lists latch both axes off for the rest of the drive; no fallback."""
     return None
 
   @classmethod
