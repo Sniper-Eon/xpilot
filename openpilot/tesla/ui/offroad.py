@@ -193,8 +193,8 @@ class StoreJobs:
       self.status = "park first"
       return
     if have is not None and (entry is None or have == entry.version or not entry.installable):
-      store.uninstall(pid)
-      self.status = f"removed {pid}: restart to apply"
+      error = store.uninstall(pid)
+      self.status = f"{pid}: {error}"[:60] if error else f"removed {pid}: restart to apply"
     elif entry.installable:
       self.status = f"installing {entry.id}..."
       error = store.install(entry)

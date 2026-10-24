@@ -22,6 +22,9 @@ Failure cases listed before implementation:
 - S18 a plugin whose can.tx claims or safety block differ from the firmware's safety.json is installed, or a matching
       one (store auto_speed) is refused
 - S19 first-boot defaults are not installed, or the marker is set on an unreachable index (no retry)
+- S20 the second replace fails and the old version is lost, changed or no longer discoverable
+- S21 the second replace and restore fail, and the old backup is deleted or its path is missing from the error
+- S22 install or uninstall while IsOnroad does not return "park first", changes the installed files, or shows UI success
 """
 import hashlib
 import http.server
@@ -34,6 +37,7 @@ import tarfile
 import tempfile
 import threading
 import types
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
 TMP = Path(tempfile.mkdtemp(prefix="xp-store-"))
@@ -237,6 +241,57 @@ def main() -> int:
   except Exception as e:
     errors.append(f"S8 raised {e!r}")
 
+  publish("ext_ok", archive("ext_ok", good_files("ext_ok", version="2.0.0")), version="2.0.0")
+  update = store.IndexEntry(**{**entries[-1], "installable": True})
+  target = mf.INSTALL_DIR / "ext_ok"
+
+  def files(path):
+    return {str(p.relative_to(path)): p.read_bytes() for p in path.rglob("*") if p.is_file()}
+
+  for code, failures in (("S20", (2,)), ("S21", (2, 3))):
+    before = files(target)
+    calls = []
+    replace = store.os.replace
+
+    def fail_replace(src, dst):
+      calls.append((Path(src), Path(dst)))
+      if len(calls) in failures:
+        raise OSError(f"injected replace failure {len(calls)}")
+      replace(src, dst)
+
+    with patch.object(store.os, "replace", fail_replace):
+      error = store.install(update)
+    if error is None or len(calls) != 3:
+      errors.append(f"{code} error={error!r}, replace calls={len(calls)}")
+    if code == "S20":
+      plugins = importlib.reload(plugins)
+      if files(target) != before or store.installed_versions().get("ext_ok") != "1.0.0" or \
+          not any(c.NAME == "ext_ok" and c.MANIFEST.version == "1.0.0" and c.X == "1.0.0" for c in plugins.PLUGINS):
+        errors.append("S20 failed update lost, changed or hid the old version")
+    else:
+      backup = calls[0][1]
+      if not backup.is_dir() or files(backup) != before or str(backup) not in (error or ""):
+        errors.append(f"S21 old backup missing, changed or not named in error: {backup}, {error!r}")
+    if (r := install("ext_ok")) is not None:
+      errors.append(f"{code} fixture reinstall failed: {r}")
+
+  from openpilot.tesla.ui.offroad import StoreJobs
+  onroad = CoreParams()
+  onroad.put_bool("IsOnroad", True)
+  before = files(target)
+  with patch.object(sys.modules["openpilot.common.params"], "Params", lambda: onroad):
+    for action in (lambda: store.install(update), lambda: store.uninstall("ext_ok")):
+      error = action()
+      if error != "park first" or files(target) != before or store.installed_versions().get("ext_ok") != "1.0.0":
+        errors.append(f"S22 onroad action error={error!r}, installed={store.installed_versions()}")
+    if (r := install("ext_ok")) != "park first":
+      errors.append(f"S22 onroad reinstall error={r!r}")
+    jobs = StoreJobs(lambda: True)
+    jobs.installed = {"ext_ok": "1.0.0"}
+    jobs.act("ext_ok")
+    if jobs.status != "ext_ok: park first":
+      errors.append(f"S22 UI reported {jobs.status!r}")
+
   store.uninstall("ext_ok")
   plugins = importlib.reload(plugins)
   if any(c.NAME == "ext_ok" for c in plugins.PLUGINS):
@@ -251,7 +306,7 @@ def main() -> int:
     errors.append(f"S19 defaults not installed: {store.installed_versions()}")
 
   server.shutdown()
-  print(json.dumps({"errors": errors}, indent=1))
+  print(json.dumps({"artifacts": str(TMP), "errors": errors}, indent=1))
   return 1 if errors else 0
 
 

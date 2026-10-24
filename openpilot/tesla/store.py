@@ -130,11 +130,16 @@ def _validate(staged: Path, entry: IndexEntry) -> None:
 
 
 def install(entry: IndexEntry) -> str | None:
-  """None on success, else the reason. The previous version stays in place on any failure."""
+  """None on success, else the reason. The previous version stays in place on any failure.
+  If restoration also fails, retain the backup and return its path."""
+  from openpilot.common.params import Params
+  if Params().get_bool("IsOnroad"):
+    return "park first"
   if not entry.installable:
     return f"not installable (api {entry.api} vs {mf.API_VERSION}, platform {entry.platform}, or a built-in id)"
   mf.INSTALL_DIR.mkdir(parents=True, exist_ok=True)
   staging = Path(tempfile.mkdtemp(prefix=f".staging-{entry.id}-", dir=mf.INSTALL_DIR))
+  keep_backup = False
   try:
     data = _get(entry.url, MAX_ARCHIVE)
     if hashlib.sha256(data).hexdigest() != entry.sha256.lower():
@@ -146,16 +151,29 @@ def install(entry: IndexEntry) -> str | None:
     target, old = mf.INSTALL_DIR / entry.id, staging / "old"
     if target.exists():
       os.replace(target, old)
-    os.replace(staged, target)
+    try:
+      os.replace(staged, target)
+    except Exception as e:
+      if old.exists():
+        try:
+          os.replace(old, target)
+        except Exception as restore_error:
+          keep_backup = True
+          return f"{e}; restore failed: {restore_error}; backup: {old}"
+      raise
     return None
   except Exception as e:
     return str(e) or repr(e)
   finally:
-    shutil.rmtree(staging, ignore_errors=True)
+    if not keep_backup:
+      shutil.rmtree(staging, ignore_errors=True)
 
 
-def uninstall(pid: str) -> None:
+def uninstall(pid: str) -> str | None:
   """Remove an installed plugin (its stored param values stay, so a reinstall keeps its settings)."""
+  from openpilot.common.params import Params
+  if Params().get_bool("IsOnroad"):
+    return "park first"
   target = mf.INSTALL_DIR / pid
   if pid and "/" not in pid and target.is_dir():
     trash = Path(tempfile.mkdtemp(prefix=f".removing-{pid}-", dir=mf.INSTALL_DIR))
