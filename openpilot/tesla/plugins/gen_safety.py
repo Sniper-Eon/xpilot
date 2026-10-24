@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Generate panda registry/param bits from opendbc/safety/plugins/safety.json; --check detects drift.
-safety.json maps plugin id -> {header, param_bit, tx}. Each safety plugin owns one TX matching its C .msg.
+safety.json maps plugin id -> {header (<id>.h), param_bit, tx}. Each safety plugin owns one TX matching its C .msg.
 The plugins themselves may live in the store (openpilot/tesla/store.py checks their claims against this file).
 Built-in plugin can.tx claims must be declared here too. Stdlib only.
 """
@@ -61,10 +61,10 @@ def render() -> str:
       raise ValueError(f"{path}: duplicate param_bit {bit:#x}")
     if not re.fullmatch(r"[a-z][a-z0-9_]*", name) or not re.fullmatch(r"[a-z][a-z0-9_]*[.]h", header):
       raise ValueError(f"{path}: invalid safety name/header")
-    if header in headers:
-      raise ValueError(f"{path}: duplicate safety header {header}")
     if not (HEADERS / header).is_file():
       raise ValueError(f"{path}: missing safety header {header}")
+    if header != f"{name}.h":
+      raise ValueError(f"{path}: safety header must be {name}.h")
     if len(tx) != 1 or not all(re.fullmatch(r"0x[0-9A-Fa-f]{1,8}:[0-7]", t) for t in tx):
       raise ValueError(f"{path}: safety needs exactly one address:bus tx")
     addr, bus = next(iter(tx)).split(":")

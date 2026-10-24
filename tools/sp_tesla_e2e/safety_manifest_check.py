@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Failure modes of gen_safety.py (declarations in opendbc/safety/plugins/safety.json):
-- A duplicate bit, undeclared header, missing header, tx differing from the header .msg, or a built-in plugin
+- A duplicate bit, undeclared header, missing header, header not named <id>.h, tx differing from the header .msg, or a built-in plugin
   can.tx claim missing from safety.json is accepted.
 - A stale registry passes --check, regeneration is not deterministic, or invalid input overwrites the registry.
 The store side (installed plugins must match safety.json) is store_check S18; the plugins' own use of their
@@ -62,8 +62,14 @@ def main():
     (root / HEADERS / 'orphan.h').write_text('#pragma once\n')
     run('undeclared-header', 1)
     assert registry.read_bytes() == original
+    (root / HEADERS / 'orphan.h').unlink()
+    (root / HEADERS / 'ambient_light.h').rename(root / HEADERS / 'ambient.h')
+    declared['ambient_light']['header'] = 'ambient.h'
+    declared_path.write_text(json.dumps(declared))
+    run('header-not-id', 1)
+    assert registry.read_bytes() == original
 
-  assert len(records) == 9, records
+  assert len(records) == 10, records
   print(json.dumps(records, indent=2))
 
 
