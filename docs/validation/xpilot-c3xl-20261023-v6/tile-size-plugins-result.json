@@ -1,0 +1,118 @@
+{
+  "passed": true,
+  "head": "bfca6fcec388f019e9b3046e9067f3a11e7d27ff",
+  "scope": "real GPU and production BigScreenHost edit/resize/done callbacks; service stopped for exclusive DRM; no CAN",
+  "cases": [
+    {
+      "tile": "plugins",
+      "title": "Plugins",
+      "size": "small",
+      "path": "tile-plugins-small.png",
+      "placement": [
+        0,
+        0,
+        "small"
+      ],
+      "resize_taps_in_edit_mode": 1,
+      "state": "(12, 0, 0)",
+      "draws": [
+        {
+          "text": "Plugins",
+          "x": 16.0,
+          "y": 206.0,
+          "size": 30,
+          "width": 85.8
+        }
+      ],
+      "edge_cut": [],
+      "overlap": [],
+      "too_small": [],
+      "ellipsis": []
+    },
+    {
+      "tile": "plugins",
+      "title": "Plugins",
+      "size": "medium",
+      "path": "tile-plugins-medium.png",
+      "placement": [
+        0,
+        0,
+        "medium"
+      ],
+      "resize_taps_in_edit_mode": 2,
+      "state": "(12, 0, 0)",
+      "draws": [
+        {
+          "text": "Plugins",
+          "x": 16.0,
+          "y": 453.0,
+          "size": 45,
+          "width": 128.7
+        },
+        {
+          "text": "12 on",
+          "x": 16.0,
+          "y": 14.0,
+          "size": 72,
+          "width": 150.84
+        }
+      ],
+      "edge_cut": [],
+      "overlap": [],
+      "too_small": [],
+      "ellipsis": []
+    },
+    {
+      "tile": "plugins",
+      "title": "Plugins",
+      "size": "wide",
+      "path": "tile-plugins-wide.png",
+      "placement": [
+        0,
+        0,
+        "wide"
+      ],
+      "resize_taps_in_edit_mode": 2,
+      "state": "(12, 0, 0)",
+      "draws": [
+        {
+          "text": "Plugins",
+          "x": 16.0,
+          "y": 453.0,
+          "size": 45,
+          "width": 128.7
+        },
+        {
+          "text": "12 on",
+          "x": 16.0,
+          "y": 14.0,
+          "size": 72,
+          "width": 150.84
+        }
+      ],
+      "edge_cut": [],
+      "overlap": [],
+      "too_small": [],
+      "ellipsis": []
+    }
+  ],
+  "original_sha256": {
+    "layout": "7d2e2f182f08e9cf92ab14d444b42078cf45f96fafcc693cfa1519149b7f3d46",
+    "theme": "1d261a8554d2da69b2e13445a8ee2a94dd10912a2bf5a0f3d3fe0698e5540f84",
+    "bms": "6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b",
+    "car": "dfcc84df24862d499db2c9a7572af713b81f9592a740eb53b4f393f213722519"
+  },
+  "final_sha256": {
+    "layout": "7d2e2f182f08e9cf92ab14d444b42078cf45f96fafcc693cfa1519149b7f3d46",
+    "theme": "1d261a8554d2da69b2e13445a8ee2a94dd10912a2bf5a0f3d3fe0698e5540f84",
+    "bms": "6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b",
+    "car": "dfcc84df24862d499db2c9a7572af713b81f9592a740eb53b4f393f213722519"
+  },
+  "restored": {
+    "layout": true,
+    "theme": true,
+    "bms": true,
+    "car": true
+  },
+  "errors": []
+}
