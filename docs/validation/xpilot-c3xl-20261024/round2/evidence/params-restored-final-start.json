@@ -1,0 +1,18 @@
+{
+  "snapshot": "initial",
+  "byte_equal": true,
+  "restored": [
+    "/data/params/d/BootCount",
+    "/data/params/d/CurrentBootlog",
+    "/data/params/d/GitCommit",
+    "/data/params/d/GitCommitDate",
+    "/data/params/d/LastUpdateTime",
+    "/data/params/d/ModelManager_LastSyncTime",
+    "/data/params/d/UpdateAvailable",
+    "/data/params/d/UpdaterAvailableBranches",
+    "/data/params/d/UpdaterCurrentDescription",
+    "/data/params/d/UpdaterLastFetchTime",
+    "/data/params/d/UptimeOffroad"
+  ],
+  "files": 156
+}

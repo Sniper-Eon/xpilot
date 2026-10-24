@@ -1,0 +1,211 @@
+{
+  "passed": false,
+  "head": "4292551111be2d7afa7cf9aa158841fb712e740b",
+  "scope": "real GPU, production widgets and mapped touch events; layout restored; synthetic onroad; no CAN transmission",
+  "cases": [
+    {
+      "name": "offroad",
+      "viewport": null,
+      "placed": {
+        "plugins": [
+          4,
+          2,
+          "small"
+        ],
+        "status": [
+          0,
+          0,
+          "small"
+        ],
+        "toggles": [
+          0,
+          1,
+          "small"
+        ],
+        "tesla": [
+          0,
+          2,
+          "medium"
+        ],
+        "models": [
+          1,
+          0,
+          "small"
+        ],
+        "network": [
+          1,
+          1,
+          "small"
+        ],
+        "device": [
+          2,
+          0,
+          "small"
+        ],
+        "software": [
+          2,
+          1,
+          "small"
+        ],
+        "developer": [
+          2,
+          2,
+          "small"
+        ]
+      },
+      "mici_draws": 0
+    },
+    {
+      "name": "onboarding",
+      "standalone": true,
+      "size": [
+        2160,
+        1080
+      ],
+      "touches": 0
+    },
+    {
+      "name": "idle",
+      "frames": 60,
+      "tile_redraws": 0
+    },
+    {
+      "name": "status",
+      "title": "Status",
+      "page": "HomePage",
+      "active": "MiciMainLayout",
+      "stack": 1,
+      "nav_stack": 1,
+      "mici_draws": 0
+    },
+    {
+      "name": "toggles",
+      "title": "Toggles",
+      "page": "TogglesPage",
+      "active": "MiciMainLayout",
+      "stack": 1,
+      "nav_stack": 1,
+      "mici_draws": 0
+    },
+    {
+      "name": "plugins",
+      "title": "Plugins",
+      "page": "PluginsPage",
+      "active": "MiciMainLayout",
+      "stack": 1,
+      "nav_stack": 1,
+      "mici_draws": 0
+    },
+    {
+      "name": "Plugins > plugin > BACK",
+      "page": "PluginsPage",
+      "stack": 1
+    },
+    {
+      "name": "tesla",
+      "title": "Tesla",
+      "page": "TeslaPage",
+      "active": "MiciMainLayout",
+      "stack": 1,
+      "nav_stack": 1,
+      "mici_draws": 0
+    },
+    {
+      "name": "models",
+      "title": "Models",
+      "page": "ModelsPage",
+      "active": "MiciMainLayout",
+      "stack": 1,
+      "nav_stack": 1,
+      "mici_draws": 0
+    },
+    {
+      "name": "Models > Small models > BACK",
+      "skipped": true,
+      "reason": "no qcom bundles available"
+    },
+    {
+      "name": "network",
+      "title": "Network",
+      "page": "NetworkPage",
+      "active": "MiciMainLayout",
+      "stack": 1,
+      "nav_stack": 1,
+      "mici_draws": 0
+    },
+    {
+      "name": "device",
+      "title": "Device",
+      "page": "DevicePage",
+      "active": "MiciMainLayout",
+      "stack": 1,
+      "nav_stack": 1,
+      "mici_draws": 0
+    },
+    {
+      "name": "Device > training guide > BACK",
+      "page": "TrainingGuidePage",
+      "stack": 1
+    },
+    {
+      "name": "Device > driver camera",
+      "skipped": true,
+      "reason": "row hidden on this hardware"
+    },
+    {
+      "name": "Device > terms > BACK",
+      "page": "TermsPage",
+      "stack": 1
+    },
+    {
+      "name": "Device > regulatory",
+      "skipped": true,
+      "reason": "row hidden on this hardware"
+    },
+    {
+      "name": "software",
+      "title": "Software",
+      "page": "SoftwarePage",
+      "active": "MiciMainLayout",
+      "stack": 1,
+      "nav_stack": 1,
+      "mici_draws": 0
+    },
+    {
+      "name": "developer",
+      "title": "Developer",
+      "page": "DeveloperPage",
+      "active": "MiciMainLayout",
+      "stack": 1,
+      "nav_stack": 1,
+      "mici_draws": 0
+    },
+    {
+      "name": "edit",
+      "old_size": "small",
+      "new_size": "wide",
+      "empty_cell": [
+        3,
+        3
+      ]
+    },
+    {
+      "name": "edit drive default",
+      "order": [],
+      "placed": {}
+    },
+    {
+      "name": "layout restored",
+      "file_matches": true,
+      "layouts_match": true
+    },
+    {
+      "name": "driver view restored",
+      "before": false,
+      "after": false
+    }
+  ],
+  "errors": [
+    "Traceback (most recent call last):\n  File \"/data/xpilot-agnos19.9-20261025/candidate/tools/sp_tesla_e2e/big_screen_e2e.py\", line 414, in <module>\n    for should_render, *_ in gui_app.render():\n  File \"/data/openpilot/openpilot/system/ui/lib/application.py\", line 697, in render\n    self._host.render()\n  File \"/data/xpilot-agnos19.9-20261025/candidate/tools/sp_tesla_e2e/big_screen_e2e.py\", line 409, in render\n    next_step = frame + next(scenario)\n                        ^^^^^^^^^^^^^^\n  File \"/data/xpilot-agnos19.9-20261025/candidate/tools/sp_tesla_e2e/big_screen_e2e.py\", line 332, in steps\n    assert moved is not None, 'no data tile to drag'\n           ^^^^^^^^^^^^^^^^^\nAssertionError: no data tile to drag\n"
+  ]
+}

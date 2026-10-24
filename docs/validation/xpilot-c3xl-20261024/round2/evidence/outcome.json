@@ -1,0 +1,18 @@
+{
+  "a": true,
+  "b": true,
+  "c": true,
+  "d": true,
+  "keep_head": true,
+  "big_screen_classification": "ENV",
+  "base_ui_rc": 1,
+  "head_ui_rc": 1,
+  "ui_failing_line": 332,
+  "same_plugin_params": true,
+  "same_store_files": true,
+  "production_errors": {
+    "production-startup.log": [],
+    "production-runtime.log": [],
+    "production-messages.jsonl": []
+  }
+}

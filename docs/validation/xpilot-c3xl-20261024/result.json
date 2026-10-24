@@ -1,17 +1,23 @@
 {
   "task": "X-20261024-08",
-  "status": "FAILED",
+  "round": 2,
+  "status": "DONE",
   "device_before": "65bb09e3d5d306487d005f15cef799e31cf37fa2",
-  "device_after": "65bb09e3d5d306487d005f15cef799e31cf37fa2",
+  "device_after": "4292551111be2d7afa7cf9aa158841fb712e740b",
   "device_running": true,
   "failure_modes": {
     "a": "PASS",
-    "b": "FAIL",
-    "c": "FAIL",
-    "d": "FAIL",
+    "b": "PASS",
+    "c": "PASS",
+    "d": "PASS",
     "e": "PASS",
     "f": "PASS"
   },
+  "env": [
+    "big_screen_e2e.py: paired identical line 332 failure",
+    "model catalog/index network errors"
+  ],
+  "operational_issue": "automatic stale overlay activation recovered; future updater can restage baseline",
   "checks": [
     {
       "script": "agnos_update_check.py",
@@ -47,7 +53,7 @@
     },
     {
       "script": "store_check.py",
-      "rc": "1"
+      "rc": "0"
     },
     {
       "script": "tile_layout_check.py",
@@ -63,7 +69,7 @@
     },
     {
       "script": "store_e2e.py",
-      "rc": "1"
+      "rc": "0"
     },
     {
       "script": "gen_params.py",
@@ -74,9 +80,8 @@
       "rc": "0"
     }
   ],
+  "big_screen_classification": "ENV",
   "candidate_build_rc": 0,
-  "rollback_build_rc": 0,
-  "initial_manager_start_failed": true,
-  "production_retry_passed": true,
+  "replay_comparison_rc": 0,
   "docs_only": true
 }

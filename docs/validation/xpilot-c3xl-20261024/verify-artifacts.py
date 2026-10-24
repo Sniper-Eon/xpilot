@@ -9,7 +9,7 @@ read = lambda name: json.loads((root / 'evidence' / name).read_text())
 for line in (root / 'SHA256SUMS').read_text().splitlines():
   expected, name = line.split('  ', 1)
   assert hashlib.sha256((root / name).read_bytes()).hexdigest() == expected, name
-result = json.loads((root / 'result.json').read_text())
+result = json.loads((root / 'round1-result.json').read_text())
 assert result['status'] == 'FAILED'
 assert result['device_before'] == result['device_after'] == '65bb09e3d5d306487d005f15cef799e31cf37fa2'
 assert result['failure_modes'] == dict(a='PASS', b='FAIL', c='FAIL', d='FAIL', e='PASS', f='PASS')
@@ -60,4 +60,7 @@ assert gate['IsOffroad'] and not gate['IsEngaged'] and not gate['started']
 assert not gate['load_errors'] and not gate['faults']
 assert read('source-identity.json')['forbidden_changed_paths'] == []
 assert read('plugins-copy-proof.json')['device_equal']
-print(json.dumps({'artifact_verification': 'PASS', 'validation_outcome': 'FAILED', 'compared_messages_per_tree': sum(counts.values()), 'device_after': result['device_after']}, indent=2))
+print(json.dumps({'artifact_verification': 'PASS', 'round1_validation_outcome': 'FAILED', 'compared_messages_per_tree': sum(counts.values()), 'device_after': result['device_after']}, indent=2))
+
+import runpy
+runpy.run_path(str(root / 'round2' / 'verify-artifacts.py'), run_name='__main__')

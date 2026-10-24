@@ -1,0 +1,94 @@
+{
+  ".github/workflows/xpilot.yaml": {
+    "base_sha256": "ba708f078a8f0de33a937709e8b2b3c7e68575bc4e59b0424cf31e4c8068df5c",
+    "head_sha256": "5940dae34cd0eb7c925e238d3ca762161b06d2bbb126ac5d1c765ccb073d0fb4"
+  },
+  "XPILOT.md": {
+    "base_sha256": "d2a41df07d524477df5571b04377da42abf1dd385109968cc914a60c7e3a8988",
+    "head_sha256": "12a5283256796535d6002d82ac1d90c58f82a8de270ac97bb7f929f2f1310a0d"
+  },
+  "openpilot/sunnypilot/system/fork_processes.py": {
+    "base_sha256": "1ebef3f49442df70243d2145adb3b1be5cffc3de97f6d36980d45261458dad46",
+    "head_sha256": "559afe117ab56b726198f989b38c16f8dc701b67fc1e829dcb1b24ca6d9813d9"
+  },
+  "openpilot/tesla/core_host.py": {
+    "base_sha256": "d6b8ee1c3ecb30a2fdbc4078b2547c692e6d099a52a07b628469911e20e9f2d9",
+    "head_sha256": "54c4625abf6b6499d1024c95abf624d3ac6720ff5d222b704142f5cd8535e0f2"
+  },
+  "openpilot/tesla/manifest.py": {
+    "base_sha256": "63788a5e3d7851cce120a98af43ea63d2e61e32487162c5f72ab651e451fe176",
+    "head_sha256": "df0345fea5d1d7ce950d9ddf3190f9c3a7ee1217042e700d7ef216ebf946d95d"
+  },
+  "openpilot/tesla/plugin.py": {
+    "base_sha256": "20e8b9b48bca69f9d975c9b77ab6e394d02f968c49ca9122b9bc862509b3352d",
+    "head_sha256": "c1e8df36c7d91c8cd259d68f9027eee813e33a60117e2b9b05410255cc2dac35"
+  },
+  "openpilot/tesla/plugins/__init__.py": {
+    "base_sha256": "f866d4c126da187b87a3924c1f2abd96cf4f664ebe56e73d3bcd6f299e9fc081",
+    "head_sha256": "f0028560f417f6d3987c3258a6554eed49f3c960baca2e4210d7f7a114886655"
+  },
+  "openpilot/tesla/plugins/gen_safety.py": {
+    "base_sha256": "8ea25599d50764454b11093a667ebcf454d455d9355e8da771a339da93f8852f",
+    "head_sha256": "1ff89439a5208fc8b75c152d64c4ecfcc9c5fed2a2c3df3fdcc1392d94b164ed"
+  },
+  "openpilot/tesla/plugins/sp_engagement/plugin.json": {
+    "base_sha256": "75703a964ac56c81e559855011d2e3532ab11124a79993dc22ca6f51527dc89e",
+    "head_sha256": "411fb98ccaba2a57708e335790f7049f6e0399f2c435ff988910a26425bd6787"
+  },
+  "openpilot/tesla/plugins/sp_engagement/plugin.py": {
+    "base_sha256": "bb3a72b19700a0ab606e98368339a92ff4634f320dfabad458b369c38441d22e",
+    "head_sha256": "ad533bf0aec4747f78f0847eb6b8270d29e17c24384a2cbf21d8c6d924bdebff"
+  },
+  "openpilot/tesla/plugins/sp_models/plugin.json": {
+    "base_sha256": "80094d724182b847fb6b9e8375751bd55917e89b3e3cfee9809d5983302fb20f",
+    "head_sha256": "fb77f86d6d247e191d0325c06b368e68251d164be8c22cdd7d11453e40aa0f29"
+  },
+  "openpilot/tesla/plugins/sp_models/plugin.py": {
+    "base_sha256": "bc3a41f80e94c7f31b759b228fc40ee9c85638f6893374eee2803ae99339649d",
+    "head_sha256": "ee2dcf6028f4051e9228d59da854379434ad68fd7426859c592b5a38f6b2d962"
+  },
+  "openpilot/tesla/plugins/sp_safety_fallback/plugin.json": {
+    "base_sha256": "d899c3588d5c5b01fa6dd37ae4477124f8b404e13f52b742c1e8ed0c80a3d68a",
+    "head_sha256": "8298ed48cd7e14f0778b74581c47ea2d69e2708b17d5685d25918398c9b68160"
+  },
+  "openpilot/tesla/plugins/sp_safety_fallback/plugin.py": {
+    "base_sha256": "c4332820fbddaeac5b721d94cb9df490353d72af07944da53c9b76fdf64db8b2",
+    "head_sha256": "a3b024d79faa7e75000119aa1d5df2e16703fb79f1435decca1a41d1e1352423"
+  },
+  "openpilot/tesla/store.py": {
+    "base_sha256": "364985e595e0eb003edd52fa5238ec63823dc21e6b80750b1cb0f5545e60446f",
+    "head_sha256": "0be3ec73f45dba29ce57934fd62b1876915c97bd07550e7c023c7c9bb1f6dfc0"
+  },
+  "openpilot/tesla/ui/offroad.py": {
+    "base_sha256": "50349c3b2c6ac28f325b7bced14a1aaeb87171136a154217bb6b0727e165e775",
+    "head_sha256": "7e1a5089e0c778344ffbf7d0df2f31228aab5904faa553c7c3bebf4c192b5167"
+  },
+  "openpilot/tesla/ui/pages/plugins.py": {
+    "base_sha256": "19e91103854cdc3c1f2123fe450986741e8f7f2fdba897d3c28ffd5e0d82d78b",
+    "head_sha256": "f2a32970043d9803c69e77f9051122e733821c0bf495e73b3d7f8076f622a2f7"
+  },
+  "openpilot/tesla/ui/plugins_page.py": {
+    "base_sha256": "aef8d41e9f28213d99a6df17a222c6163cfc8d9491a3a5b0df222c00dd6047e1",
+    "head_sha256": "7c3a216707762f2f6e7eff3a0130684a2cd19f185f112b3458890f3be66d8a74"
+  },
+  "tools/sp_tesla_e2e/phase4_check.py": {
+    "base_sha256": "7e26197068cfbdaadff8b2add9bd399e1e655f1b9b487ee6887bed0daae0eac3",
+    "head_sha256": "3d65813c820babfc964e8d49d7b36a1773065350107a59d35e80c2620440bf93"
+  },
+  "tools/sp_tesla_e2e/plugin_host_check.py": {
+    "base_sha256": "01df68681cc1a01bf236f0b9703236d2b1d94c883953d7a144669c3252c58f0a",
+    "head_sha256": "c44fceae05d9f727c6fe20a7f48ea33579f0cd864323b6fb458c6f257255a3f9"
+  },
+  "tools/sp_tesla_e2e/safety_manifest_check.py": {
+    "base_sha256": "eff1fde6364f25de82fb7560c99bc60452689403e5cf87efab35cb35cb78b562",
+    "head_sha256": "8dba22553f8db22aeeecbfbd032675a84c5eff9b18bcd62f8e984aa33bd36744"
+  },
+  "tools/sp_tesla_e2e/store_check.py": {
+    "base_sha256": "7c64761ae268f4ae9286fe8e0bd415032676c4719b4b7b786fb5ee7cf1728d50",
+    "head_sha256": "8954100bd3c46e6d67d3cad12265cec8682784a821b606a69be723e48dbb9037"
+  },
+  "tools/sp_tesla_e2e/store_e2e.py": {
+    "base_sha256": "47fb6fddf35ea4cee340f6d9b88de308fc6d37ba8345bfa2bb995bc47b3817e9",
+    "head_sha256": "f9f5f1a2bbd7992897feb4fb32da947de1cabb068f176c002e26e1ce93e1de48"
+  }
+}

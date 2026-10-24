@@ -1,0 +1,12 @@
+kj/filesystem-disk-unix.c++:1734: warning: PWD environment variable doesn't match current directory; pwd = /data/openpilot
+kj/filesystem-disk-unix.c++:1734: warning: PWD environment variable doesn't match current directory; pwd = /data/openpilot
+{"tag": "initial", "params_count": 156, "store_files": 7}
+{"tag": "pre-base-ui", "params_count": 156, "store_files": 7}
+kj/filesystem-disk-unix.c++:1734: warning: PWD environment variable doesn't match current directory; pwd = /data/openpilot
+kj/filesystem-disk-unix.c++:1734: warning: PWD environment variable doesn't match current directory; pwd = /data/openpilot
+kj/filesystem-disk-unix.c++:1734: warning: PWD environment variable doesn't match current directory; pwd = /data/openpilot
+Traceback (most recent call last):
+  File "/data/xpilot-X-20261024-08-round2-evidence/methods/gate.py", line 22, in <module>
+    assert rows and all(sm.alive.values()),dict(sm.alive)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: {'deviceState': True, 'pandaStates': False, 'managerState': True}

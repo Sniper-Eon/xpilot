@@ -1,0 +1,20 @@
+{
+  "calls_per_variant": 10000,
+  "warmups_per_variant": 1000,
+  "unit": "us per state_machine.update + mads.update pair",
+  "input": "empty Events/EventsSP, disabled, vEgo=10, cruise available, Mads=1; no hardware inputs",
+  "bare": {
+    "p50_us": 93.699,
+    "p99_us": 148.54552
+  },
+  "wrapped": {
+    "p50_us": 115.992,
+    "p99_us": 182.92001
+  },
+  "extra": {
+    "p50_us": 22.239999999999995,
+    "p99_us": 56.46474000000013
+  },
+  "p99_difference_us": 34.37448999999998,
+  "problem": false
+}

@@ -1,0 +1,15 @@
+replay PASS True
+{'selfdrived': 12069, 'controlsd': 17919, 'card': 19062}
+{"a": true, "b": true, "c": true, "d": true, "keep_head": true, "big_screen_classification": "ENV", "base_ui_rc": 1, "head_ui_rc": 1, "ui_failing_line": 332, "same_plugin_params": true, "same_store_files": true}
+kj/filesystem-disk-unix.c++:1734: warning: PWD environment variable doesn't match current directory; pwd = /data/openpilot
+kj/filesystem-disk-unix.c++:1734: warning: PWD environment variable doesn't match current directory; pwd = /data/openpilot
+Traceback (most recent call last):
+  File "/data/xpilot-X-20261024-08-round2-evidence/methods/gate.py", line 4, in <module>
+    from openpilot.common.params import Params
+  File "/data/openpilot/openpilot/common/params.py", line 35, in <module>
+    lib = ctypes.CDLL(Path(__file__).with_name(f"libparams_c{_suffix}"))
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/ctypes/__init__.py", line 379, in __init__
+    self._handle = _dlopen(self._name, mode)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^
+OSError: /data/openpilot/openpilot/common/libparams_c.so: cannot open shared object file: No such file or directory

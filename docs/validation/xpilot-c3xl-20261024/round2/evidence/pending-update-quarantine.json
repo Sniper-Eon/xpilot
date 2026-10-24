@@ -1,0 +1,21 @@
+{
+  "utc": "2026-10-24T20:27:26Z",
+  "active_commit": "4292551111be2d7afa7cf9aa158841fb712e740b",
+  "staged_commit": "65bb09e3d5d306487d005f15cef799e31cf37fa2",
+  "saved_markers": {
+    "/data/openpilot/.overlay_init": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mtime_ns": 1792873337121594339,
+      "saved_to": "/data/xpilot-X-20261024-08-round2-evidence/publish-quarantined-candidate-init"
+    },
+    "/data/safe_staging/finalized/.overlay_consistent": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mtime_ns": 1792873536352218415,
+      "saved_to": "/data/xpilot-X-20261024-08-round2-evidence/publish-quarantined-finalized-consistent"
+    }
+  },
+  "init_exists": false,
+  "consistent_exists": false,
+  "updated_config_changed": false,
+  "future_updater_can_restage": true
+}

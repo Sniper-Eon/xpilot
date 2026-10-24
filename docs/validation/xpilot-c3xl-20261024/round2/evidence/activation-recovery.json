@@ -1,0 +1,12 @@
+{
+  "restored_link": "/data/xpilot-agnos19.9-20261025/candidate",
+  "head": "4292551111be2d7afa7cf9aa158841fb712e740b",
+  "native_unchanged": true,
+  "quarantined_markers": {
+    ".overlay_init": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mtime_ns": 1792872249870347806
+    }
+  },
+  "saved_activated_tree": "/data/xpilot-X-20261024-08-round2-evidence/automatic-overlay-tree"
+}

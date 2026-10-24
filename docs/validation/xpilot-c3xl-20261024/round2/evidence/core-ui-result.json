@@ -1,0 +1,90 @@
+{
+  "source_commit": "4292551111be2d7afa7cf9aa158841fb712e740b",
+  "execution_tree": "/data/xpilot-agnos19.9-20261025/candidate",
+  "state": "default",
+  "owner": "sp_models",
+  "active": [
+    "overspeed_warning",
+    "sp_engagement",
+    "sp_models",
+    "sp_safety_fallback"
+  ],
+  "conflicts": {},
+  "load_errors": {},
+  "passed": true,
+  "placed": {
+    "plugins": [
+      4,
+      2,
+      "small"
+    ],
+    "status": [
+      0,
+      0,
+      "small"
+    ],
+    "toggles": [
+      0,
+      1,
+      "small"
+    ],
+    "tesla": [
+      0,
+      2,
+      "medium"
+    ],
+    "models": [
+      1,
+      0,
+      "small"
+    ],
+    "network": [
+      1,
+      1,
+      "small"
+    ],
+    "device": [
+      2,
+      0,
+      "small"
+    ],
+    "software": [
+      2,
+      1,
+      "small"
+    ],
+    "developer": [
+      2,
+      2,
+      "small"
+    ]
+  },
+  "categories": {
+    "Perception Models": {
+      "id": "sp_models",
+      "title": "SP Model Manager",
+      "enable_param": null,
+      "toggle_enabled": false,
+      "toggle_state": true,
+      "status": ""
+    },
+    "Engagement": {
+      "id": "sp_engagement",
+      "title": "SP Engagement",
+      "enable_param": null,
+      "toggle_enabled": false,
+      "toggle_state": true,
+      "status": ""
+    },
+    "Safety Fallback & Autopilot Handoff": {
+      "id": "sp_safety_fallback",
+      "title": "SP Safety Fallback",
+      "enable_param": null,
+      "toggle_enabled": false,
+      "toggle_state": true,
+      "status": ""
+    }
+  },
+  "offroad_alerts": [],
+  "missing_roles": []
+}

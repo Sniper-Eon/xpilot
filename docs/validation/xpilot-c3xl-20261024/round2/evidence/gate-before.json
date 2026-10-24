@@ -1,0 +1,870 @@
+{
+  "hostname": "comma-9c13c9f5",
+  "profile": "c3xl",
+  "active_path": "/data/xpilot-agnos19.9-20261025/candidate",
+  "head": "65bb09e3d5d306487d005f15cef799e31cf37fa2",
+  "service": "active",
+  "utc": "2026-10-24T20:00:39Z",
+  "IsOffroad": true,
+  "IsEngaged": false,
+  "started": false,
+  "alive": {
+    "deviceState": true,
+    "pandaStates": true,
+    "managerState": true
+  },
+  "panda_samples": [
+    [
+      {
+        "controlsAllowed": false,
+        "faultStatus": "none",
+        "faults": [],
+        "pandaType": "tres",
+        "ignitionLine": false,
+        "ignitionCan": false,
+        "safetyModel": "noOutput"
+      }
+    ],
+    [
+      {
+        "controlsAllowed": false,
+        "faultStatus": "none",
+        "faults": [],
+        "pandaType": "tres",
+        "ignitionLine": false,
+        "ignitionCan": false,
+        "safetyModel": "noOutput"
+      }
+    ],
+    [
+      {
+        "controlsAllowed": false,
+        "faultStatus": "none",
+        "faults": [],
+        "pandaType": "tres",
+        "ignitionLine": false,
+        "ignitionCan": false,
+        "safetyModel": "noOutput"
+      }
+    ],
+    [
+      {
+        "controlsAllowed": false,
+        "faultStatus": "none",
+        "faults": [],
+        "pandaType": "tres",
+        "ignitionLine": false,
+        "ignitionCan": false,
+        "safetyModel": "noOutput"
+      }
+    ],
+    [
+      {
+        "controlsAllowed": false,
+        "faultStatus": "none",
+        "faults": [],
+        "pandaType": "tres",
+        "ignitionLine": false,
+        "ignitionCan": false,
+        "safetyModel": "noOutput"
+      }
+    ],
+    [
+      {
+        "controlsAllowed": false,
+        "faultStatus": "none",
+        "faults": [],
+        "pandaType": "tres",
+        "ignitionLine": false,
+        "ignitionCan": false,
+        "safetyModel": "noOutput"
+      }
+    ],
+    [
+      {
+        "controlsAllowed": false,
+        "faultStatus": "none",
+        "faults": [],
+        "pandaType": "tres",
+        "ignitionLine": false,
+        "ignitionCan": false,
+        "safetyModel": "noOutput"
+      }
+    ],
+    [
+      {
+        "controlsAllowed": false,
+        "faultStatus": "none",
+        "faults": [],
+        "pandaType": "tres",
+        "ignitionLine": false,
+        "ignitionCan": false,
+        "safetyModel": "noOutput"
+      }
+    ],
+    [
+      {
+        "controlsAllowed": false,
+        "faultStatus": "none",
+        "faults": [],
+        "pandaType": "tres",
+        "ignitionLine": false,
+        "ignitionCan": false,
+        "safetyModel": "noOutput"
+      }
+    ],
+    [
+      {
+        "controlsAllowed": false,
+        "faultStatus": "none",
+        "faults": [],
+        "pandaType": "tres",
+        "ignitionLine": false,
+        "ignitionCan": false,
+        "safetyModel": "noOutput"
+      }
+    ],
+    [
+      {
+        "controlsAllowed": false,
+        "faultStatus": "none",
+        "faults": [],
+        "pandaType": "tres",
+        "ignitionLine": false,
+        "ignitionCan": false,
+        "safetyModel": "noOutput"
+      }
+    ],
+    [
+      {
+        "controlsAllowed": false,
+        "faultStatus": "none",
+        "faults": [],
+        "pandaType": "tres",
+        "ignitionLine": false,
+        "ignitionCan": false,
+        "safetyModel": "noOutput"
+      }
+    ],
+    [
+      {
+        "controlsAllowed": false,
+        "faultStatus": "none",
+        "faults": [],
+        "pandaType": "tres",
+        "ignitionLine": false,
+        "ignitionCan": false,
+        "safetyModel": "noOutput"
+      }
+    ],
+    [
+      {
+        "controlsAllowed": false,
+        "faultStatus": "none",
+        "faults": [],
+        "pandaType": "tres",
+        "ignitionLine": false,
+        "ignitionCan": false,
+        "safetyModel": "noOutput"
+      }
+    ],
+    [
+      {
+        "controlsAllowed": false,
+        "faultStatus": "none",
+        "faults": [],
+        "pandaType": "tres",
+        "ignitionLine": false,
+        "ignitionCan": false,
+        "safetyModel": "noOutput"
+      }
+    ],
+    [
+      {
+        "controlsAllowed": false,
+        "faultStatus": "none",
+        "faults": [],
+        "pandaType": "tres",
+        "ignitionLine": false,
+        "ignitionCan": false,
+        "safetyModel": "noOutput"
+      }
+    ],
+    [
+      {
+        "controlsAllowed": false,
+        "faultStatus": "none",
+        "faults": [],
+        "pandaType": "tres",
+        "ignitionLine": false,
+        "ignitionCan": false,
+        "safetyModel": "noOutput"
+      }
+    ],
+    [
+      {
+        "controlsAllowed": false,
+        "faultStatus": "none",
+        "faults": [],
+        "pandaType": "tres",
+        "ignitionLine": false,
+        "ignitionCan": false,
+        "safetyModel": "noOutput"
+      }
+    ],
+    [
+      {
+        "controlsAllowed": false,
+        "faultStatus": "none",
+        "faults": [],
+        "pandaType": "tres",
+        "ignitionLine": false,
+        "ignitionCan": false,
+        "safetyModel": "noOutput"
+      }
+    ],
+    [
+      {
+        "controlsAllowed": false,
+        "faultStatus": "none",
+        "faults": [],
+        "pandaType": "tres",
+        "ignitionLine": false,
+        "ignitionCan": false,
+        "safetyModel": "noOutput"
+      }
+    ],
+    [
+      {
+        "controlsAllowed": false,
+        "faultStatus": "none",
+        "faults": [],
+        "pandaType": "tres",
+        "ignitionLine": false,
+        "ignitionCan": false,
+        "safetyModel": "noOutput"
+      }
+    ],
+    [
+      {
+        "controlsAllowed": false,
+        "faultStatus": "none",
+        "faults": [],
+        "pandaType": "tres",
+        "ignitionLine": false,
+        "ignitionCan": false,
+        "safetyModel": "noOutput"
+      }
+    ],
+    [
+      {
+        "controlsAllowed": false,
+        "faultStatus": "none",
+        "faults": [],
+        "pandaType": "tres",
+        "ignitionLine": false,
+        "ignitionCan": false,
+        "safetyModel": "noOutput"
+      }
+    ],
+    [
+      {
+        "controlsAllowed": false,
+        "faultStatus": "none",
+        "faults": [],
+        "pandaType": "tres",
+        "ignitionLine": false,
+        "ignitionCan": false,
+        "safetyModel": "noOutput"
+      }
+    ],
+    [
+      {
+        "controlsAllowed": false,
+        "faultStatus": "none",
+        "faults": [],
+        "pandaType": "tres",
+        "ignitionLine": false,
+        "ignitionCan": false,
+        "safetyModel": "noOutput"
+      }
+    ],
+    [
+      {
+        "controlsAllowed": false,
+        "faultStatus": "none",
+        "faults": [],
+        "pandaType": "tres",
+        "ignitionLine": false,
+        "ignitionCan": false,
+        "safetyModel": "noOutput"
+      }
+    ],
+    [
+      {
+        "controlsAllowed": false,
+        "faultStatus": "none",
+        "faults": [],
+        "pandaType": "tres",
+        "ignitionLine": false,
+        "ignitionCan": false,
+        "safetyModel": "noOutput"
+      }
+    ],
+    [
+      {
+        "controlsAllowed": false,
+        "faultStatus": "none",
+        "faults": [],
+        "pandaType": "tres",
+        "ignitionLine": false,
+        "ignitionCan": false,
+        "safetyModel": "noOutput"
+      }
+    ],
+    [
+      {
+        "controlsAllowed": false,
+        "faultStatus": "none",
+        "faults": [],
+        "pandaType": "tres",
+        "ignitionLine": false,
+        "ignitionCan": false,
+        "safetyModel": "noOutput"
+      }
+    ],
+    [
+      {
+        "controlsAllowed": false,
+        "faultStatus": "none",
+        "faults": [],
+        "pandaType": "tres",
+        "ignitionLine": false,
+        "ignitionCan": false,
+        "safetyModel": "noOutput"
+      }
+    ],
+    [
+      {
+        "controlsAllowed": false,
+        "faultStatus": "none",
+        "faults": [],
+        "pandaType": "tres",
+        "ignitionLine": false,
+        "ignitionCan": false,
+        "safetyModel": "noOutput"
+      }
+    ],
+    [
+      {
+        "controlsAllowed": false,
+        "faultStatus": "none",
+        "faults": [],
+        "pandaType": "tres",
+        "ignitionLine": false,
+        "ignitionCan": false,
+        "safetyModel": "noOutput"
+      }
+    ],
+    [
+      {
+        "controlsAllowed": false,
+        "faultStatus": "none",
+        "faults": [],
+        "pandaType": "tres",
+        "ignitionLine": false,
+        "ignitionCan": false,
+        "safetyModel": "noOutput"
+      }
+    ],
+    [
+      {
+        "controlsAllowed": false,
+        "faultStatus": "none",
+        "faults": [],
+        "pandaType": "tres",
+        "ignitionLine": false,
+        "ignitionCan": false,
+        "safetyModel": "noOutput"
+      }
+    ],
+    [
+      {
+        "controlsAllowed": false,
+        "faultStatus": "none",
+        "faults": [],
+        "pandaType": "tres",
+        "ignitionLine": false,
+        "ignitionCan": false,
+        "safetyModel": "noOutput"
+      }
+    ],
+    [
+      {
+        "controlsAllowed": false,
+        "faultStatus": "none",
+        "faults": [],
+        "pandaType": "tres",
+        "ignitionLine": false,
+        "ignitionCan": false,
+        "safetyModel": "noOutput"
+      }
+    ],
+    [
+      {
+        "controlsAllowed": false,
+        "faultStatus": "none",
+        "faults": [],
+        "pandaType": "tres",
+        "ignitionLine": false,
+        "ignitionCan": false,
+        "safetyModel": "noOutput"
+      }
+    ],
+    [
+      {
+        "controlsAllowed": false,
+        "faultStatus": "none",
+        "faults": [],
+        "pandaType": "tres",
+        "ignitionLine": false,
+        "ignitionCan": false,
+        "safetyModel": "noOutput"
+      }
+    ],
+    [
+      {
+        "controlsAllowed": false,
+        "faultStatus": "none",
+        "faults": [],
+        "pandaType": "tres",
+        "ignitionLine": false,
+        "ignitionCan": false,
+        "safetyModel": "noOutput"
+      }
+    ],
+    [
+      {
+        "controlsAllowed": false,
+        "faultStatus": "none",
+        "faults": [],
+        "pandaType": "tres",
+        "ignitionLine": false,
+        "ignitionCan": false,
+        "safetyModel": "noOutput"
+      }
+    ],
+    [
+      {
+        "controlsAllowed": false,
+        "faultStatus": "none",
+        "faults": [],
+        "pandaType": "tres",
+        "ignitionLine": false,
+        "ignitionCan": false,
+        "safetyModel": "noOutput"
+      }
+    ],
+    [
+      {
+        "controlsAllowed": false,
+        "faultStatus": "none",
+        "faults": [],
+        "pandaType": "tres",
+        "ignitionLine": false,
+        "ignitionCan": false,
+        "safetyModel": "noOutput"
+      }
+    ],
+    [
+      {
+        "controlsAllowed": false,
+        "faultStatus": "none",
+        "faults": [],
+        "pandaType": "tres",
+        "ignitionLine": false,
+        "ignitionCan": false,
+        "safetyModel": "noOutput"
+      }
+    ],
+    [
+      {
+        "controlsAllowed": false,
+        "faultStatus": "none",
+        "faults": [],
+        "pandaType": "tres",
+        "ignitionLine": false,
+        "ignitionCan": false,
+        "safetyModel": "noOutput"
+      }
+    ],
+    [
+      {
+        "controlsAllowed": false,
+        "faultStatus": "none",
+        "faults": [],
+        "pandaType": "tres",
+        "ignitionLine": false,
+        "ignitionCan": false,
+        "safetyModel": "noOutput"
+      }
+    ],
+    [
+      {
+        "controlsAllowed": false,
+        "faultStatus": "none",
+        "faults": [],
+        "pandaType": "tres",
+        "ignitionLine": false,
+        "ignitionCan": false,
+        "safetyModel": "noOutput"
+      }
+    ],
+    [
+      {
+        "controlsAllowed": false,
+        "faultStatus": "none",
+        "faults": [],
+        "pandaType": "tres",
+        "ignitionLine": false,
+        "ignitionCan": false,
+        "safetyModel": "noOutput"
+      }
+    ],
+    [
+      {
+        "controlsAllowed": false,
+        "faultStatus": "none",
+        "faults": [],
+        "pandaType": "tres",
+        "ignitionLine": false,
+        "ignitionCan": false,
+        "safetyModel": "noOutput"
+      }
+    ],
+    [
+      {
+        "controlsAllowed": false,
+        "faultStatus": "none",
+        "faults": [],
+        "pandaType": "tres",
+        "ignitionLine": false,
+        "ignitionCan": false,
+        "safetyModel": "noOutput"
+      }
+    ],
+    [
+      {
+        "controlsAllowed": false,
+        "faultStatus": "none",
+        "faults": [],
+        "pandaType": "tres",
+        "ignitionLine": false,
+        "ignitionCan": false,
+        "safetyModel": "noOutput"
+      }
+    ],
+    [
+      {
+        "controlsAllowed": false,
+        "faultStatus": "none",
+        "faults": [],
+        "pandaType": "tres",
+        "ignitionLine": false,
+        "ignitionCan": false,
+        "safetyModel": "noOutput"
+      }
+    ]
+  ],
+  "processes": [
+    {
+      "name": "loggerd",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "encoderd",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "logmessaged",
+      "running": true,
+      "pid": 108331,
+      "exitCode": 0
+    },
+    {
+      "name": "camerad",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "webcamerad",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "proclogd",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "journald",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "micd",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "timed",
+      "running": true,
+      "pid": 108333,
+      "exitCode": 0
+    },
+    {
+      "name": "modeld",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "dmonitoringmodeld",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "sensord",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "ui",
+      "running": true,
+      "pid": 108335,
+      "exitCode": 0
+    },
+    {
+      "name": "soundd",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "locationd",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "_pandad",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "calibrationd",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "controlsd",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "joystickd",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "selfdrived",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "card",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "deleter",
+      "running": true,
+      "pid": 108337,
+      "exitCode": 0
+    },
+    {
+      "name": "dmonitoringd",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "qcomgpsd",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "pandad",
+      "running": true,
+      "pid": 108339,
+      "exitCode": 0
+    },
+    {
+      "name": "paramsd",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "lagd",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "ubloxd",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "pigeond",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "plannerd",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "maneuversd",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "lateral_maneuversd",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "radard",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "hardwared",
+      "running": true,
+      "pid": 108341,
+      "exitCode": 0
+    },
+    {
+      "name": "modem",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "tombstoned",
+      "running": true,
+      "pid": 108347,
+      "exitCode": 0
+    },
+    {
+      "name": "updated",
+      "running": true,
+      "pid": 108353,
+      "exitCode": 0
+    },
+    {
+      "name": "joystick",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "models_manager",
+      "running": true,
+      "pid": 108357,
+      "exitCode": 0
+    },
+    {
+      "name": "modeld_tinygrad",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "modeld_warmup",
+      "running": true,
+      "pid": 108361,
+      "exitCode": 0
+    },
+    {
+      "name": "mapd",
+      "running": true,
+      "pid": 108367,
+      "exitCode": 0
+    },
+    {
+      "name": "mapd_manager",
+      "running": true,
+      "pid": 108380,
+      "exitCode": 0
+    },
+    {
+      "name": "map_osm",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "locationd_llk",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "copyparty-sfx",
+      "running": false,
+      "pid": 0,
+      "exitCode": 0
+    },
+    {
+      "name": "alert_output",
+      "running": true,
+      "pid": 108382,
+      "exitCode": 0
+    }
+  ],
+  "load_errors": {},
+  "faults": null,
+  "owners": {
+    "role:engagement.state": "sp_engagement",
+    "role:safety.fallback": "sp_safety_fallback",
+    "role:perception.model": "sp_models"
+  }
+}

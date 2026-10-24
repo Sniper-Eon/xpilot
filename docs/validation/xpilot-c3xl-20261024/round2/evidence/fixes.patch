@@ -1,0 +1,211 @@
+commit 4292551111be2d7afa7cf9aa158841fb712e740b
+Author:     onemiles <690299233@qq.com>
+AuthorDate: Sun Oct 25 03:51:37 2026 +0800
+Commit:     onemiless <itmile331@gmail.com>
+CommitDate: Sat Oct 24 19:54:36 2026 +0000
+
+    fix(core): preserve replay engagement through guarded state assignment
+
+diff --git a/openpilot/tesla/core_host.py b/openpilot/tesla/core_host.py
+index 8bef204..1f25b50 100644
+--- a/openpilot/tesla/core_host.py
++++ b/openpilot/tesla/core_host.py
+@@ -114,6 +114,8 @@ class _GuardedStateMachine:
+ 
+   def __setattr__(self, name, value):
+     setattr(self._inner, name, value)
++    if name == "state":
++      self._h.enabled_prev = value in ENABLED_STATES
+ 
+   def update(self, events):
+     h, inner = self._h, self._inner
+diff --git a/tools/sp_tesla_e2e/phase4_check.py b/tools/sp_tesla_e2e/phase4_check.py
+index 93eb383..9690ca3 100644
+--- a/tools/sp_tesla_e2e/phase4_check.py
++++ b/tools/sp_tesla_e2e/phase4_check.py
+@@ -34,6 +34,8 @@ Failure cases listed before implementation:
+ - C17 fallback receives selfdrive instead of the narrow ctx, accepts non-lists/unknown names/raises without
+       latching, mutates the event objects/counters, or loses the original events and floors after invalid output
+ - C18 CardGate is inactive with default owners, sends before first selfdriveState, or fails to recover on publish
++- C19 selfdrived sets state_machine.state to enabled through the wrapper for replay, then an update without ENABLE
++      differs from bare SP instead of staying enabled; resetting state leaves stale enabled_prev
+ """
+ import hashlib
+ import json
+@@ -358,6 +360,7 @@ def main() -> int:
+   # C14 real SP objects, including MADS event edits, counters and shared alerts.
+   traces = []
+   sequences = {
++    "replay-start": [([], {}, 3), ([EN.buttonCancel], {}, 1)],
+     "ordinary": [([EN.pcmEnable], {}, 1), ([], {}, 2), ([EN.doorOpen], {}, 10), ([], {}, 1),
+                  ([EN.steerUnavailable], {}, 1), ([EN.buttonEnable, EN.canError], {}, 1),
+                  ([EN.buttonEnable, EN.doorOpen], {}, 1),
+@@ -397,6 +400,9 @@ def main() -> int:
+           sd.state_machine = core_host._GuardedStateMachine(h, sd.state_machine, "sp_engagement")
+           sd.mads = core_host._GuardedMads(h, sd.mads, "sp_engagement", params.get_bool("Mads"))
+       pair.append(sd)
++    if label == "replay-start":
++      for sd in pair:
++        sd.state_machine.state = State.enabled
+     frame = 0
+     mismatch = False
+     for names, inputs, count in sequence:
+@@ -416,9 +422,19 @@ def main() -> int:
+                          sd.events.event_counters, sd.events_sp.event_counters))
+         traces.append((label, frame, states))
+         if states[0] != states[1] and not mismatch:
+-          errors.append(f"C14 {label} frame {frame}: bare/wrapped {[v[:11] for v in states]}")
++          code = "C19" if label == "replay-start" else "C14"
++          errors.append(f"{code} {label} frame {frame}: bare/wrapped {[v[:11] for v in states]}")
+           mismatch = True
+ 
++  # C19 a host reset must not let the plugin engage itself on the next update (C6).
++  rep = Scripted()
++  s = install(engagement_sm=rep)
++  s.state_machine.state = State.enabled
++  s.state_machine.state = State.disabled
++  rep.out = ENGAGED
++  if step(s) != (False, False):
++    errors.append("C19/C6 plugin engaged without ENABLE after a host reset")
++
+   # C15 absent owner, returning None and raising hooks all latch both roles.
+   class Missing(Plugin):
+     @classmethod
+
+commit d0c0f373b057918dd2f009601a8e3fd54a735c48
+Author:     onemiles <690299233@qq.com>
+AuthorDate: Sun Oct 25 03:51:36 2026 +0800
+Commit:     onemiless <itmile331@gmail.com>
+CommitDate: Sat Oct 24 19:54:36 2026 +0000
+
+    fix(store): use registered offroad state and reject unknown host params
+
+diff --git a/openpilot/tesla/store.py b/openpilot/tesla/store.py
+index 46f55ec..8379d49 100644
+--- a/openpilot/tesla/store.py
++++ b/openpilot/tesla/store.py
+@@ -128,7 +128,7 @@ def install(entry: IndexEntry) -> str | None:
+   """None on success, else the reason. The previous version stays in place on any failure.
+   If restoration also fails, retain the backup and return its path."""
+   from openpilot.common.params import Params
+-  if Params().get_bool("IsOnroad"):
++  if not Params().get_bool("IsOffroad"):
+     return "park first"
+   if not entry.installable:
+     return f"not installable (api {entry.api} vs {mf.API_VERSION}, platform {entry.platform}, or a built-in id)"
+@@ -167,7 +167,7 @@ def install(entry: IndexEntry) -> str | None:
+ def uninstall(pid: str) -> str | None:
+   """Remove an installed plugin (its stored param values stay, so a reinstall keeps its settings)."""
+   from openpilot.common.params import Params
+-  if Params().get_bool("IsOnroad"):
++  if not Params().get_bool("IsOffroad"):
+     return "park first"
+   target = mf.INSTALL_DIR / pid
+   if pid and "/" not in pid and target.is_dir():
+diff --git a/tools/sp_tesla_e2e/store_check.py b/tools/sp_tesla_e2e/store_check.py
+index 7242996..0561558 100644
+--- a/tools/sp_tesla_e2e/store_check.py
++++ b/tools/sp_tesla_e2e/store_check.py
+@@ -24,7 +24,7 @@ Failure cases listed before implementation:
+ - S19 first-boot defaults are not installed, or the marker is set on an unreachable index (no retry)
+ - S20 the second replace fails and the old version is lost, changed or no longer discoverable
+ - S21 the second replace and restore fail, and the old backup is deleted or its path is missing from the error
+-- S22 install or uninstall while IsOnroad does not return "park first", changes the installed files, or shows UI success
++- S22 install or uninstall onroad does not return "park first", changes the installed files, or shows UI success
+ - S23 another plugin id using safety profile auto_speed is refused, not discovered, or loses param_bit 0x4000
+ - S24 an unknown safety profile is installed
+ - S25 a profile with extra keys (param_bit, tx or header overrides) is installed
+@@ -36,6 +36,8 @@ Failure cases listed before implementation:
+ - S31 invalid safety on disk is discovered instead of skipped with a reason
+ - S32 uninstall removes the only installed claimant of a required role or changes its files on refusal
+ - S33 uninstall refuses a replacement when a built-in or another installed claimant remains
++- S34 the host Params stub accepts a key absent from params_keys.h and plugin_params.inc
++- S35 install or uninstall succeeds while IsOffroad is False
+ """
+ import hashlib
+ import http.server
+@@ -58,23 +60,23 @@ sys.path[:0] = [str(ROOT), str(ROOT / "opendbc_repo")]
+ 
+ class CoreParams:  # stands in for the compiled Params: knows only core and built-in keys
+   def __init__(self):
+-    self.values = {}
++    self.values = {"IsOffroad": True}
+ 
+   def get_bool(self, key, block=False):
+-    if key.startswith("Ext"):
+-      raise KeyError(key)
+-    return bool(self.values.get(key, False))
++    return bool(self.get(key, block))
+ 
+   def get(self, key, block=False, return_default=False):
+-    if key.startswith("Ext"):
++    if key not in mf.compiled_param_keys():
+       raise KeyError(key)
+     return self.values.get(key)
+ 
+   def put(self, key, value, block=False):
++    if key not in mf.compiled_param_keys():
++      raise KeyError(key)
+     self.values[key] = value
+ 
+   def put_bool(self, key, value, block=False):
+-    self.values[key] = bool(value)
++    self.put(key, bool(value), block)
+ 
+ 
+ try:
+@@ -121,6 +123,14 @@ def good_files(pid, version="1.0.0", **over):
+ 
+ def main() -> int:
+   errors = []
++  core = CoreParams()
++  for key in ("IsOnroad", "NotARegisteredParam"):
++    for method, args in (("get", ()), ("get_bool", ()), ("put", (True,)), ("put_bool", (True,))):
++      try:
++        getattr(core, method)(key, *args)
++      except KeyError:
++        continue
++      errors.append(f"S34 Params.{method} accepted {key}")
+   site = TMP / "site"
+   site.mkdir()
+   entries = []
+@@ -334,13 +344,13 @@ def main() -> int:
+ 
+   from openpilot.tesla.ui.offroad import StoreJobs
+   onroad = CoreParams()
+-  onroad.put_bool("IsOnroad", True)
++  onroad.put_bool("IsOffroad", False)
+   before = files(target)
+   with patch.object(sys.modules["openpilot.common.params"], "Params", lambda: onroad):
+     for action in (lambda: store.install(update), lambda: store.uninstall("ext_ok")):
+       error = action()
+       if error != "park first" or files(target) != before or store.installed_versions().get("ext_ok") != "1.0.0":
+-        errors.append(f"S22 onroad action error={error!r}, installed={store.installed_versions()}")
++        errors.append(f"S22/S35 onroad action error={error!r}, installed={store.installed_versions()}")
+     if (r := install("ext_ok")) != "park first":
+       errors.append(f"S22 onroad reinstall error={r!r}")
+     jobs = StoreJobs(lambda: True)
+diff --git a/tools/sp_tesla_e2e/store_e2e.py b/tools/sp_tesla_e2e/store_e2e.py
+index 54e789f..f303a06 100644
+--- a/tools/sp_tesla_e2e/store_e2e.py
++++ b/tools/sp_tesla_e2e/store_e2e.py
+@@ -30,13 +30,17 @@ TMP = Path(tempfile.mkdtemp(prefix="xp-e2e-"))
+ os.environ["XPILOT_PLUGINS_DIR"] = str(TMP / "installed")
+ sys.path[:0] = [str(ROOT), str(ROOT / "opendbc_repo")]
+ 
++from openpilot.tesla import manifest as mf  # noqa: E402
++
+ 
+ class CoreParams:
+   def get_bool(self, key, block=False):
+-    return False
++    return bool(self.get(key, block))
+ 
+   def get(self, key, block=False, return_default=False):
+-    return None
++    if key not in mf.compiled_param_keys():
++      raise KeyError(key)
++    return True if key == "IsOffroad" else None
+ 
+ 
+ try:
