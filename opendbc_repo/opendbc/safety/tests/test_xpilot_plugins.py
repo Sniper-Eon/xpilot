@@ -22,6 +22,13 @@ ambient_light (0x679, bus 1, 7 bytes):
 - The 150-frame/15-second session cap blocks further TX until a one-second idle gap starts a new session.
 - A safety-mode reset clears the template and rate-limit state.
 - Plugin RX does not change stock Tesla controls_allowed or relay-malfunction state.
+
+navassist (0x3E9, bus 1, 8 bytes):
+- Inactive outside SAFETY_TESLA, without the 0x8000 safetyParamSP bit, or without the vehicle bus.
+- TX clones a fresh idle template and only changes request/reason/counter.
+- Active request 1/2 requires controls_allowed; cancel request 3 is accepted without it because it only
+  releases the lamp, including before a disengage.
+- Rate/session limits and the safety-mode reset apply to both active and cancel frames.
 """
 
 import unittest
@@ -401,7 +408,8 @@ class TestTurnSignalPluginSafety(XpilotPluginSafetyBase):
     self.assertFalse(self._tx(self._frame(counter=1)))
     self.assertTrue(self._tx(self._frame(counter=4)))
 
-  def test_controls_allowed_but_cancel_allowed(self):
+  def test_cancel_allowed_without_controls_allowed(self):
+    """Cancel is accepted at any time because it only releases the lamp."""
     self._prime()
     self.safety.set_controls_allowed(False)
     self.assertFalse(self._tx(self._frame(request=1)))
