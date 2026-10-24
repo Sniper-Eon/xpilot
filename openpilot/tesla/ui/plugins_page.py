@@ -23,6 +23,7 @@ class CategoryPage(SettingsList):
   def __init__(self, plugins):
     super().__init__()
     self.rows = []
+    self.errors = {}
     for plugin in plugins:
       toggle = BigToggle(plugin.TITLE, initial_state=is_enabled(plugin, ui_state.params),
                          toggle_callback=lambda value, p=plugin: self._switch(p, value), description=_details(plugin))
@@ -37,8 +38,7 @@ class CategoryPage(SettingsList):
     self.show_event()
 
   def _switch(self, plugin, value) -> None:
-    if ui_state.is_offroad():
-      switch_plugin(plugin, value, view(ui_state.params))
+    self.errors = {plugin.NAME: switch_plugin(plugin, value, view(ui_state.params)) if ui_state.is_offroad() else "park first"}
     self.show_event()
 
   def show_event(self):
@@ -47,7 +47,7 @@ class CategoryPage(SettingsList):
     _, conflicts = resolve(ui_state.params)
     for plugin, toggle in getattr(self, 'rows', ()):
       toggle.set_checked(is_enabled(plugin, ui_state.params))
-      toggle.set_value(plugin_status(plugin, faults, conflicts))
+      toggle.set_value(self.errors.get(plugin.NAME) or plugin_status(plugin, faults, conflicts))
 
 
 class PluginsPage(SettingsList):

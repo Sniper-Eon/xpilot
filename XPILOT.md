@@ -172,6 +172,8 @@ opendbc_repo/opendbc/safety/plugins/
 - **合并规则由宿主固定**：插件改不了。目标车速的规则见下面 `long_target`。
 - **底线**：不管优先级多高，都越不过 SP 的限制和 panda safety。
 
+**必需角色**：宿主 `REQUIRED_ROLES` 固定为 `role:perception.model`、`role:engagement.state`、`role:safety.fallback`；`missing_roles(params)` 按这个顺序返回没有 active owner 的角色，关闭或冲突落败的插件不算 owner。停车页为每个缺失角色显示一条 `No <role> plugin: driving assistance unavailable`。Plugins 页拒绝关掉最后一个已开启的 claimant（包括打开别的插件时自动关掉冲突插件的情况），显示 `required role <role>`，不写参数；有其他已开启 claimant 时允许关闭替换插件。商店卸载按磁盘清单检查，若会删掉某必需角色最后一个已安装或内置 claimant，就返回同样原因并保留文件；还有内置默认插件或其他已安装 claimant 时允许卸载，不要求它已开启。当前三个 `sp_*` 默认插件的 `enable_param` 仍为 `null`、一直开启。
+
 ### 4.4 钩子
 
 | 钩子 | 调用方 / 时机 | 用途 |
@@ -201,6 +203,8 @@ opendbc_repo/opendbc/safety/plugins/
 SP 里的调用位置：`selfdrive/car/card.py`（`CarPlugins`、`radar_interface`）、`selfdrive/controls/plannerd.py`（`services`、`plan_filters`、`plan_sink`、`long_targets`）、`sunnypilot/selfdrive/controls/lib/longitudinal_planner.py`（`apply_long_targets`）、`selfdrive/selfdrived/selfdrived.py`（`alert_sources`、`update_alerts`）、`sunnypilot/selfdrive/selfdrived/events.py`（插件报警定义，见 `openpilot/tesla/alerts.py`）、`selfdrive/controls/lib/desire_helper.py`（`lane_change_policies`、`lane_change_allowed`）、`selfdrive/controls/controlsd.py`（`lat_corrections`、`apply_lat_corrections`、`lateral_controller`）、`selfdrive/controls/lib/longitudinal_planner.py`（`apply_long_planner`）、`sunnypilot/system/fork_processes.py`（`processes`，以及 `holds(params, "source:map")` 关掉 SP 的地图进程）、`selfdrive/selfdrived/selfdrived.py`（`install_core`）、`selfdrive/car/card.py`（`core_alive`：Tesla 安装宿主后始终门控，包括默认插件；启动尚无 `selfdriveState` 时不发控制，发布后恢复；断流约 0.1 秒内停止）。
 
 **接管/兜底出错**：每个角色都只取当前 owner，没有 owner、钩子抛异常或返回 None、更新输出不合法（兜底非列表或未知事件名），本次行驶两轴都锁定为退出并显示 `xpilotPluginFault`（selfdrived 重启也保持，靠 `XpilotPluginFaults`），停车重启 manager 后才清除；行驶中不切回其他实现。兜底输出先整体校验，出错保持 SP 原事件和底线。宿主只认识角色，不认识默认插件 id。卡死由 card 的 `core_alive` 和 panda 心跳兜底。进程内插件是受信任的已审核代码，claims 不是沙箱，最终底线是 panda safety。
+
+**模型角色缺失**：无人持有 `role:perception.model` 时，宿主不运行四个 SP 模型进程，也不新增接管机制。SP 已订阅 `modelV2` 并检查存活/有效性（`openpilot/selfdrive/selfdrived/selfdrived.py:113-120`）；正常通信检查中，`all_checks()` 不通过且 `all_alive()` 为假会产生 `commIssue`（同文件 `:439-450`），该事件已有 `NO_ENTRY` 和 `SOFT_DISABLE`（`openpilot/selfdrive/selfdrived/events.py:674-676`）。前面已有禁止接管和退出事件时沿用该事件；大模型加载和完成后的 5 秒等待沿用 SP 的暂缓条件。`processNotRunning` 只针对 manager 标为 `shouldBeRunning` 却未运行的进程（`selfdrived.py:412-418`），不能用它解释角色无人持有、进程按条件停掉的情况；缺少 `modelV2` 的通用门控是通信检查。以上是源码证据，不代表设备验证。
 
 ## 5. 写一个新插件
 

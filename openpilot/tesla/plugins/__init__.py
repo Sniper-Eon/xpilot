@@ -26,6 +26,7 @@ from openpilot.tesla.plugin import Plugin
 from openpilot.tesla.plugin_params import ParamsView
 
 FAULTS_PARAM = "XpilotPluginFaults"
+REQUIRED_ROLES = ("role:perception.model", "role:engagement.state", "role:safety.fallback")
 ROLE_PROCESSES = {"role:perception.model": ("models_manager", "modeld", "modeld_tinygrad", "modeld_warmup")}
 
 
@@ -243,6 +244,12 @@ def processes(core: set[str] | None = None, role_procs: dict | None = None) -> l
 def owner(params, claim: str) -> str | None:
   """Name of the active plugin holding this claim, or None."""
   return next((cls.NAME for cls in active(params) if claim in cls.CLAIMS), None)
+
+
+def missing_roles(params) -> list[str]:
+  """Required roles with no active owner, in required order."""
+  claims = {claim for cls in active(params) for claim in cls.CLAIMS}
+  return [role for role in REQUIRED_ROLES if role not in claims]
 
 
 def holds(params, claim: str) -> bool:

@@ -8,7 +8,7 @@ import time
 from openpilot.common.basedir import BASEDIR
 from openpilot.tesla import store
 from openpilot.tesla.manifest import CATEGORIES, conflicting
-from openpilot.tesla.plugins import FAULTS_PARAM, LOAD_ERRORS, PLUGINS, resolve
+from openpilot.tesla.plugins import FAULTS_PARAM, LOAD_ERRORS, PLUGINS, REQUIRED_ROLES, is_enabled, missing_roles, resolve
 
 MICI = (536, 240)
 TITLE_H = 230  # detail page title band: back button, parent name, page title
@@ -55,7 +55,7 @@ def tesla_models() -> list[tuple[str, dict]]:
 
 def offroad_alerts(params) -> list[tuple[int, str]]:
   """(severity, text) of the active offroad alerts (alertmanager.set_offroad_alert), most severe first."""
-  alerts = []
+  alerts = [(1, f"No {role} plugin: driving assistance unavailable") for role in missing_roles(params)]
   for key in OFFROAD_ALERT_KEYS:
     alert = params.get(key)
     if alert:
@@ -104,16 +104,23 @@ def plugin_rows(params) -> list[tuple[str, str, str]]:
   return rows
 
 
-def switch_plugin(plugin, value: bool, params) -> None:
+def switch_plugin(plugin, value: bool, params) -> str | None:
   """Switch a plugin; switching on switches off every plugin sharing an exclusive claim. Clears its fault mark.
-  params = plugins.view(...); callers check offroad."""
+  None on success, else the required-role refusal. params = plugins.view(...); callers check offroad."""
   if plugin.ENABLE_PARAM is None:
     return
+  off = conflicting(plugin.NAME, [(p.NAME, p.PRIORITY, p.CLAIMS) for p in PLUGINS]) if value else {plugin.NAME}
+  enabled = [p for p in PLUGINS if is_enabled(p, params)]
+  remaining = [p for p in enabled if p.NAME not in off or p.ENABLE_PARAM is None]
   if value:
-    by_name = {p.NAME: p for p in PLUGINS}
-    for name in conflicting(plugin.NAME, [(p.NAME, p.PRIORITY, p.CLAIMS) for p in PLUGINS]):
-      if by_name[name].ENABLE_PARAM is not None:
-        params.put_bool(by_name[name].ENABLE_PARAM, False, block=True)
+    remaining.append(plugin)
+  for role in REQUIRED_ROLES:
+    if any(role in p.CLAIMS for p in enabled) and not any(role in p.CLAIMS for p in remaining):
+      return f"required role {role}"
+  if value:
+    for p in PLUGINS:
+      if p.NAME in off and p.ENABLE_PARAM is not None:
+        params.put_bool(p.ENABLE_PARAM, False, block=True)
   params.put_bool(plugin.ENABLE_PARAM, value, block=True)
   faults = params.get(FAULTS_PARAM) or {}
   if faults.pop(plugin.NAME, None) is not None:

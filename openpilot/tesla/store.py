@@ -171,6 +171,11 @@ def uninstall(pid: str) -> str | None:
     return "park first"
   target = mf.INSTALL_DIR / pid
   if pid and "/" not in pid and target.is_dir():
+    from openpilot.tesla.plugins import REQUIRED_ROLES
+    manifests = mf.load_all(mf.PLUGINS_DIR)[0] + mf.load_all(mf.INSTALL_DIR)[0]
+    for role in REQUIRED_ROLES:
+      if any(m.id == pid and role in m.claims for m in manifests) and not any(m.id != pid and role in m.claims for m in manifests):
+        return f"required role {role}"
     trash = Path(tempfile.mkdtemp(prefix=f".removing-{pid}-", dir=mf.INSTALL_DIR))
     os.replace(target, trash / pid)
     shutil.rmtree(trash, ignore_errors=True)

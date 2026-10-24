@@ -44,6 +44,11 @@ Failure cases listed before implementation:
 - P34 role_processes is called without the role claim, or accepts a foreign object (even with a supplied name)
 - P35 a raising role_processes hook takes registration down, loses healthy processes, or is not recorded
 - P36 processes() can register a reserved SP model process name after it leaves the official process list
+- P37 missing_roles omits an unowned required role, or counts a disabled or conflicting claimant as its owner
+- P38 removing every sp_* provider does not produce one offroad alert per missing required role
+- P39 switching off the only enabled required-role claimant writes params or fails to show the refusal in either UI
+- P40 switching off a replacement is refused while another enabled claimant remains
+- P41 switching on a conflict silently disables the only enabled claimant of another required role
 
 Run from the repo root with the openpilot python env. Native-only modules (Params) are stubbed if missing.
 """
@@ -271,9 +276,106 @@ def main() -> int:
   errors += msg_checks(plugins_mod)
   errors += registration_checks(plugins_mod)
   errors += service_checks(plugins_mod)
+  errors += required_role_checks(plugins_mod, real)
 
   print(json.dumps({"plugins": [c.NAME for c in real], "errors": errors}, indent=1))
   return 1 if errors else 0
+
+
+def required_role_checks(plugins, real) -> list[str]:
+  from openpilot.tesla.ui import offroad
+  errors = []
+  roles = ("role:perception.model", "role:engagement.state", "role:safety.fallback")
+  if getattr(plugins, "REQUIRED_ROLES", None) != roles:
+    errors.append("P37 REQUIRED_ROLES differs from the three required roles")
+
+  class Params(FakeParams):
+    def __init__(self, values=None):
+      super().__init__(values)
+      self.writes = []
+
+    def put(self, key, value, block=False):
+      self.writes.append((key, value))
+      self.values[key] = value
+
+    put_bool = put
+
+  remaining = tuple(p for p in real if not p.NAME.startswith("sp_"))
+  with patch.object(plugins, "PLUGINS", remaining):
+    try:
+      if plugins.missing_roles(Params()) != list(roles):
+        errors.append("P37 missing roles not listed in required order")
+    except AttributeError as e:
+      errors.append(f"P37 {e}")
+    alerts = offroad.offroad_alerts(Params())
+    if len(alerts) != 3 or {text for _, text in alerts} != {f"No {r} plugin: driving assistance unavailable" for r in roles}:
+      errors.append(f"P38 missing-role alerts: {alerts}")
+  with patch.object(plugins, "PLUGINS", real):
+    if offroad.offroad_alerts(Params()):
+      errors.append("P38 alerts remain with all built-in providers present")
+
+  for role in roles:
+    replacement = type("Required", (Plugin,), {"NAME": "required", "ENABLE_PARAM": "RequiredOn", "CLAIMS": (role,)})
+    fallback = next(p for p in real if role in p.CLAIMS)
+    p = Params({"RequiredOn": True, plugins.FAULTS_PARAM: {"required": "fault"}})
+    with patch.object(plugins, "PLUGINS", (replacement,)), patch.object(offroad, "PLUGINS", (replacement,)):
+      error = offroad.switch_plugin(replacement, False, p)
+      if error != f"required role {role}" or p.writes:
+        errors.append(f"P39 only enabled claimant {role}: error={error!r}, writes={p.writes}")
+      errors += switch_ui_checks(replacement, p, offroad)
+    for other in (fallback, type("Other", (replacement,), {"NAME": "other", "ENABLE_PARAM": "OtherOn"})):
+      p = Params({"RequiredOn": True, "OtherOn": True})
+      with patch.object(plugins, "PLUGINS", (replacement, other)), patch.object(offroad, "PLUGINS", (replacement, other)):
+        if offroad.switch_plugin(replacement, False, p) or p.get_bool("RequiredOn"):
+          errors.append(f"P40 replacement {role} cannot be switched off with an enabled fallback")
+    disabled = type("Disabled", (replacement,), {"NAME": "disabled", "ENABLE_PARAM": "DisabledOn"})
+    blocker = type("Blocker", (Plugin,), {"NAME": "blocker", "PRIORITY": -1, "CLAIMS": ("source:demo",)})
+    loser = type("Loser", (replacement,), {"CLAIMS": (role, "source:demo")})
+    with patch.object(plugins, "PLUGINS", (disabled, loser, blocker)):
+      try:
+        if role not in plugins.missing_roles(Params({"RequiredOn": True})):
+          errors.append(f"P37 disabled/conflicting claimant supplies {role}")
+      except AttributeError:
+        pass  # P37 already reports the missing API above.
+    p = Params({"RequiredOn": True})
+    with patch.object(plugins, "PLUGINS", (replacement, disabled)), patch.object(offroad, "PLUGINS", (replacement, disabled)):
+      if offroad.switch_plugin(replacement, False, p) != f"required role {role}" or p.writes:
+        errors.append(f"P39 disabled fallback permits switching off {role}")
+
+  combined = type("Combined", (Plugin,), {"NAME": "combined", "ENABLE_PARAM": "CombinedOn", "CLAIMS": roles[:2]})
+  incoming = type("Incoming", (Plugin,), {"NAME": "incoming", "ENABLE_PARAM": "IncomingOn", "CLAIMS": roles[:1]})
+  p = Params({"CombinedOn": True})
+  with patch.object(offroad, "PLUGINS", (combined, incoming)):
+    if offroad.switch_plugin(incoming, True, p) != f"required role {roles[1]}" or p.writes:
+      errors.append(f"P41 conflict switch drops another required role: {p.writes}")
+  return errors
+
+
+def switch_ui_checks(plugin, p, offroad) -> list[str]:
+  """Run both UI callbacks and refresh methods without raylib or a device."""
+  errors = []
+  for path, name, methods, callback in (("pages/plugins.py", "Switches", ("switch", "refresh"), "switch"),
+                                       ("plugins_page.py", "CategoryPage", ("_switch", "show_event"), "_switch")):
+    tree = ast.parse((ROOT / "openpilot/tesla/ui" / path).read_text())
+    cls = next(n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == name)
+    cls.bases = [ast.Name(id="Base", ctx=ast.Load())]
+    cls.body = [n for n in cls.body if isinstance(n, ast.FunctionDef) and n.name in methods]
+    tree.body = [cls]
+    state, statuses = [], []
+    toggle = types.SimpleNamespace(set_state=state.append, set_checked=state.append, set_value=statuses.append)
+    status = {"": ""}
+    env = {"Base": type("Base", (), {"show_event": lambda self: None}),
+           "ui_state": types.SimpleNamespace(is_offroad=lambda: True, params=p), "params": lambda: p,
+           **{n: getattr(plugins, n) for n in ("view", "is_enabled", "resolve", "FAULTS_PARAM")},
+           "switch_plugin": offroad.switch_plugin, "plugin_status": offroad.plugin_status}
+    exec(compile(ast.fix_missing_locations(tree), path, "exec"), env)
+    ui = env[name]()
+    ui.items, ui.rows, ui.errors = [(plugin, types.SimpleNamespace(action_item=toggle), status)], [(plugin, toggle)], {}
+    getattr(ui, callback)(plugin, False)
+    shown = status[""] if name == "Switches" else statuses[-1]
+    if state[-1] is not True or shown != f"required role {plugin.CLAIMS[0]}":
+      errors.append(f"P39 {path}: state={state}, status={shown!r}")
+  return errors
 
 
 def long_target_checks(plugins) -> list[str]:

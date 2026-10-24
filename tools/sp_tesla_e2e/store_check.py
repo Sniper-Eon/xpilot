@@ -34,6 +34,8 @@ Failure cases listed before implementation:
 - S29 two enabled plugins using the same profile both own its exclusive can.tx claim
 - S30 a non-dict safety block is installed
 - S31 invalid safety on disk is discovered instead of skipped with a reason
+- S32 uninstall removes the only installed claimant of a required role or changes its files on refusal
+- S33 uninstall refuses a replacement when a built-in or another installed claimant remains
 """
 import hashlib
 import http.server
@@ -351,6 +353,32 @@ def main() -> int:
   plugins = importlib.reload(plugins)
   if any(c.NAME == "ext_ok" for c in plugins.PLUGINS):
     errors.append("S7 uninstalled plugin still discovered")
+
+  for role in ("role:perception.model", "role:engagement.state", "role:safety.fallback"):
+    pid = "ext_required"
+    publish(pid, archive(pid, good_files(pid, claims=[role])))
+    entry = store.IndexEntry(**{**entries[-1], "installable": True})
+    if error := store.install(entry):
+      errors.append(f"S32 fixture install: {error}")
+      continue
+    target = mf.INSTALL_DIR / pid
+    before = files(target)
+    with patch.object(mf, "PLUGINS_DIR", TMP / "no-builtins"):
+      error = store.uninstall(pid)
+    if error != f"required role {role}" or files(target) != before:
+      errors.append(f"S32 only claimant {role}: error={error!r}, files preserved={files(target) == before}")
+    if error := store.uninstall(pid):
+      errors.append(f"S33 built-in fallback {role}: {error}")
+    if target.exists():
+      errors.append(f"S33 replacement {role} still installed")
+    store.install(entry)
+    other = "ext_fallback"
+    publish(other, archive(other, good_files(other, claims=[role], enable_param=None)))
+    store.install(store.IndexEntry(**{**entries[-1], "installable": True}))
+    with patch.object(mf, "PLUGINS_DIR", TMP / "no-builtins"):
+      if (error := store.uninstall(pid)) or target.exists():
+        errors.append(f"S33 installed fallback {role}: {error!r}")
+    store.uninstall(other)
 
   # S19: an unreachable index sets no marker; a reachable one installs the missing defaults once
   store.INDEX_URL = f"{base}/missing.json"

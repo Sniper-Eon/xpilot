@@ -44,6 +44,7 @@ class Switches:
 
   def __init__(self):
     self.items = []
+    self.errors = {}
 
   def make(self, plugin, description: str, on_tap=None) -> InfoRow:
     status = {"": ""}
@@ -54,8 +55,7 @@ class Switches:
     return item
 
   def switch(self, plugin, value: bool) -> None:
-    if ui_state.is_offroad():
-      switch_plugin(plugin, value, params())
+    self.errors = {plugin.NAME: switch_plugin(plugin, value, params()) if ui_state.is_offroad() else "park first"}
     self.refresh()
 
   def refresh(self) -> None:
@@ -63,7 +63,7 @@ class Switches:
     _, conflicts = resolve(ui_state.params)
     for p, item, status in self.items:
       item.action_item.set_state(is_enabled(p, ui_state.params))
-      status[""] = plugin_status(p, faults, conflicts)
+      status[""] = self.errors.get(p.NAME) or plugin_status(p, faults, conflicts)
 
 
 class PluginPage(ListPage):
