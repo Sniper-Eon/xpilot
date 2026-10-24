@@ -1,9 +1,0 @@
-kj/filesystem-disk-unix.c++:1734: warning: PWD environment variable doesn't match current directory; pwd = /data/openpilot
-kj/filesystem-disk-unix.c++:1734: warning: PWD environment variable doesn't match current directory; pwd = /data/openpilot
-kj/filesystem-disk-unix.c++:1734: warning: PWD environment variable doesn't match current directory; pwd = /data/openpilot
-Filesystem       1B-blocks        Used   Available Use% Mounted on
-/dev/sda12     31526391808 10245214208 19653787648  35% /data
-{"stage": "before", "CarParamsPersistent": {"alphaLongitudinalAvailable": true, "openpilotLongitudinalControl": false, "brand": "tesla", "carFingerprint": "TESLA_MODEL_Y"}, "param_bool": true, "param_value": true}
-{"stage": "immediate", "param_bool": true, "param_value": true}
-{"stage": "after_60s", "elapsed_seconds": 60.06757200999982, "param_bool": true, "param_value": true, "removed": false, "CarParams_present": false, "CarParamsPersistent": {"alphaLongitudinalAvailable": true, "openpilotLongitudinalControl": false, "brand": "tesla", "carFingerprint": "TESLA_MODEL_Y"}, "panda_samples": 601, "service": "active", "alive": {"deviceState": true, "pandaStates": true, "managerState": true}}
-active

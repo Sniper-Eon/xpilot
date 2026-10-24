@@ -1,5 +1,0 @@
-a: default SP models_manager/modeld_warmup absent, or models tile absent.
-b: enabled op_models leaves SP processes running, models tile present or op_models tile absent.
-c: disabled or uninstalled op_models fails to restore SP processes and models tile.
-d: UI traceback or plugin load error in any tested state.
-Additional gates: identity/head drift, non-offroad/engaged/ignition/control, Panda firmware mismatch, dirty overlap, failed build, parameter/store drift, DRM contention. Stop dependent testing; preserve evidence; restore params and service.

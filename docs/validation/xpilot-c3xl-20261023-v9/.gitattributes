@@ -1,4 +1,0 @@
-* -text -filter
-*.png -diff -merge
-*.bundle -diff -merge
-*.log -whitespace

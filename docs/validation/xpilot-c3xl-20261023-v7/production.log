@@ -1,3 +1,0 @@
-kj/filesystem-disk-unix.c++:1734: warning: PWD environment variable doesn't match current directory; pwd = /data/openpilot
-kj/filesystem-disk-unix.c++:1734: warning: PWD environment variable doesn't match current directory; pwd = /data/openpilot
-{"head": "cc129b8829c8fd6d170ef75d9857840cb25ed726", "elapsed_seconds": 60.053746915999, "panda_sample_count": 601, "alive": {"deviceState": true, "pandaStates": true, "managerState": true}, "valid": {"deviceState": true, "pandaStates": true, "managerState": true}, "IsOffroad": true, "IsEngaged": false, "started": false, "passed": true}

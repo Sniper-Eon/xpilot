@@ -1,6 +1,0 @@
-{
-  "url": "https://raw.githubusercontent.com/onemiless/xpilot-plugins/main/index.json",
-  "entry_count": 0,
-  "error": "index: <urlopen error [Errno 104] Connection reset by peer>",
-  "method": "fetch_index read-only; no install/update/remove"
-}

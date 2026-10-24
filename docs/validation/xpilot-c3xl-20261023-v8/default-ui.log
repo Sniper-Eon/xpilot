@@ -1,9 +1,0 @@
-kj/filesystem-disk-unix.c++:1734: warning: PWD environment variable doesn't match current directory; pwd = /data/openpilot
-gbm_create_device(156): Info: backend name is: msm_drm
-raylib: COMMA: Failed to initialize color correction
-raylib: FONT: Requested codepoints glyphs found: [117/122]
-raylib: FONT: Requested codepoints glyphs found: [117/122]
-raylib: FONT: Requested codepoints glyphs found: [117/122]
-raylib: FONT: Requested codepoints glyphs found: [107/122]
-raylib: FONT: Requested codepoints glyphs found: [117/122]
-FPS dropped below 60: 9

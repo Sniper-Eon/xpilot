@@ -1,3 +1,0 @@
-f7af016 store_e2e: E7 covers an installed model plugin taking role:perception.model
-e2ec0d0 ui: move the Models tile into the sp_models plugin
-7095968 plugins: SP's model manager is the default role:perception.model plugin
