@@ -1,0 +1,28 @@
+{
+  "passed": true,
+  "source_commit": "f7af016516db4043bec0af24e6d3133fd864dfc9",
+  "failure_modes": {
+    "a": "PASS",
+    "b": "PASS",
+    "c": "PASS",
+    "d": "PASS"
+  },
+  "checks": {
+    "external_bridge_check.py": 0,
+    "manifest_check.py": 0,
+    "offroad_pages_check.py": 0,
+    "phase2_check.py": 0,
+    "phase3_check.py": 0,
+    "plugin_host_check.py": 0,
+    "store_check.py": 0,
+    "tile_layout_check.py": 0
+  },
+  "big_screen_passed": true,
+  "store_e2e_errors": [],
+  "png_count": 29,
+  "max_png_bytes": 365482,
+  "params_exact": 5,
+  "dirty_files_exact": 287,
+  "store_files_exact": 9,
+  "op_modeld_onroad": "NOT RUN"
+}

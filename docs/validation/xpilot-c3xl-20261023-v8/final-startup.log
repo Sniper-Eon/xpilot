@@ -1,0 +1,493 @@
+1689600
+1689600
+waiting for magic
+magic ready after 1s
+ln: failed to create symbolic link '/home/comma/.cursor-server/vscode-server': F
+ile exists
+ln: failed to create symbolic link '/home/comma/.windsurf-server/vscode-server':
+ File exists
+/data/openpilot has been modified, skipping overlay update installation
+openpilot/system/loggerd/bootlog.cc: bootlog to /data/media/0/realdata/boot/0000
+0035--bdd92bd31c.zst
+No IRQs found for 'fts_ts'
+gbm_create_device(156): Info: backend name is: msm_drm
+raylib: COMMA: Failed to initialize color correction
+raylib: FONT: Requested codepoints glyphs found: [117/122]
+raylib: FONT: Requested codepoints glyphs found: [117/122]
+pid 321's current affinity list: 3
+pid 321's new affinity list: 3
+raylib: FONT: Requested codepoints glyphs found: [117/122]
+raylib: FONT: Requested codepoints glyphs found: [107/122]
+raylib: FONT: Requested codepoints glyphs found: [117/122]
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+Panda 1d002d000a51303436323838 connected, version: DEV-087a2e7f-DEBUG, signature
+ 34f6597f7fe52f31, expected 34f6597f7fe52f31
+openpilot/selfdrive/pandad/main.cc: starting pandad
+openpilot/selfdrive/pandad/pandad.cc: connecting to panda: 1d002d000a51303436323
+838
+openpilot/selfdrive/pandad/usb.cc: failed to connect to panda over USB: Success
+openpilot/selfdrive/pandad/panda.cc: connected to 1d002d000a51303436323838 over
+SPI
+openpilot/selfdrive/pandad/pandad.cc: connected to panda
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+Request transport error while fetching models: ('Connection aborted.', Connectio
+nResetError(104, 'Connection reset by peer'))
+Failed to fetch fresh data. Using expired cache as fallback
+Request transport error while fetching models: ('Connection aborted.', Connectio
+nResetError(104, 'Connection reset by peer'))
+Failed to fetch fresh data. Using expired cache as fallback
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+Request transport error while fetching models: HTTPSConnectionPool(host='raw.git
+hubusercontent.com', port=443): Max retries exceeded with url: /sunnypilot/sunny
+pilot-models/refs/heads/gh-pages/docs/driving_models_v25.json (Caused by NewConn
+ectionError("HTTPSConnection(host='raw.githubusercontent.com', port=443): Failed
+ to establish a new connection: [Errno 101] Network is unreachable"))
+Failed to fetch fresh data. Using expired cache as fallback
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+Request transport error while fetching models: HTTPSConnectionPool(host='raw.git
+hubusercontent.com', port=443): Max retries exceeded with url: /sunnypilot/sunny
+pilot-models/refs/heads/gh-pages/docs/driving_models_chestnut_v28.json (Caused b
+y NewConnectionError("HTTPSConnection(host='raw.githubusercontent.com', port=443
+): Failed to establish a new connection: [Errno 101] Network is unreachable"))
+Failed to fetch fresh data. Using expired cache as fallback
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+logmessaged timed ui deleter pandad hardwared tombstoned updated models_manager
+modeld_warmup alert_output
+

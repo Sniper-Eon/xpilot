@@ -1,0 +1,24 @@
+1689600
+1689600
+tee: /sys/devices/system/cpu/cpufreq/policy4/scaling_max_freq: Invalid argument
+waiting for magic
+magic ready after 1s
+ln: failed to create symbolic link '/home/comma/.cursor-server/vscode-server': F
+ile exists
+ln: failed to create symbolic link '/home/comma/.windsurf-server/vscode-server':
+ File exists
+/data/openpilot has been modified, skipping overlay update installation
+openpilot/system/loggerd/bootlog.cc: bootlog to /data/media/0/realdata/boot/0000
+0031--d0d8ce985c.zst
+
+
+
+
+
+
+
+
+
+
+
+
