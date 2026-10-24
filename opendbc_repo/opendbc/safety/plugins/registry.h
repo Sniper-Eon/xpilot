@@ -7,7 +7,7 @@
 #define XPILOT_PARAM_SP_AUTO_SPEED 0x4000U
 #include "opendbc/safety/plugins/auto_speed.h"
 #define XPILOT_PARAM_SP_NAVASSIST 0x8000U
-#include "opendbc/safety/plugins/turn_signal.h"
+#include "opendbc/safety/plugins/navassist.h"
 
 static const safety_plugin *const safety_plugins[] = {
   &ambient_light_plugin,

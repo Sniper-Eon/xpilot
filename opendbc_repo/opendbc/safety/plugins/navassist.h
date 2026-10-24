@@ -1,13 +1,13 @@
 #pragma once
 
-// xpilot plugin "turn_signal": one bounded Tesla DAS_bodyControls turn request on 0x3E9 (vehicle bus 1),
+// xpilot plugin "navassist": one bounded Tesla DAS_bodyControls turn request on 0x3E9 (vehicle bus 1),
 // cloned from a fresh idle car frame. Python side: xpilot-plugins plugins/navassist/turnsignal.py.
 //
 // Validated: 8-byte length, checksum, one of turn request 1/2/3, reason 8 (active) or 4 (cancel), every
 // protected bit equal to the fresh RX template, counter = template counter + 1, >=100 ms between frames,
-// a 200-frame/60 s session cap, and controls_allowed for an active request (cancel is allowed after a
-// disengage). It never relaxes the stock Tesla mode: only this one address is owned, everything else is
-// unchanged.
+// a 200-frame/60 s session cap, and controls_allowed for an active request. Cancel (request 3) does not
+// require controls_allowed: it only releases the lamp, so it is accepted even without a disengage. It never
+// relaxes the stock Tesla mode: only this one address is owned, everything else is unchanged.
 
 static bool navassist_template_valid = false;
 static uint8_t navassist_template[8] = {0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U};
@@ -48,7 +48,9 @@ static bool navassist_tx(const CANPacket_t *msg) {
   const uint8_t counter = (msg->data[6] >> 4) & 0x0FU;
   const bool cancel = request == 3U;
   const bool request_ok = (request == 1U) || (request == 2U) || cancel;
-  const bool reason_ok = (reason == 8U && !cancel) || (reason == 4U && cancel);
+  const bool active_reason_ok = (reason == 8U) && !cancel;
+  const bool cancel_reason_ok = (reason == 4U) && cancel;
+  const bool reason_ok = active_reason_ok || cancel_reason_ok;
   const bool checksum_ok = navassist_checksum(msg->data) == msg->data[7];
   const bool template_counter_ok = counter == (uint8_t)(((navassist_template[6] >> 4) + 1U) & 0x0FU);
   bool protected_bits = true;
