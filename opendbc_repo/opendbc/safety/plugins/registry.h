@@ -6,10 +6,13 @@
 #include "opendbc/safety/plugins/ambient_light.h"
 #define XPILOT_PARAM_SP_AUTO_SPEED 0x4000U
 #include "opendbc/safety/plugins/auto_speed.h"
+#define XPILOT_PARAM_SP_NAVASSIST 0x8000U
+#include "opendbc/safety/plugins/turn_signal.h"
 
 static const safety_plugin *const safety_plugins[] = {
   &ambient_light_plugin,
   &auto_speed_plugin,
+  &navassist_plugin,
 };
 #define SAFETY_PLUGINS_LEN (sizeof(safety_plugins) / sizeof(safety_plugins[0]))
 
