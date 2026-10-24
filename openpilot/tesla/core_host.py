@@ -114,6 +114,8 @@ class _GuardedStateMachine:
 
   def __setattr__(self, name, value):
     setattr(self._inner, name, value)
+    if name == "state":
+      self._h.enabled_prev = value in ENABLED_STATES
 
   def update(self, events):
     h, inner = self._h, self._inner

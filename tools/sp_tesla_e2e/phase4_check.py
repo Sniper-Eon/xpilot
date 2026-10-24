@@ -34,6 +34,8 @@ Failure cases listed before implementation:
 - C17 fallback receives selfdrive instead of the narrow ctx, accepts non-lists/unknown names/raises without
       latching, mutates the event objects/counters, or loses the original events and floors after invalid output
 - C18 CardGate is inactive with default owners, sends before first selfdriveState, or fails to recover on publish
+- C19 selfdrived sets state_machine.state to enabled through the wrapper for replay, then an update without ENABLE
+      differs from bare SP instead of staying enabled; resetting state leaves stale enabled_prev
 """
 import hashlib
 import json
@@ -358,6 +360,7 @@ def main() -> int:
   # C14 real SP objects, including MADS event edits, counters and shared alerts.
   traces = []
   sequences = {
+    "replay-start": [([], {}, 3), ([EN.buttonCancel], {}, 1)],
     "ordinary": [([EN.pcmEnable], {}, 1), ([], {}, 2), ([EN.doorOpen], {}, 10), ([], {}, 1),
                  ([EN.steerUnavailable], {}, 1), ([EN.buttonEnable, EN.canError], {}, 1),
                  ([EN.buttonEnable, EN.doorOpen], {}, 1),
@@ -397,6 +400,9 @@ def main() -> int:
           sd.state_machine = core_host._GuardedStateMachine(h, sd.state_machine, "sp_engagement")
           sd.mads = core_host._GuardedMads(h, sd.mads, "sp_engagement", params.get_bool("Mads"))
       pair.append(sd)
+    if label == "replay-start":
+      for sd in pair:
+        sd.state_machine.state = State.enabled
     frame = 0
     mismatch = False
     for names, inputs, count in sequence:
@@ -416,8 +422,18 @@ def main() -> int:
                          sd.events.event_counters, sd.events_sp.event_counters))
         traces.append((label, frame, states))
         if states[0] != states[1] and not mismatch:
-          errors.append(f"C14 {label} frame {frame}: bare/wrapped {[v[:11] for v in states]}")
+          code = "C19" if label == "replay-start" else "C14"
+          errors.append(f"{code} {label} frame {frame}: bare/wrapped {[v[:11] for v in states]}")
           mismatch = True
+
+  # C19 a host reset must not let the plugin engage itself on the next update (C6).
+  rep = Scripted()
+  s = install(engagement_sm=rep)
+  s.state_machine.state = State.enabled
+  s.state_machine.state = State.disabled
+  rep.out = ENGAGED
+  if step(s) != (False, False):
+    errors.append("C19/C6 plugin engaged without ENABLE after a host reset")
 
   # C15 absent owner, returning None and raising hooks all latch both roles.
   class Missing(Plugin):
