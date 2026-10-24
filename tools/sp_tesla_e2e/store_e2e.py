@@ -30,13 +30,17 @@ TMP = Path(tempfile.mkdtemp(prefix="xp-e2e-"))
 os.environ["XPILOT_PLUGINS_DIR"] = str(TMP / "installed")
 sys.path[:0] = [str(ROOT), str(ROOT / "opendbc_repo")]
 
+from openpilot.tesla import manifest as mf  # noqa: E402
+
 
 class CoreParams:
   def get_bool(self, key, block=False):
-    return False
+    return bool(self.get(key, block))
 
   def get(self, key, block=False, return_default=False):
-    return None
+    if key not in mf.compiled_param_keys():
+      raise KeyError(key)
+    return True if key == "IsOffroad" else None
 
 
 try:

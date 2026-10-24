@@ -128,7 +128,7 @@ def install(entry: IndexEntry) -> str | None:
   """None on success, else the reason. The previous version stays in place on any failure.
   If restoration also fails, retain the backup and return its path."""
   from openpilot.common.params import Params
-  if Params().get_bool("IsOnroad"):
+  if not Params().get_bool("IsOffroad"):
     return "park first"
   if not entry.installable:
     return f"not installable (api {entry.api} vs {mf.API_VERSION}, platform {entry.platform}, or a built-in id)"
@@ -167,7 +167,7 @@ def install(entry: IndexEntry) -> str | None:
 def uninstall(pid: str) -> str | None:
   """Remove an installed plugin (its stored param values stay, so a reinstall keeps its settings)."""
   from openpilot.common.params import Params
-  if Params().get_bool("IsOnroad"):
+  if not Params().get_bool("IsOffroad"):
     return "park first"
   target = mf.INSTALL_DIR / pid
   if pid and "/" not in pid and target.is_dir():

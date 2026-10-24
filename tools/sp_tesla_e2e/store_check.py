@@ -24,7 +24,7 @@ Failure cases listed before implementation:
 - S19 first-boot defaults are not installed, or the marker is set on an unreachable index (no retry)
 - S20 the second replace fails and the old version is lost, changed or no longer discoverable
 - S21 the second replace and restore fail, and the old backup is deleted or its path is missing from the error
-- S22 install or uninstall while IsOnroad does not return "park first", changes the installed files, or shows UI success
+- S22 install or uninstall onroad does not return "park first", changes the installed files, or shows UI success
 - S23 another plugin id using safety profile auto_speed is refused, not discovered, or loses param_bit 0x4000
 - S24 an unknown safety profile is installed
 - S25 a profile with extra keys (param_bit, tx or header overrides) is installed
@@ -36,6 +36,8 @@ Failure cases listed before implementation:
 - S31 invalid safety on disk is discovered instead of skipped with a reason
 - S32 uninstall removes the only installed claimant of a required role or changes its files on refusal
 - S33 uninstall refuses a replacement when a built-in or another installed claimant remains
+- S34 the host Params stub accepts a key absent from params_keys.h and plugin_params.inc
+- S35 install or uninstall succeeds while IsOffroad is False
 """
 import hashlib
 import http.server
@@ -58,23 +60,23 @@ sys.path[:0] = [str(ROOT), str(ROOT / "opendbc_repo")]
 
 class CoreParams:  # stands in for the compiled Params: knows only core and built-in keys
   def __init__(self):
-    self.values = {}
+    self.values = {"IsOffroad": True}
 
   def get_bool(self, key, block=False):
-    if key.startswith("Ext"):
-      raise KeyError(key)
-    return bool(self.values.get(key, False))
+    return bool(self.get(key, block))
 
   def get(self, key, block=False, return_default=False):
-    if key.startswith("Ext"):
+    if key not in mf.compiled_param_keys():
       raise KeyError(key)
     return self.values.get(key)
 
   def put(self, key, value, block=False):
+    if key not in mf.compiled_param_keys():
+      raise KeyError(key)
     self.values[key] = value
 
   def put_bool(self, key, value, block=False):
-    self.values[key] = bool(value)
+    self.put(key, bool(value), block)
 
 
 try:
@@ -121,6 +123,14 @@ def good_files(pid, version="1.0.0", **over):
 
 def main() -> int:
   errors = []
+  core = CoreParams()
+  for key in ("IsOnroad", "NotARegisteredParam"):
+    for method, args in (("get", ()), ("get_bool", ()), ("put", (True,)), ("put_bool", (True,))):
+      try:
+        getattr(core, method)(key, *args)
+      except KeyError:
+        continue
+      errors.append(f"S34 Params.{method} accepted {key}")
   site = TMP / "site"
   site.mkdir()
   entries = []
@@ -334,13 +344,13 @@ def main() -> int:
 
   from openpilot.tesla.ui.offroad import StoreJobs
   onroad = CoreParams()
-  onroad.put_bool("IsOnroad", True)
+  onroad.put_bool("IsOffroad", False)
   before = files(target)
   with patch.object(sys.modules["openpilot.common.params"], "Params", lambda: onroad):
     for action in (lambda: store.install(update), lambda: store.uninstall("ext_ok")):
       error = action()
       if error != "park first" or files(target) != before or store.installed_versions().get("ext_ok") != "1.0.0":
-        errors.append(f"S22 onroad action error={error!r}, installed={store.installed_versions()}")
+        errors.append(f"S22/S35 onroad action error={error!r}, installed={store.installed_versions()}")
     if (r := install("ext_ok")) != "park first":
       errors.append(f"S22 onroad reinstall error={r!r}")
     jobs = StoreJobs(lambda: True)
