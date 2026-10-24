@@ -98,6 +98,7 @@ _services: dict[str, tuple] = {
   "trafficRadarState": (True, 20., 5, QueueSize.SMALL),
   "externalIn": (True, 0.),   # xpilot external compute -> device (external_compute plugin)
   "externalOut": (True, 0.),  # device -> external compute
+  "pluginMsg": (True, 0.),    # xpilot plugin -> plugin messages (plugins.send_msg / PluginMsgs)
   "liveLocationKalman": (True, 20.),
 
   # debug

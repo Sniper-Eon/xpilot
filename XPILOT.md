@@ -8,6 +8,7 @@
 - **基线**：sunnypilot `922513f`，opendbc `5be750714`。只做这一次基准，之后不再整体合并上游，只手工挑修复（`tools/dev_sp_release/upstream_watch.py`）。
 - **主体**：横向、纵向、模型都是 SP 原版，Tesla 车端代码是上游原版。
 - **扩展**：xpilot 的功能全部以插件形式接入，不改 SP 主体逻辑。
+- **现状（2026-10-23）**：所有功能都是插件。SP 文件里不再有手写的功能注册：雷达替换走 `radar_interface` 钩子（第 7 节），地图默认用 SP 的 OSM 进程，声明 `source:map` 的插件开启时让位（第 8 节），插件之间的数据走 `pluginMsg`（8d 节）。都经过 `plugin.json` 发现、总开关、资源声明和出错隔离。
 - **已删除**：其他车型、comma 云、sunnylink、旧的大屏 UI、扭矩车用的横向控制、翻译（UI 只用英文）。
 - **硬件**：C3、C3X、C3XL、C4。大屏设备上整屏是磁贴，行驶时 mici 画面固定在中间、磁贴排在四周（见第 9 节）。
 
@@ -125,6 +126,8 @@ opendbc_repo/opendbc/safety/plugins/
 | `can.tx:0x<地址>:<总线>` | 发送这个 CAN 地址（还需要 panda safety 插件） | 是 |
 | `process:<名字>` | 运行这个 manager 进程 | 是 |
 | `source:<数据>` | 提供某类数据，如 `source:radar`、`source:lanes` | 是 |
+| `source:radar` | 用 `radar_interface` 替换车型自带的雷达（第 7 节） | 是 |
+| `source:map` | 提供 `liveMapDataSP` 地图数据，开启时停掉 SP 的 OSM 进程（第 8 节） | 是 |
 | `role:<环节>` | 占用一个可替换的环节，如 `role:lateral.controller` | 是 |
 | `long.target` | 使用 `long_target` 钩子 | 否，宿主按固定规则合并 |
 | `plan.filter` | 使用 `plan_filter` 钩子 | 否，按优先级串联 |
@@ -137,6 +140,7 @@ opendbc_repo/opendbc/safety/plugins/
 | `role:perception.model` | 整体替换模型（下载、选择、缓存、推理）。默认 `sp_models`（优先级 10000、一直开启）；另一个开启的插件持有它时，SP 的 `models_manager`、`modeld`、`modeld_tinygrad`、`modeld_warmup` 不再运行（`fork_processes.py`），替换插件用 `processes()` 自带进程，必须按原语义发布 `modelV2`、`drivingModelData`、`cameraOdometry`、`modelDataV2SP`。替换插件优先级要小于 10000；切换只在停车时改开关、下次启动进程时生效 | 是 |
 | `role:engagement.state` | 用 `engagement(selfdrive)` 整体替换接管：普通状态机和 MADS。默认 `sp_engagement`（优先级 10000、一直开启） | 是 |
 | `role:safety.fallback` | 用 `safety_fallback(selfdrive)` 整体替换兜底策略（哪些事件触发退出、禁止接管、软退出）。默认 `sp_safety_fallback` | 是 |
+| `msg:<类型>` | 发布这一类 `pluginMsg` 消息（见 8d 节），如 `msg:lanes.hint` | 否，多个插件可发同一类，用 `source` 区分 |
 
 - **冲突裁决**：两个已开启的插件声明了同一个独占资源时，`priority` 小的生效（相同则按 id），另一个整体不生效，Plugins 页显示 "conflict"。在 Plugins 页打开一个插件，会自动关掉和它冲突的插件。
 - **合并规则由宿主固定**：插件改不了。目标车速的规则见下面 `long_target`。
@@ -153,6 +157,7 @@ opendbc_repo/opendbc/safety/plugins/
 | `control_sends(CS, CC, now_ns)` | card，每个控制周期 | 返回要追加发送的 `CanData` |
 | `service_params(params)` | card，约 10 Hz | 重新读取实时设置 |
 | `processes()`（类方法） | manager | 额外进程。manager 相关的 import 写在方法内部 |
+| `plugins.send_msg(pm, plugin, kind, payload, valid_for_ms)`、`plugins.PluginMsgs().fresh(kind)` | 任何插件代码 | 发布和读取 `pluginMsg`（8d 节），每个 `kind` 要声明 `msg:<kind>` |
 | `long_target(CP, params)`（类方法） | plannerd，每个计划周期 | 返回带 `update(sm, v_ego, v_cruise)` 的对象，给出目标车速（m/s）或 None。低于巡航车速：和 SP 自己的限速一样取最小；高于巡航车速：只替换驾驶员设定车速，且只在已接管、没踩油门/刹车、没 override 时生效，多个插件取最低，上限 `V_CRUISE_MAX`。MPC 跟车、模型和 SP 的限速功能仍然取最小，所以加速不会越过它们 |
 | `alert_source(CP, params)`（类方法） | selfdrived，每周期（100 Hz） | 返回带 `update(sm) -> list[PluginAlert]` 的对象。`PluginAlert(severity, title, body)`，severity 为 `info`（无声）、`warning`（提示音）、`critical`（警告音）。插件报警在任何状态都显示，不会让系统退出，优先级最高到 MID，SP 自己的退出和严重报警永远优先。标题最多 60 字符，正文 80 |
 | `lane_change_policy(params)`（类方法） | modeld 的 DesireHelper | 返回带 `allow(carstate, direction, default) -> bool` 的对象，只替换 SP 的"不用推方向盘就开始变道"这一个判断（`default` 是 SP 原来的结果）。打转向灯、最低车速、盲区和路沿检查仍然强制生效 |
@@ -328,6 +333,14 @@ typedef struct {
 - **下载插件的参数**：不编译进 Params，而是存在 `/data/xpilot_plugins/.params/<key>`，支持 BOOL、INT、FLOAT、STRING、JSON。宿主把交给插件、开关判断和设置页的 params 都包了一层（`plugin_params.ParamsView`），插件照常用 `params.get/get_bool/put`。删除插件时参数值保留，重装后设置还在。
 - **带二进制的插件**：需要编译的代码（例如 acados 求解器）以预编译二进制发布，清单里写 `"platform": {"machine", "python"}`（由插件自己的 `build_native.py` 在目标设备上生成）。设备只显示、安装和加载平台一致的版本；升级 Python 等导致不一致时，插件被跳过并显示 "Failed"。panda safety 插件只能内置。
 
+## 8d. 插件间消息 `pluginMsg`
+
+- **用途**：插件之间传数据的通用通道，不用再为每个插件加 cereal 字段。已有自己 cereal 字段的插件（如 `traffic_light`）保持不变。
+- **消息**：cereal 服务 `pluginMsg`（`log.capnp` 的 `@139`，原 `customReserved13`），类型和外接算力相同，都是 `ExternalData`：`source`、`kind`、`seq`、`payload`（JSON 文本）、`validForMs`（0 表示不过期）。
+- **发送**：`plugins.send_msg(pm, plugin, kind, payload, valid_for_ms)`，`pm` 要能发 `pluginMsg`，`plugin` 传插件类或实例。宿主填 `source` = 插件 id，插件自己改不了。清单里没有 `msg:<kind>` 声明的类型一律拒发，返回 False，并像其他越权一样记到 `XpilotPluginFaults`。
+- **接收**：`plugins.PluginMsgs()` 订阅 `pluginMsg`（不合并），`fresh(kind)` 返回 `{来源插件 id: payload}`，每个来源只取最新一条，过了 `validForMs` 的不返回。
+- **只做建议**：和外接算力一样，收到的数据只能通过接收方插件自己的钩子和限制生效。
+
 ## 9. UI（大屏，2160×1080，UI v4：磁贴）
 
 整个大屏是 Windows Phone / Win 8 风格的磁贴（tile）。不画图的布局逻辑在 `openpilot/tesla/ui/tiles.py`（`tile_layout_check.py` 在本机测），宿主在 `ui/screen.py`，磁贴基类在 `ui/tile.py`。
@@ -387,7 +400,7 @@ typedef struct {
 ```
 python3 tools/sp_tesla_e2e/static_imports.py --baseline <基线 json>   # 有没有断掉的 import
 python3 tools/sp_tesla_e2e/tile_layout_check.py                       # 大屏磁贴：网格、排布、行驶避让、编辑操作、手势、重画判断、ASCII 文字、文字适配磁贴
-python3 tools/sp_tesla_e2e/plugin_host_check.py                       # 插件宿主：出错隔离、总开关、元数据、参数、目标车速、雷达/地图/外接 provider
+python3 tools/sp_tesla_e2e/plugin_host_check.py                       # 插件宿主：出错隔离、总开关、元数据、参数、目标车速、雷达/地图/外接 provider、pluginMsg
 python3 tools/sp_tesla_e2e/external_bridge_check.py                   # 外接算力 TCP 桥接（本机真实 socket）
 python3 tools/sp_tesla_e2e/manifest_check.py                          # 插件清单、资源声明、冲突裁决、代码结构（5.3）
 python3 tools/sp_tesla_e2e/safety_manifest_check.py                   # plugin.json safety 声明和 registry.h 一致（gen_safety.py --check）

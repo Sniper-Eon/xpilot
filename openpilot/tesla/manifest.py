@@ -50,7 +50,7 @@ CATEGORIES = {
   "tools": "Tools & Diagnostics",
 }
 
-# Exclusive unless listed in SHARED_CLAIMS: only one active plugin may hold it.
+# Exclusive unless shared() (SHARED_CLAIMS and every msg:<kind>): only one active plugin may hold it.
 CLAIM_PATTERNS = (
   r"can\.tx:0x[0-9A-Fa-f]{1,8}:[0-7]",  # send this CAN address on this bus (needs a panda safety plugin)
   r"process:[a-z][a-z0-9_]*",           # run this manager process
@@ -61,8 +61,15 @@ CLAIM_PATTERNS = (
   r"alert",                             # alert_source hook (shared, first alert per severity in priority order)
   r"lat\.correction",                   # lat_correction hook (shared, chained, total change capped by the host)
   r"external\.provider",                # external_provider hook (shared, all bridged by externald)
+  r"msg:[a-z][a-z0-9_.]*",              # publish pluginMsg of this kind (shared; source tells publishers apart)
 )
 SHARED_CLAIMS = {"long.target", "plan.filter", "alert", "lat.correction", "external.provider"}
+
+
+def shared(claim: str) -> bool:
+  return claim in SHARED_CLAIMS or claim.startswith("msg:")
+
+
 _CLAIM_RE = re.compile("|".join(f"(?:{p})" for p in CLAIM_PATTERNS))
 
 
@@ -150,18 +157,18 @@ def resolve(items, enabled: set[str]) -> tuple[set[str], dict[str, str]]:
   Each exclusive claim goes to the lowest (priority, id); a plugin that loses any claim is not active."""
   active, conflicts, owner = set(), {}, {}
   for name, _, claims in sorted((i for i in items if i[0] in enabled), key=lambda i: (i[1], i[0])):
-    taken = [owner[c] for c in claims if c not in SHARED_CLAIMS and c in owner]
+    taken = [owner[c] for c in claims if not shared(c) and c in owner]
     if taken:
       conflicts[name] = taken[0]
       continue
     active.add(name)
-    owner.update({c: name for c in claims if c not in SHARED_CLAIMS})
+    owner.update({c: name for c in claims if not shared(c)})
   return active, conflicts
 
 
 def conflicting(name: str, items) -> list[str]:
   """Ids sharing an exclusive claim with name: switch these off when name is switched on."""
-  mine = {c for i, _, claims in items if i == name for c in claims if c not in SHARED_CLAIMS}
+  mine = {c for i, _, claims in items if i == name for c in claims if not shared(c)}
   return [i for i, _, claims in items if i != name and mine & set(claims)]
 
 

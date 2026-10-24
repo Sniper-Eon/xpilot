@@ -153,7 +153,6 @@ inline static std::unordered_map<std::string, ParamKeyAttributes> keys = {
     {"SPDriverMonitoringDefaultsMigrated", {PERSISTENT | BACKUP, BOOL}},
 
     // xpilot: device and plugin settings (plugins: openpilot/tesla/plugins, rules: XPILOT.md)
-    {"TeslaVideoWindow", {PERSISTENT | BACKUP, JSON}},
     {"MapProvider", {PERSISTENT | BACKUP, STRING, "osm"}},
     {"XpilotPluginFaults", {CLEAR_ON_MANAGER_START, JSON}},  // plugin name -> where it failed; shown on the Plugins page
 
@@ -256,7 +255,6 @@ inline static std::unordered_map<std::string, ParamKeyAttributes> keys = {
     {"ToyotaEnforceStockLongitudinal", {PERSISTENT | BACKUP, BOOL, "0"}},
     {"ToyotaStopAndGoHack", {PERSISTENT | BACKUP, BOOL, "0"}},
 
-    {"DynamicExperimentalControl", {PERSISTENT | BACKUP, BOOL, "0"}},
     {"BlindSpot", {PERSISTENT | BACKUP, BOOL, "0"}},
 
     // sunnypilot model params
