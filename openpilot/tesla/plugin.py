@@ -63,6 +63,13 @@ class Plugin:
     """Extra manager processes (ManagerProcess instances). Import manager code inside, not at module level."""
     return []
 
+  @classmethod
+  def role_processes(cls, role, procs) -> list:
+    """manager: select all, some or none of SP's procs (name -> ManagerProcess) for a claimed role. Return only
+    supplied objects; they run with their original conditions only while this plugin owns role. Extra processes
+    still come from processes(). Raising or returning a foreign object records a fault and rejects this selection."""
+    return []
+
   # ---- selfdrived (claim "alert") ----
   @classmethod
   def alert_source(cls, CP, params):

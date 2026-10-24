@@ -1,7 +1,8 @@
-"""SP Model Manager: the default role:perception.model plugin. SP's models_manager, modeld, modeld_tinygrad and
-modeld_warmup stay in process_config.py; fork_processes.py runs them only while no other plugin owns the role."""
+"""Default model role: select SP's model manager and runners with their original conditions."""
 from openpilot.tesla.plugin import Plugin
 
 
 class SpModels(Plugin):
-  pass
+  @classmethod
+  def role_processes(cls, role, procs) -> list:
+    return list(procs.values()) if role == "role:perception.model" else []

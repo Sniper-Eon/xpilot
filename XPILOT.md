@@ -163,7 +163,7 @@ opendbc_repo/opendbc/safety/plugins/
 | `role:lane_change.policy` | 使用 `lane_change_policy` 钩子 | 是 |
 | `role:lateral.controller` | 替换横向控制器（`lat_controller`） | 是 |
 | `role:long.planner` | 替换纵向规划（`long_planner`），可以自带跟车逻辑 | 是 |
-| `role:perception.model` | 整体替换模型（下载、选择、缓存、推理）。默认 `sp_models`（优先级 10000、一直开启）；另一个开启的插件持有它时，SP 的 `models_manager`、`modeld`、`modeld_tinygrad`、`modeld_warmup` 不再运行（`fork_processes.py`），替换插件用 `processes()` 自带进程，必须按原语义发布 `modelV2`、`drivingModelData`、`cameraOdometry`、`modelDataV2SP`。替换插件优先级要小于 10000；切换只在停车时改开关、下次启动进程时生效 | 是 |
+| `role:perception.model` | 整体替换模型（下载、选择、缓存、推理）。宿主 `ROLE_PROCESSES` 保留 `models_manager`、`modeld`、`modeld_tinygrad`、`modeld_warmup` 四个名字，`fork_processes.py` 把原进程对象交给宿主；只有声明该 role 的插件会收到 `role_processes(role, procs)`，可返回全部、部分或不返回，且必须是传入字典里的原对象（按身份校验）。返回的进程只在该插件持有 role 且原 `should_run` 条件成立时运行；无人持有时四个都不运行。默认 `sp_models`（优先级 10000、一直开启）返回全部；替换插件也可保持空选择、用 `processes()` 自带进程，不能借此占用这四个保留名。hook 抛异常或返回外来对象时记录故障、拒绝本次选择，其他插件继续注册。必须按原语义发布 `modelV2`、`drivingModelData`、`cameraOdometry`、`modelDataV2SP`。替换插件优先级要小于 10000；切换只在停车时改开关、下次启动进程时生效 | 是 |
 | `role:engagement.state` | 用 `engagement(selfdrive)` 整体替换接管：普通状态机和 MADS。默认 `sp_engagement`（优先级 10000、一直开启） | 是 |
 | `role:safety.fallback` | 用 `safety_fallback(selfdrive)` 整体替换兜底策略（哪些事件触发退出、禁止接管、软退出）。默认 `sp_safety_fallback` | 是 |
 | `msg:<类型>` | 发布这一类 `pluginMsg` 消息（见 8d 节），如 `msg:lanes.hint` | 否，多个插件可发同一类，用 `source` 区分 |
@@ -183,6 +183,7 @@ opendbc_repo/opendbc/safety/plugins/
 | `control_sends(CS, CC, now_ns)` | card，每个控制周期 | 返回要追加发送的 `CanData` |
 | `service_params(params)` | card，约 10 Hz | 重新读取实时设置 |
 | `processes()`（类方法） | manager | 额外进程。manager 相关的 import 写在方法内部 |
+| `role_processes(role, procs)`（类方法） | manager | 选择宿主提供的 SP 角色进程，规则见 `role:perception.model`；默认返回空列表 |
 | `plugins.send_msg(pm, plugin, kind, payload, valid_for_ms)`、`plugins.PluginMsgs().fresh(kind)` | 任何插件代码 | 发布和读取 `pluginMsg`（8d 节），每个 `kind` 要声明 `msg:<kind>` |
 | `long_target(CP, params)`（类方法） | plannerd，每个计划周期 | 返回带 `update(sm, v_ego, v_cruise)` 的对象，给出目标车速（m/s）或 None。低于巡航车速：和 SP 自己的限速一样取最小；高于巡航车速：只替换驾驶员设定车速，且只在已接管、没踩油门/刹车、没 override 时生效，多个插件取最低，上限 `V_CRUISE_MAX`。MPC 跟车、模型和 SP 的限速功能仍然取最小，所以加速不会越过它们 |
 | `alert_source(CP, params)`（类方法） | selfdrived，每周期（100 Hz） | 返回带 `update(sm) -> list[PluginAlert]` 的对象。`PluginAlert(severity, title, body)`，severity 为 `info`（无声）、`warning`（提示音）、`critical`（警告音）。插件报警在任何状态都显示，不会让系统退出，优先级最高到 MID，SP 自己的退出和严重报警永远优先。标题最多 60 字符，正文 80 |
@@ -260,6 +261,7 @@ class MyTile(Tile):
 | card | `control_sends(CS, CC, now_ns) -> [CanData]` | `can.tx:...` |
 | card | `radar_interface(CP, CP_SP, params)` | `source:radar` |
 | manager | `processes() -> [ManagerProcess]` | `process:<名字>` |
+| manager | `role_processes(role, procs) -> [ManagerProcess]` | 对应的 `role:<环节>` |
 | plannerd | `long_target(CP, params)` | `long.target` |
 | plannerd | `plan_filter(CP, params)` | `plan.filter` |
 | plannerd | `long_planner(CP, CP_SP, params)` | `role:long.planner` |

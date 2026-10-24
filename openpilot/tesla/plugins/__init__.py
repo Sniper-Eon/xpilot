@@ -26,6 +26,7 @@ from openpilot.tesla.plugin import Plugin
 from openpilot.tesla.plugin_params import ParamsView
 
 FAULTS_PARAM = "XpilotPluginFaults"
+ROLE_PROCESSES = {"role:perception.model": ("models_manager", "modeld", "modeld_tinygrad", "modeld_warmup")}
 
 
 def _import_installed(m, module: str):
@@ -195,10 +196,30 @@ def install_core(selfdrive) -> None:
   install(selfdrive)
 
 
-def processes(core: set[str] | None = None) -> list:
-  """manager: each plugin process runs only while its plugin is active, and only if the plugin claims it."""
+def processes(core: set[str] | None = None, role_procs: dict | None = None) -> list:
+  """manager: claimed extra processes and SP role processes selected by their current owner."""
   procs = []
-  names = set(core or ())
+  names = set(core or ()) | {n for ns in ROLE_PROCESSES.values() for n in ns}
+  for role, role_names in ROLE_PROCESSES.items():
+    given = {n: role_procs[n] for n in role_names if n in (role_procs or {})}
+    allowed = {n: set() for n in given}
+    for cls in PLUGINS:
+      if role not in cls.CLAIMS:
+        continue
+      try:
+        selected = list(cls.role_processes(role, dict(given)))
+        if any(not any(p is proc for proc in given.values()) for p in selected):
+          raise PermissionError(f"foreign process for {role}")
+      except Exception as e:
+        record_fault(cls.NAME, "manager.role_processes", e)
+        continue
+      for n, proc in given.items():
+        if any(p is proc for p in selected):
+          allowed[n].add(cls.NAME)
+    for n, proc in given.items():
+      should_run = proc.should_run
+      proc.should_run = lambda started, params, CP, run=should_run, r=role, owners=allowed[n]: owner(params, r) in owners and run(started, params, CP)
+      procs.append(proc)
   for cls in PLUGINS:
     try:
       extra = cls.processes()

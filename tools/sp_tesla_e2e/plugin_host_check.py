@@ -30,9 +30,8 @@ Failure cases listed before implementation:
        or a disabled one stops them
 - P24 externald bridges a provider from a disabled plugin or one without the external.provider claim,
        or a raising provider hook takes the others down
-- P26 SP's model stack (sp_models) is not the default owner of role:perception.model, keeps running next to an
-       enabled replacement (two modelV2 publishers), stays off when the replacement is switched off, stops when no
-       plugin owns the role (no model at all), or fork_processes.py does not gate all four SP model processes
+- P26 SP's four model processes lose their own conditions, run beside op_modeld, fail to resume after switching
+       back, or an arbitrary role owner cannot select all, some or none of the supplied process objects
 - P27 send_msg publishes a kind the plugin has no msg:<kind> claim for, or does not record it as a fault
 - P27 a declared kind is not delivered, its source is not the plugin id, or kind/payload/validForMs are lost
 - P27 PluginMsgs.fresh returns other kinds or expired messages, or drops validForMs 0 (no expiry)
@@ -41,6 +40,10 @@ Failure cases listed before implementation:
 - P30 a plugin with an unknown SERVICES name is loaded (SubMaster would crash)
 - P31 a disabled or conflicting plugin's SERVICES are subscribed, or unavailable Params breaks host checks
 - P32 pm.send raising escapes send_msg or is not recorded as a pluginMsg fault
+- P33 SP's model processes run while nobody owns role:perception.model
+- P34 role_processes is called without the role claim, or accepts a foreign object (even with a supplied name)
+- P35 a raising role_processes hook takes registration down, loses healthy processes, or is not recorded
+- P36 processes() can register a reserved SP model process name after it leaves the official process list
 
 Run from the repo root with the openpilot python env. Native-only modules (Params) are stubbed if missing.
 """
@@ -379,23 +382,6 @@ def source_checks(plugins, real) -> list[str]:
   if 'for name in ("mapd", "mapd_manager", "map_osm")' not in gate or 'plugins.holds(params, "source:map")' not in gate:
     errors.append("P23 fork_processes.py does not gate SP's OSM processes on source:map")
 
-  role = "role:perception.model"
-  sp = type("sp_models", (Plugin,), {"NAME": "sp_models", "ENABLE_PARAM": None, "CLAIMS": (role,), "PRIORITY": 10000})
-  rep = type("op_models", (Plugin,), {"NAME": "op_models", "ENABLE_PARAM": "OpKey", "CLAIMS": (role,), "PRIORITY": 100})
-  plugins.PLUGINS = (sp, rep)
-  got = [plugins.owner(FakeParams(), role), plugins.owner(FakeParams({"OpKey": True}), role)]
-  plugins.PLUGINS = ()
-  got.append(plugins.owner(FakeParams(), role))
-  if got != ["sp_models", "op_models", None]:
-    errors.append(f"P26 role:perception.model owner (default, replaced, none) = {got}")
-  models = [c for c in real if role in c.CLAIMS]
-  sp_real = next((c for c in models if c.NAME == "sp_models"), None)
-  if sp_real is None or sp_real.ENABLE_PARAM is not None or any(c.PRIORITY >= sp_real.PRIORITY for c in models if c is not sp_real):
-    errors.append(f"P26 sp_models must be the always-on, lowest-priority owner of {role}: {[(c.NAME, c.PRIORITY) for c in models]}")
-  if 'for name in ("models_manager", "modeld", "modeld_tinygrad", "modeld_warmup")' not in gate or \
-     'plugins.owner(params, "role:perception.model") in (None, "sp_models")' not in gate:
-    errors.append("P26 fork_processes.py does not gate SP's model processes on role:perception.model")
-
   faults.clear()
   good, unclaimed, off = types.SimpleNamespace(), types.SimpleNamespace(), types.SimpleNamespace()
   plugins.PLUGINS = (plugin("good", ("external.provider",), "external_provider", good),
@@ -491,6 +477,103 @@ def registration_checks(plugins) -> list[str]:
   if managed["controlsd"] is not core[0] or managed["alert_output"] is rogue[1] or managed.get("shared") is not first or \
      len(procs) != len(managed) or len(logs) != 3:
     errors.append(f"P29 duplicate processes accepted: {[p.name for p in procs]}, logs {logs}")
+
+  role = "role:perception.model"
+  model_names = ("models_manager", "modeld", "modeld_tinygrad", "modeld_warmup")
+  from openpilot.tesla.plugins.sp_models.plugin import SpModels
+
+  class Replacement(Plugin):
+    NAME, ENABLE_PARAM, PRIORITY = "op_models", "OpKey", 100
+    CLAIMS = (role, "process:op_modeld")
+
+    @classmethod
+    def processes(cls):
+      return [types.SimpleNamespace(name="op_modeld", should_run=lambda s, p, c: s)]
+
+  plugins.PLUGINS = (SpModels, Replacement)
+  procs = apply(official(), None)
+  managed = {p.name: p for p in procs}
+  if len(procs) != len(managed) or any(n not in managed for n in model_names):
+    errors.append(f"P26 missing or repeated model processes: {[p.name for p in procs]}")
+  else:
+    for enabled in (False, True, False):
+      params = FakeParams({"OpKey": enabled})
+      for started in (False, True):
+        runs = [managed[n].should_run(started, params, None) for n in model_names]
+        if runs != [started and not enabled] * 4 or managed["op_modeld"].should_run(started, params, None) != (started and enabled):
+          errors.append(f"P26 model switch on={enabled}, started={started}: {runs}")
+
+  class Selector(Plugin):
+    NAME, CLAIMS = "custom_models", (role,)
+    selected = model_names
+
+    @classmethod
+    def role_processes(cls, claimed_role, procs):
+      assert claimed_role == role and tuple(procs) == model_names
+      return [procs[n] for n in cls.selected]
+
+  for selected in (model_names, model_names[:2], ()):
+    Selector.selected = selected
+    plugins.PLUGINS = (SpModels, Selector)
+    procs = apply(official(), None)
+    got = {p.name for p in procs if p.name in model_names and p.should_run(True, FakeParams(), None)}
+    if got != set(selected):
+      errors.append(f"P26 arbitrary role owner selected {selected}, running {sorted(got)}")
+
+  plugins.PLUGINS = ()
+  procs = apply(official(), None)
+  if any(p.should_run(s, FakeParams(), None) for p in procs if p.name in model_names for s in (False, True)):
+    errors.append("P33 model processes run without an owner")
+
+  class Unclaimed(Selector):
+    NAME, CLAIMS = "unclaimed_models", ()
+
+    @classmethod
+    def role_processes(cls, claimed_role, procs):
+      calls.append((cls.NAME, "role_processes"))
+      return list(procs.values())
+
+  class Foreign(Selector):
+    NAME = "foreign_models"
+
+    @classmethod
+    def role_processes(cls, claimed_role, procs):
+      return [procs["models_manager"], types.SimpleNamespace(**vars(procs["modeld"]))]
+
+  plugins.PLUGINS = (Unclaimed,)
+  procs = apply(official(), None)
+  if (Unclaimed.NAME, "role_processes") in calls or any(p.should_run(True, FakeParams(), None) for p in procs if p.name in model_names):
+    errors.append("P34 role_processes called or processes granted without a role claim")
+  faults.clear()
+  plugins.PLUGINS = (Foreign,)
+  procs = apply(official(), None)
+  if any(p.should_run(True, FakeParams(), None) for p in procs if p.name in model_names) or faults != [(Foreign.NAME, "manager.role_processes")]:
+    errors.append(f"P34 foreign process accepted or not recorded: {faults}")
+
+  class Raising(Selector):
+    NAME = "raising_models"
+
+    @classmethod
+    def role_processes(cls, claimed_role, procs):
+      raise RuntimeError("role_processes")
+
+  faults.clear()
+  plugins.PLUGINS = (Raising, SpModels, make("healthy"))
+  try:
+    procs = apply(official(), None)
+    if "healthyd" not in [p.name for p in procs] or any(p.should_run(True, FakeParams(), None) for p in procs if p.name in model_names):
+      errors.append("P35 raising role hook lost healthy processes or kept its role processes")
+  except Exception as e:
+    errors.append(f"P35 role registration raised {e!r}")
+  if faults != [(Raising.NAME, "manager.role_processes")]:
+    errors.append(f"P35 role fault not recorded: {faults}")
+
+  rogue = [types.SimpleNamespace(name=n, should_run=lambda s, p, c: True) for n in model_names]
+  plugins.PLUGINS = (type("Rogue", (Plugin,), {"NAME": "rogue_models", "CLAIMS": tuple(f"process:{n}" for n in model_names),
+    "processes": classmethod(lambda cls: rogue)}),)
+  procs = apply(official(), None)
+  if any(p is r for p in procs for r in rogue) or plugins.processes():
+    errors.append("P36 processes() registered a reserved model process name")
   return errors
 
 
