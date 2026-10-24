@@ -5,6 +5,10 @@ on:
   push:
     branches: [xpilot]
   workflow_dispatch:
+    inputs:
+      plugins_ref:
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -30,6 +34,12 @@ jobs:
       with:
         repository: onemiless/xpilot-plugins
         path: xpilot-plugins
+        ref: ${{ inputs.plugins_ref }}
+    - name: Record commits
+      run: |
+        mkdir -p /tmp/xpilot-ci
+        echo "xpilot = $GITHUB_SHA" > /tmp/xpilot-ci/commits.txt
+        echo "xpilot-plugins = $(git -C xpilot-plugins rev-parse HEAD)" >> /tmp/xpilot-ci/commits.txt
     - name: Generated files are current
       run: |
         python3 openpilot/tesla/plugins/gen_params.py --check
@@ -42,11 +52,19 @@ jobs:
         for check in static_imports tile_layout_check plugin_host_check manifest_check safety_manifest_check \
                      phase2_check phase3_check phase4_check store_check offroad_pages_check agnos_update_check; do
           echo "::group::$check"
-          python3 tools/sp_tesla_e2e/$check.py > /tmp/$check.json
+          python3 tools/sp_tesla_e2e/$check.py > /tmp/xpilot-ci/$check.json
           echo "::endgroup::"
         done
     - name: Plugin repository end to end
-      run: python3 tools/sp_tesla_e2e/store_e2e.py --repo xpilot-plugins
+      run: |
+        set -o pipefail
+        python3 tools/sp_tesla_e2e/store_e2e.py --repo xpilot-plugins 2>&1 | tee /tmp/xpilot-ci/store_e2e.txt
+    - uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: xpilot-checks-${{ github.run_id }}
+        path: /tmp/xpilot-ci
+        retention-days: 30
     - name: Tell the owner xpilot is broken
       if: failure() && github.event_name != 'pull_request'
       env:
