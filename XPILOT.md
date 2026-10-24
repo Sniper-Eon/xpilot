@@ -13,6 +13,12 @@
 - **已删除**：其他车型、comma 云、sunnylink、旧的大屏 UI、扭矩车用的横向控制、翻译（UI 只用英文）。
 - **硬件**：C3、C3X、C3XL、C4。大屏设备上整屏是磁贴，行驶时 mici 画面固定在中间、磁贴排在四周（见第 9 节）。
 
+## 系统版本与硬件镜像
+
+目标系统统一为 **AGNOS 19.9**。`launch_env.sh` 与后台更新器使用同一个硬件清单：C3/tici 的 standard 配置选 `agnos-c3.json`，显式 c3xl 配置优先选 `agnos-c3xl.json`，C3X/tizi 和 C4/mici 选官方 `agnos.json`。三者的 system 条目相同。
+
+C3/C3XL 保留各自锁定的 mr-one 引导链和写前白名单校验，禁止缺少专用清单时回退官方引导镜像。C3XL 的 Panda、驾驶员监控和音频能力策略不变。系统已为19.9时后台更新跳过刷写。本机检查只证明选择与写前保护；xpilot 的设备构建/运行验证须单独记录。
+
 ## 1b. 核心理念
 
 1. **一切功能皆插件。** SP 是不改的主干；xpilot 的每个功能都是一个插件目录。核心插件（`sp_engagement`、`sp_models`、`sp_safety_fallback`）在系统仓库 `openpilot/tesla/plugins/<id>/`，其他插件都在插件仓库的 `plugins/<id>/`，加功能就是在插件仓库加目录。
@@ -398,6 +404,7 @@ typedef struct {
 ## 11. 本机可以跑的检查
 
 ```
+python3 tools/sp_tesla_e2e/agnos_update_check.py                     # 实际启动/OTA19.9选择和写前保护；分区IO模拟
 python3 tools/sp_tesla_e2e/static_imports.py                         # 有没有断掉的 import
 python3 tools/sp_tesla_e2e/tile_layout_check.py                       # 大屏磁贴：网格、排布、行驶避让、编辑操作、手势、重画判断、ASCII 文字、文字适配磁贴
 python3 tools/sp_tesla_e2e/plugin_host_check.py                       # 插件宿主：出错隔离、总开关、元数据、参数、目标车速、雷达/地图/外接 provider、pluginMsg
