@@ -320,13 +320,15 @@ typedef struct {
 规则：一个插件只负责一个报文，原有 safety 模式的白名单和检查一律不改；校验报文模板、新鲜度、频率、Tesla 模式、vehicle bus、自有 `safetyParam` 位和会话上限。`auto_speed` 必须有 `controls_allowed`；`ambient_light` 是车身盲区告警，允许未接管时告警。
 
 新增 safety 插件的附加规则：
-- 头文件名必须是 `<插件 id>.h`，头文件注释里的名字也用插件 id（`gen_safety.py` 检查）。
+- 头文件名必须是 `<profile 名>.h`，头文件注释里的名字也用 profile 名（`gen_safety.py` 检查）。
 - 所有 safety 插件都不允许在 `nooutput` 模式发报。
 - 每个不需要 `controls_allowed` 的发送（比如告警、cancel）都要写进上面这条规则，写明在什么条件下放行、为什么安全；代码的放行条件必须和这里写的一致，不能比文字更宽。
 - 下面"当前状态"只写所有已声明头文件都验证过的结论；新头文件没跑 MISRA、编译和两个 safety 测试之前，不能沿用这句话。
 - CI（`.github/workflows/xpilot.yaml`）只跑主机检查和 `gen_safety --check`，不编译 panda、不跑 safety 测试和 MISRA。改 safety 的 PR 要把 panda 编译、`test_tesla.py`、`test_xpilot_plugins.py` 和 MISRA 的命令和结果贴进 PR，在哪台机器上跑的也写上。
 
-声明在 `opendbc/safety/plugins/safety.json`：插件 id → `header`、十六进制字符串 `param_bit`、唯一一条 `tx`（`0x地址:总线`）。这个文件描述系统固件里编进了哪些 safety 插件；Python 插件本身在插件仓库，`plugin.json` 带同样的 `safety` 块，商店安装时要求它和 `can.tx` claims 都与设备系统的 `safety.json` 完全一致，否则拒绝安装（`store_check.py` S18）。`gen_safety.py` 只用标准库，生成注册表及 C 参数位宏，拒绝重复位、未声明的头文件、声明的头文件缺失、safety tx 和头文件 `.msg` 不一致，以及核心插件未在 `safety.json` 声明的 `can.tx` claim；还检查位为单个 uint16 位、头文件名等于 `<id>.h` 和头内 `.msg` 地址/总线。`plugin.h` 是公共接口，`registry.h` 是生成文件，其余头都必须在 `safety.json` 里声明。panda safety 代码只能随系统发布，不能运行时安装。当前位：ambient_light `0x2000`，auto_speed `0x4000`（和设备上刷入的 panda 一致）。Python 插件用 `self.MANIFEST.safety["param_bit"]` 读同一声明，不能硬编码位值。
+声明在 `opendbc/safety/plugins/safety.json`：profile 名 → `header`、十六进制字符串 `param_bit`、唯一一条 `tx`（`0x地址:总线`）。这个文件描述系统固件里编进了哪些 panda 能力，与 Python 插件 id 无关。插件在 `plugin.json` 写 `"safety": {"profile": "auto_speed"}` 复用已有能力，不能再加 `header`、`param_bit`、`tx` 等键覆盖它。旧的完整 safety 字典仍可用，但必须与文件中恰好一个条目完全一致。`manifest.parse()` 统一解析成完整条目加 `profile`；安装和发现都要求 `can.tx` claims 集合与该 profile 的 `tx` 完全一致，否则带原因拒绝或跳过。两个开启的插件用同一个 profile 时，通过现有独占 `can.tx` claim 按优先级裁决，只有一个生效。
+
+`gen_safety.py` 只用标准库，生成注册表及 C 参数位宏，拒绝重复位、未声明的头文件、声明的头文件缺失、safety tx 和头文件 `.msg` 不一致，以及核心插件未匹配 profile 的 `can.tx` claim；还检查位为单个 uint16 位、头文件名等于 `<profile 名>.h` 和头内 `.msg` 地址/总线。`plugin.h` 是公共接口，`registry.h` 是生成文件，其余头都必须在 `safety.json` 里声明。新的 CAN 行为仍须在系统仓库新增 safety 头文件和 `safety.json` 条目、生成注册表、构建固件并完成上述 safety/MISRA 验证，再上设备实测；不能靠 profile 扩大固件的放行范围。panda safety 代码只能随系统发布，不能运行时安装。当前位：ambient_light `0x2000`，auto_speed `0x4000`（和设备上刷入的 panda 一致）。Python 插件继续用 `int(self.MANIFEST.safety["param_bit"], 0)` 读解析后的声明，不能硬编码位值。
 
 **当前状态：libsafety 在 Mac（Apple clang 16）和 Linux 主机上编译；`test_tesla.py` 和 `test_xpilot_plugins.py` 通过；MISRA（cppcheck）在 Linux 主机上 0 条报告。** 只保留 Tesla 后，lateral.h/longitudinal.h/safety.h 里给其他车型用的共用函数没人调用，在 `tests/misra/main.c` 里用 `SAFETY_UNUSED` 标出，stock 头文件不改。会话上限：auto_speed 每次最多 50 格、空闲 3 秒算新会话；ambient_light 每次最多 150 帧/15 秒、空闲 1 秒算新会话。 `safety.h` 里有 4 处调用：
 1. include `opendbc/safety/plugins/registry.h`；
