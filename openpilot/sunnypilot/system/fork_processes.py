@@ -29,8 +29,8 @@ def apply_fork_processes(procs: list, only_onroad) -> list:
     _gate(by_name[name], lambda params: not plugins.holds(params, "source:map"))
   for name in ("models_manager", "modeld", "modeld_tinygrad", "modeld_warmup"):  # SP's model stack = plugin sp_models
     _gate(by_name[name], lambda params: plugins.owner(params, "role:perception.model") in (None, "sp_models"))
-  return procs + [
+  procs = procs + [
     PythonProcess("alert_output", "openpilot.sunnypilot.system.alert_output",
                   lambda started, params, CP: not PC and get_hardware_profile() == HardwareProfile.C3XL),
-    *plugins.processes(),
   ]
+  return procs + plugins.processes({p.name for p in procs})

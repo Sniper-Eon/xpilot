@@ -8,8 +8,8 @@
 - **仓库**：系统 `github.com/onemiless/xpilot`（默认分支 `xpilot`），只放框架、商店和核心插件；其他插件在 `github.com/onemiless/xpilot-plugins`（默认分支 `main`），设备通过商店安装。推送分流见规则 15。
 - **基线**：sunnypilot `922513f`，opendbc `5be750714`。只做这一次基准，之后不再整体合并上游，只手工挑修复（`tools/dev_sp_release/upstream_watch.py`）。
 - **主体**：横向、纵向、模型都是 SP 原版，Tesla 车端代码是上游原版。
-- **扩展**：xpilot 的功能全部以插件形式接入，不改 SP 主体逻辑。
-- **现状（2026-10-23）**：所有功能都是插件。SP 文件里不再有手写的功能注册：雷达替换走 `radar_interface` 钩子（第 7 节），地图默认用 SP 的 OSM 进程，声明 `source:map` 的插件开启时让位（第 8 节），插件之间的数据走 `pluginMsg`（8d 节）。都经过 `plugin.json` 发现、总开关、资源声明和出错隔离。
+- **扩展**：SP 保持主栈，xpilot 通过插件钩子补充行为；可替换部分仅限第 4.3 节列出的 role。
+- **现状（2026-10-23）**：插件扩展经过 `plugin.json` 发现、总开关、资源声明和出错隔离。雷达替换走 `radar_interface` 钩子（第 7 节），地图默认用 SP 的 OSM 进程，声明 `source:map` 的插件开启时让位（第 8 节），插件之间的数据走 `pluginMsg`（8d 节）。
 - **已删除**：其他车型、comma 云、sunnylink、旧的大屏 UI、扭矩车用的横向控制、翻译（UI 只用英文）。
 - **硬件**：C3、C3X、C3XL、C4。大屏设备上整屏是磁贴，行驶时 mici 画面固定在中间、磁贴排在四周（见第 9 节）。
 
@@ -21,7 +21,7 @@ C3/C3XL 保留各自锁定的 mr-one 引导链和写前白名单校验，禁止�
 
 ## 1b. 核心理念
 
-1. **一切功能皆插件。** SP 是不改的主干；xpilot 的每个功能都是一个插件目录。核心插件（`sp_engagement`、`sp_models`、`sp_safety_fallback`）在系统仓库 `openpilot/tesla/plugins/<id>/`，其他插件都在插件仓库的 `plugins/<id>/`，加功能就是在插件仓库加目录。
+1. **SP 主栈，插件扩展。** 可替换部分是第 4.3 节列出的 role；panda safety、CAN 发送限幅、资源裁决和故障锁定留在宿主，构成最小安全内核。核心插件（`sp_engagement`、`sp_models`、`sp_safety_fallback`）在系统仓库 `openpilot/tesla/plugins/<id>/`，其他插件在插件仓库的 `plugins/<id>/`。
 2. **宿主定规则，插件只填内容。** 合并、裁决、限幅、出错隔离都写在宿主（`openpilot/tesla/`）里，插件改不了；插件只实现钩子。
 3. **安全底线不可越过。** 车端检查、SP 的限幅和 panda safety 永远最后生效；插件再高的优先级也只能在这个范围内工作。
 4. **出错只影响自己。** 一个插件坏了，只有它被停用，SP 和其他插件照常运行。
@@ -107,9 +107,30 @@ opendbc_repo/opendbc/safety/plugins/
 
 ### 4.2 类别（`manifest.CATEGORIES`，按控制链路顺序）
 
-控制链路：`perception_model` 感知模型、`object_fusion` 前车和目标融合、`vehicle_params` 标定和车辆参数、`engagement` 接管状态机、`driver_monitoring` 驾驶员监控、`lateral_planning` 横向规划、`longitudinal_planning` 纵向规划、`lane_change` 变道、`navigation` 导航驾驶、`controller` 控制器、`actuation` 执行和车端报文、`safety_fallback` 安全兜底和 Autopilot 交接。
+能力状态：**仅分类**表示目前只用于分组；**可补充**表示已有钩子可添加行为；**可替换**表示已有 role 可整体替换对应 SP 环节。类别本身不授予能力，具体以第 4.3、4.4 节的 claims 和钩子为准。
 
-`perception_model`、`engagement`、`safety_fallback` 已可整体替换，见下面 `role:perception.model`、`role:engagement.state`、`role:safety.fallback`。暂无钩子的类别：`object_fusion`、`vehicle_params`、`driver_monitoring`、`lateral_planning`、`navigation`。这些类别现在只用于分组显示；插件可以用通用钩子（`processes`、`alert_source` 等），但还不能替换 SP 的对应环节。真有插件需要时再加钩子，不预先加。
+| 类别 | 用途 | 当前能力 |
+|---|---|---|
+| `perception_model` | 感知模型 | 可替换：`role:perception.model` |
+| `object_fusion` | 前车和目标融合 | 仅分类 |
+| `vehicle_params` | 标定和车辆参数 | 仅分类 |
+| `engagement` | 接管状态机 | 可替换：`role:engagement.state` |
+| `driver_monitoring` | 驾驶员监控 | 仅分类 |
+| `lateral_planning` | 横向规划 | 可补充：`lat_correction` |
+| `longitudinal_planning` | 纵向规划 | 可补充：`long_target`、`plan_filter`；规划替换限 `role:long.planner` |
+| `lane_change` | 变道 | 可补充：`lane_change_policy`，限免推方向盘判断 |
+| `navigation` | 导航驾驶 | 可补充：`source:map` + `processes()` 发布地图和导航数据 |
+| `controller` | 控制器 | 可补充：`lat_correction`；横向控制器替换限 `role:lateral.controller` |
+| `actuation` | 执行和车端报文 | 可补充：`control_sends`，受 panda safety 限制 |
+| `safety_fallback` | 安全兜底和 Autopilot 交接 | 可替换：`role:safety.fallback`（Autopilot 交接还没做） |
+| `data_source` | 数据源和外接算力 | 可补充：`observe_can`、`radar_interface`、`external_provider` |
+| `alerts` | 报警 | 可补充：`alert_source` |
+| `body_comfort` | 车身和舒适 | 可补充：`observe_can`、`control_sends` |
+| `ui` | 磁贴 | 可补充：`Tile` |
+| `overlays` | 行驶叠加层 | 可补充：`HudOverlay`、`ScreenOverlay` |
+| `tools` | 工具和诊断 | 可补充：`processes()` |
+
+仅分类的类别仍可使用通用钩子（`processes`、`alert_source` 等），但不能替换 SP 的对应环节。真有插件需要时再加专用钩子，不预先加。
 
 有插件要做时，按下面的顺序考虑加钩子（越靠前越可能先用到、风险越低）：
 
@@ -123,8 +144,6 @@ opendbc_repo/opendbc/safety/plugins/
 | 6 | `engagement` | 已做：`role:engagement.state` 整体替换普通状态机和 MADS | 默认插件 `sp_engagement`，宿主底线见 `core_host.py` |
 | 7 | `perception_model` | 已做：`role:perception.model` 整体替换模型管理和推理进程 | 默认插件 `sp_models` |
 | 8 | `safety_fallback` | 已做：`role:safety.fallback` 整体替换事件策略（Autopilot 交接还没做） | 默认插件 `sp_safety_fallback` |
-
-其他：`data_source` 数据源和外接算力、`alerts` 报警、`body_comfort` 车身和舒适、`ui` 磁贴、`overlays` 行驶叠加层、`tools` 工具和诊断。
 
 ### 4.3 资源声明（claims）和冲突
 
@@ -353,6 +372,7 @@ typedef struct {
 - **用途**：插件之间传数据的通用通道，不用再为每个插件加 cereal 字段。已有自己 cereal 字段的插件（如 `traffic_light`）保持不变。
 - **消息**：cereal 服务 `pluginMsg`（`log.capnp` 的 `@139`，原 `customReserved13`），类型和外接算力相同，都是 `ExternalData`：`source`、`kind`、`seq`、`payload`（JSON 文本）、`validForMs`（0 表示不过期）。
 - **发送**：`plugins.send_msg(pm, plugin, kind, payload, valid_for_ms)`，`pm` 要能发 `pluginMsg`，`plugin` 传插件类或实例。宿主填 `source` = 插件 id，插件自己改不了。清单里没有 `msg:<kind>` 声明的类型一律拒发，返回 False，并像其他越权一样记到 `XpilotPluginFaults`。
+- pluginMsg 当前只支持一个实际发布端；同一进程也不得创建多个独立发布实例。多发布者冲突目前只做故障处理，不保证原发布者继续发送。
 - **接收**：`plugins.PluginMsgs()` 订阅 `pluginMsg`（不合并），`fresh(kind)` 返回 `{来源插件 id: payload}`，每个来源只取最新一条，过了 `validForMs` 的不返回。
 - **只做建议**：和外接算力一样，收到的数据只能通过接收方插件自己的钩子和限制生效。
 

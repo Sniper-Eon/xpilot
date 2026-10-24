@@ -36,6 +36,11 @@ Failure cases listed before implementation:
 - P27 send_msg publishes a kind the plugin has no msg:<kind> claim for, or does not record it as a fault
 - P27 a declared kind is not delivered, its source is not the plugin id, or kind/payload/validForMs are lost
 - P27 PluginMsgs.fresh returns other kinds or expired messages, or drops validForMs 0 (no expiry)
+- P28 a plugin whose processes() raises takes manager registration down or its fault is not recorded
+- P29 a plugin process replaces an official process (including alert_output) or an earlier plugin's process
+- P30 a plugin with an unknown SERVICES name is loaded (SubMaster would crash)
+- P31 a disabled or conflicting plugin's SERVICES are subscribed, or unavailable Params breaks host checks
+- P32 pm.send raising escapes send_msg or is not recorded as a pluginMsg fault
 
 Run from the repo root with the openpilot python env. Native-only modules (Params) are stubbed if missing.
 """
@@ -43,8 +48,11 @@ import ast
 import json
 from pathlib import Path
 import re
+import runpy
 import sys
+import tempfile
 import types
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path[:0] = [str(ROOT), str(ROOT / "opendbc_repo")]
@@ -116,6 +124,8 @@ def make(name, fail_in=None, enable=None):
 
     @classmethod
     def processes(cls):
+      if fail_in == "processes":
+        raise RuntimeError("processes")
       return [types.SimpleNamespace(name=f"{name}d", should_run=lambda started, params, CP: started)]
 
     @classmethod
@@ -256,6 +266,8 @@ def main() -> int:
   errors += long_target_checks(plugins_mod)
   errors += source_checks(plugins_mod, real)
   errors += msg_checks(plugins_mod)
+  errors += registration_checks(plugins_mod)
+  errors += service_checks(plugins_mod)
 
   print(json.dumps({"plugins": [c.NAME for c in real], "errors": errors}, indent=1))
   return 1 if errors else 0
@@ -422,6 +434,92 @@ def msg_checks(plugins) -> list[str]:
     errors.append("G3 demo.a fresh within 100 ms only")
   if reader.fresh("demo.b", t + 10**12) != {"pub": [2]}:
     errors.append("G3 validForMs 0 expired, or kinds mixed")
+  faults.clear()
+
+  def fail_send(service, msg):
+    raise getattr(messaging, "MultiplePublishersError", RuntimeError)(b"second publisher")
+
+  try:
+    if plugins.send_msg(types.SimpleNamespace(send=fail_send), Pub, "demo.a", {}):
+      errors.append("P32 failed send returned True")
+  except Exception as e:
+    errors.append(f"P32 send_msg raised {e!r}")
+  if faults != [("pub", "pluginMsg")]:
+    errors.append(f"P32 send fault not recorded: {faults}")
+  return errors
+
+
+def registration_checks(plugins) -> list[str]:
+  errors, faults, logs = [], [], []
+  plugins.record_fault = lambda name, where, exc: faults.append((name, where))
+  modules = {
+    "openpilot.common.hardware": types.SimpleNamespace(PC=True),
+    "openpilot.sunnypilot.hardware.driver_monitoring": types.SimpleNamespace(driver_monitoring_enabled=lambda p: True),
+    "openpilot.sunnypilot.hardware.profile": types.SimpleNamespace(
+      HardwareProfile=types.SimpleNamespace(C3XL="c3xl"), get_hardware_profile=lambda: "pc",
+      has_audio_output=lambda: True, has_microphone=lambda: True),
+    "openpilot.system.manager.process": types.SimpleNamespace(
+      PythonProcess=lambda name, module, should_run: types.SimpleNamespace(name=name, should_run=should_run)),
+  }
+  with patch.dict(sys.modules, modules):
+    apply = runpy.run_path(str(ROOT / "openpilot/sunnypilot/system/fork_processes.py"))["apply_fork_processes"]
+
+  def official():
+    return [types.SimpleNamespace(name=n, should_run=lambda s, p, c: s) for n in (
+      "controlsd", "dmonitoringmodeld", "dmonitoringd", "micd", "soundd", "mapd", "mapd_manager", "map_osm",
+      "models_manager", "modeld", "modeld_tinygrad", "modeld_warmup")]
+
+  plugins.PLUGINS = (make("bad_proc", "processes"), make("good_proc"))
+  try:
+    if "good_procd" not in [p.name for p in apply(official(), None)]:
+      errors.append("P28 healthy plugin process lost")
+  except Exception as e:
+    errors.append(f"P28 manager registration raised {e!r}")
+  if faults != [("bad_proc", "manager.processes")]:
+    errors.append(f"P28 registration fault not recorded: {faults}")
+
+  first = types.SimpleNamespace(name="shared", should_run=lambda s, p, c: s)
+  second = types.SimpleNamespace(name="shared", should_run=lambda s, p, c: s)
+  rogue = [types.SimpleNamespace(name=n, should_run=lambda s, p, c: s) for n in ("controlsd", "alert_output")]
+  plugins.PLUGINS = tuple(type(name, (Plugin,), {"NAME": name, "ENABLE_PARAM": "OffKey",
+    "CLAIMS": tuple(f"process:{p.name}" for p in procs), "processes": classmethod(lambda cls, ps=procs: ps)})
+    for name, procs in (("rogue", rogue), ("first", [first]), ("second", [second])))
+  core = official()
+  with patch.object(plugins.cloudlog, "error", side_effect=lambda msg: logs.append(msg)):
+    procs = apply(core, None)
+  managed = {p.name: p for p in procs}
+  if managed["controlsd"] is not core[0] or managed["alert_output"] is rogue[1] or managed.get("shared") is not first or \
+     len(procs) != len(managed) or len(logs) != 3:
+    errors.append(f"P29 duplicate processes accepted: {[p.name for p in procs]}, logs {logs}")
+  return errors
+
+
+def service_checks(plugins) -> list[str]:
+  errors = []
+  with tempfile.TemporaryDirectory() as tmp:
+    for name, services in (("svc_good", ("carState",)), ("svc_bad", ("carState", "unknownPluginService"))):
+      path = Path(tmp) / name
+      path.mkdir()
+      (path / "__init__.py").write_text("")
+      (path / "plugin.json").write_text(json.dumps({"id": name, "api": 1, "category": "tools", "entry": "plugin:P"}))
+      (path / "plugin.py").write_text(f"from openpilot.tesla.plugin import Plugin\nclass P(Plugin):\n  SERVICES = {services!r}\n")
+    with patch.object(plugins.mf, "INSTALL_DIR", Path(tmp)):
+      loaded, faults, _ = plugins._discover()
+    if "svc_bad" in [p.NAME for p in loaded] or "unknownPluginService" not in faults.get("svc_bad", "") or \
+       "svc_good" not in [p.NAME for p in loaded] or "svc_good" in faults:
+      errors.append(f"P30 invalid SERVICES discovery: {[p.NAME for p in loaded]}, errors {faults}")
+
+  plugins.PLUGINS = tuple(type(name, (Plugin,), {"NAME": name, "ENABLE_PARAM": enable,
+    "CLAIMS": claims, "SERVICES": (svc,)}) for name, enable, claims, svc in (
+      ("on", None, ("source:demo",), "carState"), ("off", "OffKey", (), "radarState"),
+      ("loser", None, ("source:demo",), "modelV2")))
+  plugins.PLUGINS[0].PRIORITY = 1
+  for params, expected in ((FakeParams(), ["carState"]),
+                           (FakeParams({"OffKey": True}), ["carState", "radarState"]),
+                           (object(), ["carState", "modelV2", "radarState"])):
+    with patch("openpilot.common.params.Params", return_value=params):
+      if (got := plugins.services()) != expected:
+        errors.append(f"P31 subscribed {got}, expected {expected}")
   return errors
 
 

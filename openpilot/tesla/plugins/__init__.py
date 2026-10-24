@@ -19,6 +19,7 @@ import sys
 import time
 import types
 
+from openpilot.cereal.services import SERVICE_LIST
 from openpilot.common.swaglog import cloudlog
 from openpilot.tesla import manifest as mf
 from openpilot.tesla.plugin import Plugin
@@ -72,6 +73,8 @@ def _discover() -> tuple[tuple, dict[str, str], dict[str, dict]]:
       cls = getattr(mod, name)
       if not (isinstance(cls, type) and issubclass(cls, Plugin)):
         raise TypeError(f"{m.entry} is not a Plugin subclass")
+      if unknown := set(cls.SERVICES) - SERVICE_LIST.keys():
+        raise ValueError(f"unknown SERVICES: {sorted(unknown)}")
     except Exception as e:
       cloudlog.exception(f"xpilot plugin {m.id} failed to import")
       errors[m.id] = f"import: {e!r}"[:200]
@@ -192,17 +195,27 @@ def install_core(selfdrive) -> None:
   install(selfdrive)
 
 
-def processes() -> list:
+def processes(core: set[str] | None = None) -> list:
   """manager: each plugin process runs only while its plugin is active, and only if the plugin claims it."""
   procs = []
+  names = set(core or ())
   for cls in PLUGINS:
-    for proc in cls.processes():
+    try:
+      extra = cls.processes()
+    except Exception as e:
+      record_fault(cls.NAME, "manager.processes", e)
+      continue
+    for proc in extra:
+      if proc.name in names:
+        cloudlog.error(f"xpilot plugin {cls.NAME}: process {proc.name} already registered, not started")
+        continue
       if f"process:{proc.name}" not in cls.CLAIMS:
         cloudlog.error(f"xpilot plugin {cls.NAME}: process {proc.name} not claimed, not started")
         continue
       should_run = proc.should_run
       proc.should_run = lambda started, params, CP, run=should_run, name=cls.NAME: name in resolve(params)[0] and run(started, params, CP)
       procs.append(proc)
+      names.add(proc.name)
   return procs
 
 
@@ -218,7 +231,12 @@ def holds(params, claim: str) -> bool:
 
 def services() -> list[str]:
   """Extra services plannerd, selfdrived and controlsd subscribe for plugin hooks (ignored for alive/valid checks)."""
-  return sorted({svc for p in PLUGINS for svc in p.SERVICES})
+  try:
+    from openpilot.common.params import Params
+    enabled = active(Params())
+  except Exception:
+    enabled = PLUGINS
+  return sorted({svc for p in enabled for svc in p.SERVICES})
 
 
 def send_msg(pm, plugin, kind: str, payload, valid_for_ms: int = 0) -> bool:
@@ -231,10 +249,10 @@ def send_msg(pm, plugin, kind: str, payload, valid_for_ms: int = 0) -> bool:
     msg = messaging.new_message("pluginMsg", valid=True)
     m = msg.pluginMsg
     m.source, m.kind, m.payload, m.validForMs = plugin.NAME, kind, json.dumps(payload), valid_for_ms
+    pm.send("pluginMsg", msg)
   except Exception as e:
     record_fault(plugin.NAME, "pluginMsg", e)
     return False
-  pm.send("pluginMsg", msg)
   return True
 
 
