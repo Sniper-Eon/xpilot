@@ -37,7 +37,7 @@ def run(output: Path):
           if saved is not None:
             params.put_bool("DriverMonitoringEnabled", saved, block=True)
           params.put_bool("ActiveDriverMonitoringEnabled", not expected, block=True)
-          params.put_bool("TeslaBlindspotAmbientEnabled", True, block=True)
+          params.put_bool("IsMetric", True, block=True)
           with patch.object(manager, "Params", return_value=params), \
                patch.object(manager, "PC", False), \
                patch.object(manager, "save_bootlog"), \
@@ -58,7 +58,7 @@ def run(output: Path):
             for flag in [ParamKeyFlag.CLEAR_ON_MANAGER_START, ParamKeyFlag.CLEAR_ON_OFFROAD_TRANSITION, ParamKeyFlag.CLEAR_ON_IGNITION_ON]:
               params.clear_all(flag)
               assert params.get_bool("SPDriverMonitoringDefaultsMigrated")
-            assert params.get_bool("TeslaBlindspotAmbientEnabled")
+            assert params.get_bool("IsMetric")
             params.clear_all(ParamKeyFlag.BACKUP)
             assert params.get("SPDriverMonitoringDefaultsMigrated") is None
           results.append({"profile": profile, "device_type": device_type, "old_saved": saved,

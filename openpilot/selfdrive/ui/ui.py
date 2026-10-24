@@ -8,6 +8,7 @@ from openpilot.common.realtime import Priority, config_realtime_process, set_cor
 from openpilot.system.ui.lib.application import gui_app
 from openpilot.selfdrive.ui.mici.layouts.main import MiciMainLayout
 from openpilot.selfdrive.ui.ui_state import ui_state
+from openpilot.tesla.ui.offroad import install_defaults_later
 from openpilot.tesla.ui.screen import BigScreenHost, is_big_screen
 
 
@@ -18,6 +19,7 @@ def main():
 
   gui_app.init_window("UI", host=BigScreenHost if is_big_screen() else None)
   MiciMainLayout()
+  install_defaults_later(ui_state.is_offroad, ui_state.params)
 
   pm = messaging.PubMaster(['uiDebug'])
   for should_render, frame_time, cpu_time in gui_app.render():

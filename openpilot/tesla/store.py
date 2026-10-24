@@ -7,7 +7,8 @@ Third parties send pull requests; the maintainer reviews and merges. Archives ar
 guards against corrupt or swapped downloads, trust comes from the reviewed repository.
 
 Install: download (size-capped), check sha256, extract regular files only into a staging directory next to the
-target, validate the manifest (id, api, entry module, no built-in id, no clashing or unsupported param keys) and the code
+target, validate the manifest (id, api, entry module, no built-in id, no clashing or unsupported param keys, can.tx
+and safety only as declared in the firmware's safety.json) and the code
 layout (manifest.layout_problems), then
 swap it into INSTALL_DIR/<id> with renames. Any failure leaves the installed version as it was. Changes apply after
 a restart (plugins are discovered at process start). Call only while offroad.
@@ -26,7 +27,11 @@ import urllib.request
 from openpilot.tesla import manifest as mf
 from openpilot.tesla.plugin_params import STORE_TYPES
 
+SAFETY_JSON = Path(__file__).resolve().parents[2] / "opendbc_repo/opendbc/safety/plugins/safety.json"
 INDEX_URL = "https://raw.githubusercontent.com/onemiless/xpilot-plugins/main/index.json"
+# First boot: display plugins installed once (marker file in INSTALL_DIR, so a removed default stays removed).
+DEFAULTS = ("speed_card", "lead_card", "speed_limit_card", "car_tile", "map_tile", "clock_tile", "ip_tile", "blindspot_edges")
+DEFAULTS_DONE = ".defaults_done"
 MAX_ARCHIVE = 20 * 1024 * 1024
 TIMEOUT_S = 15
 
@@ -110,6 +115,10 @@ def _validate(staged: Path, entry: IndexEntry) -> None:
   for f in ("__init__.py", f"{module}.py"):
     if not (staged / f).is_file():
       raise ValueError(f"missing {f}")
+  declared = json.loads(SAFETY_JSON.read_text()).get(m.id)
+  tx = {c[7:] for c in m.claims if c.startswith("can.tx:")}
+  if (tx or m.safety) and (m.safety != declared or tx != set(declared["tx"])):
+    raise ValueError("can.tx/safety not declared by this system's panda firmware (safety.json)")
   if problems := mf.layout_problems(staged, module):
     raise ValueError("layout: " + "; ".join(problems))
   taken = mf.compiled_param_keys() | {k for o in mf.load_all(mf.INSTALL_DIR)[0] if o.id != m.id for k in o.params}
@@ -152,3 +161,19 @@ def uninstall(pid: str) -> None:
     trash = Path(tempfile.mkdtemp(prefix=f".removing-{pid}-", dir=mf.INSTALL_DIR))
     os.replace(target, trash / pid)
     shutil.rmtree(trash, ignore_errors=True)
+
+
+def defaults_done() -> bool:
+  return (mf.INSTALL_DIR / DEFAULTS_DONE).exists()
+
+
+def install_defaults() -> bool:
+  """Install the missing DEFAULTS and set the marker; True if any got installed. Unreachable index: no marker, retry."""
+  entries, error = fetch_index(INDEX_URL)
+  if error:
+    return False
+  have = installed_versions()
+  done = [e.id for e in entries if e.id in DEFAULTS and e.id not in have and install(e) is None]
+  mf.INSTALL_DIR.mkdir(parents=True, exist_ok=True)
+  (mf.INSTALL_DIR / DEFAULTS_DONE).touch()
+  return bool(done)

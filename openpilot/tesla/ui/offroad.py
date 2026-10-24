@@ -3,6 +3,7 @@ Kept apart from drawing so tools/sp_tesla_e2e/offroad_pages_check.py can test it
 import json
 import os
 import threading
+import time
 
 from openpilot.common.basedir import BASEDIR
 from openpilot.tesla import store
@@ -130,6 +131,17 @@ def setting_kind(setting) -> str:
 def next_choice(choices: list[tuple[str, int]], value) -> int:
   values = [v for _, v in choices]
   return values[(values.index(value) + 1) % len(values)] if value in values else values[0]
+
+
+def install_defaults_later(offroad, params) -> None:
+  """First boot: install store.DEFAULTS once offroad and online, then reboot so the plugins load."""
+  def loop():
+    while not store.defaults_done():
+      if offroad() and store.install_defaults() and offroad():
+        params.put_bool("DoReboot", True)
+      time.sleep(30)
+  if not store.defaults_done():
+    threading.Thread(target=loop, daemon=True).start()
 
 
 class StoreJobs:

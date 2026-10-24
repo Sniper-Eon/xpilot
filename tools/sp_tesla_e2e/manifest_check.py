@@ -15,7 +15,9 @@ Failure cases listed before implementation:
 - M9 an unknown claim kind is accepted
 - M10 a disabled plugin still takes an exclusive claim from an enabled one
 - M11 a plugin's code is not split by role (XPILOT.md 5.3): a file over MAX_LINES, a fat entry module, or pyray imported
-     outside ui.py passes; or a built-in plugin breaks the rules beyond the files listed in LAYOUT_DEBT
+     outside ui.py passes; or a built-in plugin breaks the rules
+- M12 a new plugin directory appears under openpilot/tesla/plugins/ (only the SP core plugins stay built in;
+      everything else goes to the plugin repository, github.com/onemiless/xpilot-plugins)
 """
 import json
 from pathlib import Path
@@ -36,8 +38,7 @@ for _level in ("error", "exception", "warning", "info"):  # the check only needs
   setattr(cloudlog, _level, lambda *a, **k: None)
 from openpilot.tesla.plugin import Plugin  # noqa: E402
 
-# ponytail: built-in files over MAX_LINES from before the rule; split them when next changed, never add to this list
-LAYOUT_DEBT = {"traffic_light": {"controller.py", "final_plan_arbitrator.py"}}
+CORE_PLUGINS = {"sp_engagement", "sp_models", "sp_safety_fallback"}
 
 
 def write(root: Path, d: str, **over) -> None:
@@ -168,10 +169,10 @@ def main() -> int:
     errors.append(f"M8 {len(found)} manifests but {len(builtin)} built-in plugin classes")
 
   for m in found:
-    debt = LAYOUT_DEBT.get(m.id, set())
-    for problem in mf.layout_problems(mf.PLUGINS_DIR / m.id, m.entry.split(":")[0]):
-      if not (problem.split(":")[0] in debt and "lines" in problem):
-        errors.append(f"M11 {m.id}/{problem}")
+    errors += [f"M11 {m.id}/{p}" for p in mf.layout_problems(mf.PLUGINS_DIR / m.id, m.entry.split(":")[0])]
+  extra = {d.name for d in mf.PLUGINS_DIR.iterdir() if d.is_dir() and d.name != "__pycache__"} - CORE_PLUGINS
+  if extra:
+    errors.append(f"M12 plugin directories outside the core set (move them to xpilot-plugins): {sorted(extra)}")
   with tempfile.TemporaryDirectory() as tmp:
     d = Path(tmp)
     (d / "plugin.py").write_text("x = 1\n" * (mf.MAX_ENTRY_LINES + 1))

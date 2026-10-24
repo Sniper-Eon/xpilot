@@ -33,8 +33,6 @@ Failure cases listed before implementation:
 - P26 SP's model stack (sp_models) is not the default owner of role:perception.model, keeps running next to an
        enabled replacement (two modelV2 publishers), stays off when the replacement is switched off, stops when no
        plugin owns the role (no model at all), or fork_processes.py does not gate all four SP model processes
-- P25 the bms plugin decodes 0x132/0x292 wrong (sign of the current, scales), keeps stale or other-bus frames,
-       or does not publish carStateSP.teslaBattery
 - P27 send_msg publishes a kind the plugin has no msg:<kind> claim for, or does not record it as a fault
 - P27 a declared kind is not delivered, its source is not the plugin id, or kind/payload/validForMs are lost
 - P27 PluginMsgs.fresh returns other kinds or expired messages, or drops validForMs 0 (no expiry)
@@ -257,40 +255,10 @@ def main() -> int:
       owners[k] = f.parent.name
   errors += long_target_checks(plugins_mod)
   errors += source_checks(plugins_mod, real)
-  errors += bms_checks()
   errors += msg_checks(plugins_mod)
 
   print(json.dumps({"plugins": [c.NAME for c in real], "errors": errors}, indent=1))
   return 1 if errors else 0
-
-
-def bms_checks() -> list[str]:
-  from openpilot.cereal import custom
-  from openpilot.tesla.plugins.bms.plugin import HV_STATUS, SOC_STATUS, Bms, decode
-  errors = []
-  # 400.00 V, current raw -1234 * -0.1 = 123.4 A discharging; SOC raw 765 at bit 10 = 76.5 %
-  hv = (40000 | ((-1234 & 0xFFFF) << 16)).to_bytes(8, "little")
-  soc = (765 << 10).to_bytes(8, "little")
-  now = 10_000_000_000
-  got = decode({HV_STATUS: (now, hv), SOC_STATUS: (now, soc)}, now)
-  if got is None or any(abs(a - b) > 1e-6 for a, b in zip(got, (76.5, 400.0, 123.4), strict=True)):
-    errors.append(f"P25 bms decode {got}")
-  if decode({HV_STATUS: (now - 3_000_000_000, hv), SOC_STATUS: (now, soc)}, now) is not None:
-    errors.append("P25 bms uses a stale frame")
-  bms = Bms(types.SimpleNamespace(carFingerprint="x"), None)
-  bms.observe_can([(now, [(HV_STATUS, hv, 0), (SOC_STATUS, soc, 1)])], now)
-  if HV_STATUS in bms.frames or SOC_STATUS not in bms.frames:
-    errors.append(f"P25 bms keeps frames {sorted(bms.frames)}")
-  CS_SP = custom.CarStateSP.new_message()
-  bms.publish_state(CS_SP)
-  if CS_SP.teslaBattery.available:
-    errors.append("P25 bms available without fresh frames")
-  import time
-  bms.frames = {HV_STATUS: (time.monotonic_ns(), hv), SOC_STATUS: (time.monotonic_ns(), soc)}
-  bms.publish_state(CS_SP)
-  if not CS_SP.teslaBattery.available or abs(CS_SP.teslaBattery.soc - 76.5) > 1e-3:
-    errors.append(f"P25 bms publish {CS_SP.teslaBattery}")
-  return errors
 
 
 def long_target_checks(plugins) -> list[str]:

@@ -144,6 +144,6 @@ class Plugin:
 
   @classmethod
   def external_provider(cls, params):
-    """None, or a Provider (plugins/external_compute/provider.py) for externald to bridge; needs the external.provider
+    """None, or a Provider (xpilot-plugins: plugins/external_compute/provider.py) for externald to bridge; needs the external.provider
     claim. externald runs only while external_compute is on."""
     return None

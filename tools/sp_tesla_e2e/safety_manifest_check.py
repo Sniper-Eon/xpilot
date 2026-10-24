@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Failure modes, before generator/manifest implementation:
-- A duplicate bit, undeclared header, missing header, CAN claim without safety TX, or safety TX without a claim is accepted.
+"""Failure modes of gen_safety.py (declarations in opendbc/safety/plugins/safety.json):
+- A duplicate bit, undeclared header, missing header, tx differing from the header .msg, or a built-in plugin
+  can.tx claim missing from safety.json is accepted.
 - A stale registry passes --check, regeneration is not deterministic, or invalid input overwrites the registry.
-- Python setup uses a hard-coded bit instead of its manifest; disabled vehicle/longitudinal gates are bypassed.
-Run from the repo root with the task venv. CLI tests use real files in a disposable miniature repository.
+The store side (installed plugins must match safety.json) is store_check S18; the plugins' own use of their
+param_bit is tested in the plugin repository. Real files in a disposable miniature repository.
 """
 
 import json
@@ -12,7 +13,6 @@ import shutil
 import subprocess
 import sys
 import tempfile
-import types
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = Path('openpilot/tesla/plugins/gen_safety.py')
@@ -26,12 +26,8 @@ def main():
     shutil.copytree(ROOT / HEADERS, root / HEADERS)
     (root / SCRIPT).parent.mkdir(parents=True)
     shutil.copyfile(ROOT / SCRIPT, root / SCRIPT)
-    manifests = {}
-    for name in ('auto_speed', 'ambient_light'):
-      path = root / 'openpilot/tesla/plugins' / name / 'plugin.json'
-      path.parent.mkdir()
-      manifests[name] = json.loads((ROOT / path.relative_to(root)).read_text())
-      path.write_text(json.dumps(manifests[name]))
+    declared_path = root / HEADERS / 'safety.json'
+    declared = json.loads(declared_path.read_text())
     registry = root / HEADERS / 'registry.h'
 
     def run(label, expected=0, check=False):
@@ -46,52 +42,28 @@ def main():
     run('stale-check', 1, check=True)
     run('regenerate')
     assert registry.read_bytes() == original
-    ambient = root / 'openpilot/tesla/plugins/ambient_light/plugin.json'
-    for label in ('duplicate-bit', 'missing-header', 'claim-without-safety-tx', 'safety-tx-without-claim'):
-      data = json.loads(json.dumps(manifests['ambient_light']))
+    builtin = root / 'openpilot/tesla/plugins/x/plugin.json'
+    builtin.parent.mkdir()
+    for label in ('duplicate-bit', 'missing-header', 'tx-differs-from-header', 'builtin-claim-undeclared'):
+      data = json.loads(json.dumps(declared))
       if label == 'duplicate-bit':
-        data['safety']['param_bit'] = manifests['auto_speed']['safety']['param_bit']
+        data['ambient_light']['param_bit'] = data['auto_speed']['param_bit']
       elif label == 'missing-header':
-        data['safety']['header'] = 'missing.h'
-      elif label == 'claim-without-safety-tx':
-        data['safety']['tx'] = []
+        data['ambient_light']['header'] = 'missing.h'
+      elif label == 'tx-differs-from-header':
+        data['ambient_light']['tx'] = ['0x67A:1']
       else:
-        data['claims'] = []
-      ambient.write_text(json.dumps(data))
+        builtin.write_text(json.dumps({'claims': ['can.tx:0x123:0']}))
+      declared_path.write_text(json.dumps(data))
       run(label, 1)
       assert registry.read_bytes() == original, label
-    ambient.write_text(json.dumps(manifests['ambient_light']))
+    builtin.unlink()
+    declared_path.write_text(json.dumps(declared))
     (root / HEADERS / 'orphan.h').write_text('#pragma once\n')
     run('undeclared-header', 1)
     assert registry.read_bytes() == original
 
-  sys.path[:0] = [str(ROOT), str(ROOT / 'opendbc_repo'), str(ROOT / 'msgq_repo')]
-  sys.modules['openpilot.common.params'] = types.SimpleNamespace(Params=object, UnknownKeyName=KeyError)
-  from openpilot.tesla import plugins
-
-  for cls in plugins.PLUGINS:
-    if cls.NAME not in ('auto_speed', 'ambient_light'):
-      continue
-    # Change the loaded declaration to prove setup consumes it, without constructing a CANParser.
-    original_bit = cls.MANIFEST.safety['param_bit']
-    cls.MANIFEST.safety['param_bit'] = '0x2000'
-    try:
-      plugin = object.__new__(cls)
-      plugin.CP = types.SimpleNamespace(openpilotLongitudinalControl=True)
-      plugin.controller = types.SimpleNamespace(configured=False)
-      for flags in (0, 1):
-        cp_sp = types.SimpleNamespace(flags=flags, safetyParam=0)
-        plugin.setup(cp_sp)
-        assert cp_sp.safetyParam == (0x2000 if flags else 0), (cls.NAME, flags, cp_sp.safetyParam)
-      if cls.NAME == 'auto_speed':
-        plugin.CP.openpilotLongitudinalControl = False
-        cp_sp = types.SimpleNamespace(flags=1, safetyParam=0)
-        plugin.setup(cp_sp)
-        assert cp_sp.safetyParam == 0
-      records.append({'label': cls.NAME + '-manifest-bit-setup', 'exit_code': 0})
-    finally:
-      cls.MANIFEST.safety['param_bit'] = original_bit
-  assert len(records) == 11, records
+  assert len(records) == 9, records
   print(json.dumps(records, indent=2))
 
 

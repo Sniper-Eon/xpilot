@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Pre-implementation DM/process/ambient acceptance, with an inspectable artifact.
+"""Pre-implementation DM/process acceptance, with an inspectable artifact.
 Run with repository native libraries built. No vehicle CAN is transmitted.
 """
 import argparse
@@ -19,7 +19,6 @@ def run(output):
   from openpilot.sunnypilot.hardware.profile import HardwareProfile, infer_hardware_profile
   from openpilot.system.manager.process_config import managed_processes
   from opendbc.car import structs
-  from openpilot.tesla.plugins.ambient_light.controller import AmbientLightingController
 
   evidence = []
   with tempfile.TemporaryDirectory() as directory:
@@ -60,31 +59,7 @@ def run(output):
           params.remove('DriverMonitoringEnabled')
           assert latch_driver_monitoring(params) == default
           evidence.append({'case':'dm-session','profile':profile,'device_type':device_type,'configured':enabled,'default':default,'active':active,'onroad_edit_held':True,'reset_restores_default':True})
-    os.environ['SUNNYPILOT_HARDWARE_PROFILE'] = 'standard'
-    params = Params(str(Path(directory) / 'ambient'))
-    params.put_bool('TeslaBlindspotAmbientEnabled', True, block=True)
-    params.put('TeslaBlindspotAmbientDayBrightness', 100, block=True)
-    params.put('TeslaBlindspotAmbientBrightness', 30, block=True)
-    for left,right,night,side,brightness in [(1,0,False,'left',100),(0,2,True,'right',30),(1,2,True,'both',30)]:
-      c = AmbientLightingController()
-      c.service_params(params)
-      now = 10_000_000_000
-      c.observe_frame(now,0x679,bytes(7),1)
-      c.update_blindspot(left,right,night,now)
-      frames = c.take_can_sends(now)
-      assert len(frames)==1
-      frame=frames[0]
-      assert frame.address==0x679 and frame.src==1 and len(frame.dat)==7
-      assert tuple(frame.dat[1:4])==(255,0,0) and (frame.dat[4]&127)==brightness
-      assert c.take_can_sends(now+1)==[]
-      c.update_blindspot(0,0,night,now+100_000_000)
-      assert c.take_can_sends(now+100_000_000)==[]
-      evidence.append({'case':'ambient','side':side,'night':night,'brightness':brightness,'payload':frame.dat.hex(),'bounded':True})
-    c=AmbientLightingController(); c.service_params(params)
-    c.update_blindspot(1,1,True,20_000_000_000)
-    assert c.take_can_sends(20_000_000_000)==[]
-    evidence.append({'case':'ambient-no-fresh-can','no_transmit':True})
-  result={'passed':True,'scope':'native Param -> latched session -> manager predicates; ambient Param -> bounded CAN output; no physical CAN','head':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),'cases':evidence}
+  result={'passed':True,'scope':'native Param -> latched session -> manager predicates; no physical CAN','head':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),'cases':evidence}
   output.parent.mkdir(parents=True,exist_ok=True)
   output.write_text(json.dumps(result,indent=2)+'\n')
   print(output)

@@ -19,6 +19,9 @@ Failure cases listed before implementation:
 - S15 a plugin for this platform is refused
 - S16 a plugin that breaks the code layout rules (manifest.layout_problems, e.g. one file over MAX_LINES) is installed
 - S17 the UI looks for an installed plugin's ui.py under openpilot.tesla.plugins instead of xpilot_ext
+- S18 a plugin whose can.tx claims or safety block differ from the firmware's safety.json is installed, or a matching
+      one (store auto_speed) is refused
+- S19 first-boot defaults are not installed, or the marker is set on an unreachable index (no retry)
 """
 import hashlib
 import http.server
@@ -127,8 +130,15 @@ def main() -> int:
   link.type, link.linkname = tarfile.SYMTYPE, "/etc/passwd"
   publish("ext_trav", archive("ext_trav", good_files("ext_trav"), raw=[evil]))
   publish("ext_link", archive("ext_link", good_files("ext_link"), raw=[link]))
-  publish("auto_speed", archive("auto_speed", good_files("auto_speed")))
-  publish("ext_dup", archive("ext_dup", good_files("ext_dup", params={"TeslaAutoSpeedLimit": {"type": "BOOL"}})))
+  publish("sp_models", archive("sp_models", good_files("sp_models")))
+  publish("ext_dup", archive("ext_dup", good_files("ext_dup", params={"IsMetric": {"type": "BOOL"}})))
+  declared = json.loads(store.SAFETY_JSON.read_text())
+  safe = declared["auto_speed"]
+  tx = [f"can.tx:{t}" for t in safe["tx"]]
+  publish("auto_speed", archive("auto_speed", good_files("auto_speed", claims=tx, safety=safe)))
+  publish("ext_tx", archive("ext_tx", good_files("ext_tx", claims=tx, safety=safe)))
+  publish("ambient_light", archive("ambient_light", good_files("ambient_light", claims=tx, safety=safe)))
+  publish("speed_card", archive("speed_card", good_files("speed_card")))
   publish("ext_fat", archive("ext_fat", {**good_files("ext_fat"), "helper.py": "VALUE = 1\n" * (mf.MAX_LINES + 1)}))
   publish("ext_api", archive("ext_api", good_files("ext_api")), api=mf.API_VERSION + 1)
   here, other = mf.host_platform(), {"machine": "sparc", "python": "cpython-27"}
@@ -165,12 +175,15 @@ def main() -> int:
     errors.append("S15 this platform refused")
   if (r := install("ext_ok")) is not None:
     errors.append(f"S6 install ext_ok failed: {r}")
-  for pid, code in (("ext_hash", "S1"), ("ext_trav", "S2"), ("ext_link", "S2"), ("auto_speed", "S4"), ("ext_dup", "S5"), ("ext_fat", "S16")):
+  for pid, code in (("ext_hash", "S1"), ("ext_trav", "S2"), ("ext_link", "S2"), ("sp_models", "S4"), ("ext_dup", "S5"), ("ext_fat", "S16"),
+                    ("ext_tx", "S18"), ("ambient_light", "S18")):
     if install(pid) is None:
       errors.append(f"{code} {pid} installed")
   if (TMP / "evil.txt").exists() or (TMP / "installed" / "evil.txt").exists():
     errors.append("S2 file written outside the plugin directory")
-  if any((TMP / "installed" / p).exists() for p in ("ext_hash", "ext_trav", "ext_link", "ext_dup", "ext_fat")):
+  if (r := install("auto_speed")) is not None:
+    errors.append(f"S18 declared safety plugin refused: {r}")
+  if any((TMP / "installed" / p).exists() for p in ("ext_hash", "ext_trav", "ext_link", "ext_dup", "ext_fat", "ext_tx", "ambient_light")):
     errors.append("S1/S2/S5/S16 rejected plugin left on disk")
 
   # update with a broken version keeps 1.0.0 (S3); a good update replaces it (S12)
@@ -197,9 +210,9 @@ def main() -> int:
   elif ext.X != "1.0.0":
     errors.append("S6 relative import inside the installed package failed")
   elif plugins.ui_module(ext) != "xpilot_ext.ext_ok.ui" or importlib.import_module(plugins.ui_module(ext)).VALUE != "1.0.0" or \
-      plugins.ui_module(next(c for c in plugins.PLUGINS if c.NAME == "auto_speed")) != "openpilot.tesla.plugins.auto_speed.ui":
+      plugins.ui_module(next(c for c in plugins.PLUGINS if c.NAME == "sp_models")) != "openpilot.tesla.plugins.sp_models.ui":
     errors.append(f"S17 wrong ui module: {plugins.ui_module(ext)}")
-  if names.count("auto_speed") != 1:
+  if names.count("sp_models") != 1:
     errors.append("S4 built-in id duplicated")
 
   core = CoreParams()
@@ -218,8 +231,8 @@ def main() -> int:
     again = ParamsView(CoreParams())
     if again.get("Extext_okLevel") != 12 or again.get_bool("Extext_okOn") or again.get("Extext_okCfg") != {"a": [1, 2]}:
       errors.append("S8 round trip")
-    view.put("TeslaAutoSpeedLimit", True)
-    if core.values.get("TeslaAutoSpeedLimit") is not True:
+    view.put("IsMetric", True)
+    if core.values.get("IsMetric") is not True:
       errors.append("S8 built-in key not routed to compiled Params")
   except Exception as e:
     errors.append(f"S8 raised {e!r}")
@@ -228,6 +241,14 @@ def main() -> int:
   plugins = importlib.reload(plugins)
   if any(c.NAME == "ext_ok" for c in plugins.PLUGINS):
     errors.append("S7 uninstalled plugin still discovered")
+
+  # S19: an unreachable index sets no marker; a reachable one installs the missing defaults once
+  store.INDEX_URL = f"{base}/missing.json"
+  if store.install_defaults() or store.defaults_done():
+    errors.append("S19 marker set on an unreachable index")
+  store.INDEX_URL = f"{base}/index.json"
+  if not store.install_defaults() or "speed_card" not in store.installed_versions() or not store.defaults_done():
+    errors.append(f"S19 defaults not installed: {store.installed_versions()}")
 
   server.shutdown()
   print(json.dumps({"errors": errors}, indent=1))
