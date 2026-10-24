@@ -1,0 +1,303 @@
+{
+  "ignored_fields": [
+    "logMonoTime",
+    "carState.cumLagMs",
+    "controlsState.deprecated.cumLagMs",
+    "controlsState.deprecated.startMonoTime"
+  ],
+  "tolerance": 0,
+  "processes": {
+    "selfdrived": {
+      "base_counts": {
+        "selfdriveState": 5973,
+        "onroadEvents": 62,
+        "selfdriveStateSP": 5973,
+        "onroadEventsSP": 61
+      },
+      "head_counts": {
+        "selfdriveState": 5973,
+        "onroadEvents": 62,
+        "selfdriveStateSP": 5973,
+        "onroadEventsSP": 61
+      },
+      "types": {
+        "onroadEvents": {
+          "base": 62,
+          "head": 62,
+          "differing_frames": 0,
+          "first_differences": []
+        },
+        "onroadEventsSP": {
+          "base": 61,
+          "head": 61,
+          "differing_frames": 0,
+          "first_differences": []
+        },
+        "selfdriveState": {
+          "base": 5973,
+          "head": 5973,
+          "differing_frames": 5922,
+          "first_differences": [
+            {
+              "frame": 51,
+              "base_logMonoTime": 491598328250,
+              "head_logMonoTime": 491598328250,
+              "diff": [
+                [
+                  "change",
+                  "selfdriveState.state",
+                  [
+                    "enabled",
+                    "disabled"
+                  ]
+                ],
+                [
+                  "change",
+                  "selfdriveState.enabled",
+                  [
+                    true,
+                    false
+                  ]
+                ],
+                [
+                  "change",
+                  "selfdriveState.active",
+                  [
+                    true,
+                    false
+                  ]
+                ]
+              ]
+            },
+            {
+              "frame": 52,
+              "base_logMonoTime": 491607239051,
+              "head_logMonoTime": 491607239051,
+              "diff": [
+                [
+                  "change",
+                  "selfdriveState.state",
+                  [
+                    "enabled",
+                    "disabled"
+                  ]
+                ],
+                [
+                  "change",
+                  "selfdriveState.enabled",
+                  [
+                    true,
+                    false
+                  ]
+                ],
+                [
+                  "change",
+                  "selfdriveState.active",
+                  [
+                    true,
+                    false
+                  ]
+                ]
+              ]
+            },
+            {
+              "frame": 53,
+              "base_logMonoTime": 491617089013,
+              "head_logMonoTime": 491617089013,
+              "diff": [
+                [
+                  "change",
+                  "selfdriveState.state",
+                  [
+                    "enabled",
+                    "disabled"
+                  ]
+                ],
+                [
+                  "change",
+                  "selfdriveState.enabled",
+                  [
+                    true,
+                    false
+                  ]
+                ],
+                [
+                  "change",
+                  "selfdriveState.active",
+                  [
+                    true,
+                    false
+                  ]
+                ]
+              ]
+            },
+            {
+              "frame": 54,
+              "base_logMonoTime": 491627098514,
+              "head_logMonoTime": 491627098514,
+              "diff": [
+                [
+                  "change",
+                  "selfdriveState.state",
+                  [
+                    "enabled",
+                    "disabled"
+                  ]
+                ],
+                [
+                  "change",
+                  "selfdriveState.enabled",
+                  [
+                    true,
+                    false
+                  ]
+                ],
+                [
+                  "change",
+                  "selfdriveState.active",
+                  [
+                    true,
+                    false
+                  ]
+                ]
+              ]
+            },
+            {
+              "frame": 55,
+              "base_logMonoTime": 491637184790,
+              "head_logMonoTime": 491637184790,
+              "diff": [
+                [
+                  "change",
+                  "selfdriveState.state",
+                  [
+                    "enabled",
+                    "disabled"
+                  ]
+                ],
+                [
+                  "change",
+                  "selfdriveState.enabled",
+                  [
+                    true,
+                    false
+                  ]
+                ],
+                [
+                  "change",
+                  "selfdriveState.active",
+                  [
+                    true,
+                    false
+                  ]
+                ]
+              ]
+            }
+          ]
+        },
+        "selfdriveStateSP": {
+          "base": 5973,
+          "head": 5973,
+          "differing_frames": 0,
+          "first_differences": []
+        }
+      },
+      "passed": false,
+      "required_types": [
+        "selfdriveState",
+        "selfdriveStateSP",
+        "onroadEvents",
+        "onroadEventsSP"
+      ]
+    },
+    "controlsd": {
+      "base_counts": {
+        "carControl": 5973,
+        "controlsState": 5973,
+        "carControlSP": 5973
+      },
+      "head_counts": {
+        "carControl": 5973,
+        "controlsState": 5973,
+        "carControlSP": 5973
+      },
+      "types": {
+        "carControl": {
+          "base": 5973,
+          "head": 5973,
+          "differing_frames": 0,
+          "first_differences": []
+        },
+        "carControlSP": {
+          "base": 5973,
+          "head": 5973,
+          "differing_frames": 0,
+          "first_differences": []
+        },
+        "controlsState": {
+          "base": 5973,
+          "head": 5973,
+          "differing_frames": 0,
+          "first_differences": []
+        }
+      },
+      "passed": true,
+      "required_types": [
+        "carControl"
+      ]
+    },
+    "card": {
+      "base_counts": {
+        "carState": 5972,
+        "carParams": 2,
+        "carOutput": 5972,
+        "radarTracks": 1194,
+        "sendcan": 5922
+      },
+      "head_counts": {
+        "carState": 5972,
+        "carParams": 2,
+        "carOutput": 5972,
+        "radarTracks": 1194,
+        "sendcan": 5922
+      },
+      "types": {
+        "carOutput": {
+          "base": 5972,
+          "head": 5972,
+          "differing_frames": 0,
+          "first_differences": []
+        },
+        "carParams": {
+          "base": 2,
+          "head": 2,
+          "differing_frames": 0,
+          "first_differences": []
+        },
+        "carState": {
+          "base": 5972,
+          "head": 5972,
+          "differing_frames": 0,
+          "first_differences": []
+        },
+        "radarTracks": {
+          "base": 1194,
+          "head": 1194,
+          "differing_frames": 0,
+          "first_differences": []
+        },
+        "sendcan": {
+          "base": 5922,
+          "head": 5922,
+          "differing_frames": 0,
+          "first_differences": []
+        }
+      },
+      "passed": true,
+      "required_types": [
+        "sendcan"
+      ]
+    }
+  },
+  "passed": false
+}

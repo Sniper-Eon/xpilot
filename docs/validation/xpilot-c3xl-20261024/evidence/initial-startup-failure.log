@@ -1,0 +1,27 @@
+active
+97347 bash -c systemctl is-active comma  pgrep -af "manager.py|launch_chffrplus|pandad|scons"  tmux capture-pane -p -S -350 -t comma:0.0  cat /data/params/d/IsOffroad  cat /data/params/d/IsEngaged
+1689600
+1689600
+tee: /sys/devices/system/cpu/cpufreq/policy4/scaling_max_freq: Invalid argument
+waiting for magic
+magic ready after 0s
+launching system reset, got taps
+gbm_create_device(156): Info: backend name is: msm_drm
+raylib: COMMA: Failed to initialize color correction
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+10

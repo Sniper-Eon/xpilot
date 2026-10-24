@@ -1,0 +1,47 @@
+{
+  "tree": "head",
+  "process": "selfdrived",
+  "messages": {
+    "selfdriveState": 5973,
+    "onroadEvents": 62,
+    "selfdriveStateSP": 5973,
+    "onroadEventsSP": 61
+  },
+  "input_sha256": "1770f70d8f8053e5b1984ed4f9d704be8d58f6d55b59cafd6aa11109aaf777c1",
+  "params_sha256": "1152339da5e9257d04f899dbf99e82a5ad6d1ab13883d4579d7be0f7cd8217ff",
+  "cfg_pubs": [
+    "carState",
+    "deviceState",
+    "pandaStates",
+    "peripheralState",
+    "extrinsicsCalibration",
+    "driverMonitoringState",
+    "longitudinalPlan",
+    "deviceMotion",
+    "lateralDelay",
+    "vehicleParameters",
+    "radarState",
+    "modelV2",
+    "cabinCameraState",
+    "narrowRoadCameraState",
+    "wideRoadCameraState",
+    "managerState",
+    "lateralTorqueParameters",
+    "accelerometer",
+    "gyroscope",
+    "carOutput",
+    "gpsLocationExternal",
+    "gpsLocation",
+    "controlsState",
+    "carControl",
+    "driverAssistance",
+    "alertDebug"
+  ],
+  "cfg_subs": [
+    "selfdriveState",
+    "onroadEvents",
+    "selfdriveStateSP",
+    "onroadEventsSP"
+  ],
+  "output_sha256": "2066b43705c4607a1c6916995e0e9f9cabed1c02ab0c8f03cd8ec1aac6ad1148"
+}
