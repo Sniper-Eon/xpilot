@@ -1,0 +1,67 @@
+{
+  "task": "X-20261023-16",
+  "status": "DONE",
+  "device_head": "9258ebcb48981b95c81ff73471efb2979cc63727",
+  "report_branch": "task/X-20261023-13",
+  "data": {
+    "avail_before": 5313699840,
+    "avail_after": 19743948800,
+    "avail_final": 19653787648,
+    "skipped": []
+  },
+  "failure_modes": {
+    "a": "PASS",
+    "b": "PASS",
+    "c": "PASS",
+    "d": "PASS",
+    "e": "PASS",
+    "f": "PASS"
+  },
+  "checks": {
+    "external_bridge_check.py": 0,
+    "manifest_check.py": 0,
+    "offroad_pages_check.py": 0,
+    "phase2_check.py": 0,
+    "phase3_check.py": 0,
+    "phase4_check.py": 0,
+    "plugin_host_check.py": 0,
+    "store_check.py": 0,
+    "tile_layout_check.py": 0
+  },
+  "e2e": {
+    "big_screen_passed": true,
+    "store_errors": []
+  },
+  "alpha_long": {
+    "param_after_60s": true,
+    "alphaLongitudinalAvailable": true,
+    "openpilotLongitudinalControl": false
+  },
+  "problems": [
+    {
+      "id": 1,
+      "type": "verification_script",
+      "resolved": true,
+      "error": "AssertionError after asynchronous put_bool immediate read"
+    },
+    {
+      "id": 2,
+      "type": "verification_script",
+      "resolved": true,
+      "error": "AttributeError: 'bool' object has no attribute 'hex'"
+    },
+    {
+      "id": 3,
+      "type": "environment",
+      "resolved": false,
+      "error": "Plugin store index and SP model index connection reset; SP uses expired cache"
+    }
+  ],
+  "not_run": [
+    "onroad engagement",
+    "card gate under hung selfdrived",
+    "physical MADS button",
+    "all closed-course items",
+    "Alpha real longitudinal control at next car start"
+  ]
+}

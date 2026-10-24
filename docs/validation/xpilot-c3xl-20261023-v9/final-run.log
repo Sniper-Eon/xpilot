@@ -1,0 +1,6 @@
+kj/filesystem-disk-unix.c++:1734: warning: PWD environment variable doesn't match current directory; pwd = /data/openpilot
+Traceback (most recent call last):
+  File "/data/xpilot-X-20261023-16-evidence/alpha-long.py", line 25, in <module>
+    assert p.get_bool('AlphaLongitudinalEnabled')
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError

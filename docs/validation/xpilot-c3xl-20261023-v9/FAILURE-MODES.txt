@@ -1,0 +1,9 @@
+a. Native SCons fails, cereal enum generation or C++ consumers break.
+b. Real Params/default owners alter install_core or card default path.
+c. phase4_check.py fails with real cereal/msgq/zmq/Params modules.
+d. Any other *_check.py, big_screen_e2e.py, or store_e2e.py regresses.
+e. Engagement/Safety Fallback category omits its SP default owner or allows switching it off.
+f. 60-second production window has UI/manager traceback or plugin load/draw error.
+Additional operational gates: wrong device/profile/HEAD, unsafe state, Panda signature drift,
+live/in-use deletion, free space below 8 GiB, dirty/store file drift, wrong bundle or non-ff update,
+parameter restore mismatch, service not restored, Alpha longitudinal absent after 60 seconds.

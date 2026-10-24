@@ -1,0 +1,53 @@
+kj/filesystem-disk-unix.c++:1734: warning: PWD environment variable doesn't match current directory; pwd = /data/openpilot
+dirty_count 287 store_files 10
+The bundle contains this ref:
+9258ebcb48981b95c81ff73471efb2979cc63727 refs/remotes/origin/xpilot
+The bundle requires this ref:
+f7af016516db4043bec0af24e6d3133fd864dfc9 
+The bundle uses this hash algorithm: sha1
+/data/xpilot-X-20261023-16-evidence/target.bundle is okay
+From /data/xpilot-X-20261023-16-evidence/target.bundle
+   f7af016..9258ebc  origin/xpilot -> origin/xpilot
+kj/filesystem-disk-unix.c++:1734: warning: PWD environment variable doesn't match current directory; pwd = /data/openpilot
+Updating f7af016..9258ebc
+Fast-forward
+ XPILOT.md                                          |  16 +-
+ openpilot/cereal/custom.capnp                      |   1 +
+ openpilot/selfdrive/car/card.py                    |   2 +-
+ openpilot/selfdrive/selfdrived/selfdrived.py       |   1 +
+ openpilot/tesla/alerts.py                          |  10 +-
+ openpilot/tesla/core_host.py                       | 245 +++++++++++++++
+ openpilot/tesla/plugin.py                          |  19 ++
+ openpilot/tesla/plugins/__init__.py                |  13 +
+ openpilot/tesla/plugins/lead_card/ui.py            |   2 +-
+ openpilot/tesla/plugins/sp_engagement/__init__.py  |   0
+ openpilot/tesla/plugins/sp_engagement/plugin.json  |  16 +
+ openpilot/tesla/plugins/sp_engagement/plugin.py    |   7 +
+ .../tesla/plugins/sp_safety_fallback/__init__.py   |   0
+ .../tesla/plugins/sp_safety_fallback/plugin.json   |  16 +
+ .../tesla/plugins/sp_safety_fallback/plugin.py     |   7 +
+ tools/sp_tesla_e2e/phase4_check.py                 | 340 +++++++++++++++++++++
+ tools/sp_tesla_e2e/plugin_host_check.py            |   2 +-
+ 17 files changed, 688 insertions(+), 9 deletions(-)
+ create mode 100644 openpilot/tesla/core_host.py
+ create mode 100644 openpilot/tesla/plugins/sp_engagement/__init__.py
+ create mode 100644 openpilot/tesla/plugins/sp_engagement/plugin.json
+ create mode 100644 openpilot/tesla/plugins/sp_engagement/plugin.py
+ create mode 100644 openpilot/tesla/plugins/sp_safety_fallback/__init__.py
+ create mode 100644 openpilot/tesla/plugins/sp_safety_fallback/plugin.json
+ create mode 100644 openpilot/tesla/plugins/sp_safety_fallback/plugin.py
+ create mode 100644 tools/sp_tesla_e2e/phase4_check.py
+kj/filesystem-disk-unix.c++:1734: warning: PWD environment variable doesn't match current directory; pwd = /data/openpilot
+kj/filesystem-disk-unix.c++:1734: warning: PWD environment variable doesn't match current directory; pwd = /data/openpilot
+kj/filesystem-disk-unix.c++:1734: warning: PWD environment variable doesn't match current directory; pwd = /data/openpilot
+9258ebcb48981b95c81ff73471efb2979cc63727
+  [RANLIB] openpilot/system/loggerd/liblogger.a
+  [LINK] openpilot/system/loggerd/loggerd
+  [LINK] openpilot/system/loggerd/bootlog
+  [LINK] openpilot/system/loggerd/encoderd
+  [CXX] openpilot/selfdrive/pandad/pandad.o
+  [LINK] openpilot/selfdrive/pandad/pandad
+scons: done building targets.
+real 214.09
+user 671.93
+sys 38.67

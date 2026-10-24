@@ -1,0 +1,35 @@
+{"active": "/data/xpilot-install-20261022/candidate"}
+Filesystem       1B-blocks        Used  Available Use% Mounted on
+/dev/sda12     31526391808 24585302016 5313699840  83% /data
+
+{"avail_before": 5313699840}
+sudo rm -rf /data/sp-sync-experiment-20261017
+{"path": "/data/sp-sync-experiment-20261017", "result": "DELETED", "allocated_bytes": 7187009536, "df_delta_bytes": 7186993152, "lsof_matches": 0}
+sudo rm -rf /data/agnos-offline-20261013
+{"path": "/data/agnos-offline-20261013", "result": "DELETED", "allocated_bytes": 1029005312, "df_delta_bytes": 1029005312, "lsof_matches": 0}
+sudo rm -rf /data/nav-reboot-baseline-20261013
+{"path": "/data/nav-reboot-baseline-20261013", "result": "DELETED", "allocated_bytes": 827559936, "df_delta_bytes": 827559936, "lsof_matches": 0}
+sudo rm -rf /data/navassist-track-p0-offline
+{"path": "/data/navassist-track-p0-offline", "result": "DELETED", "allocated_bytes": 827129856, "df_delta_bytes": 827129856, "lsof_matches": 0}
+sudo rm -rf /data/c3xl194_bmv4_20min_20260917
+{"path": "/data/c3xl194_bmv4_20min_20260917", "result": "DELETED", "allocated_bytes": 787677184, "df_delta_bytes": 787677184, "lsof_matches": 0}
+sudo rm -rf /data/openpilot-before-offline-20261013
+{"path": "/data/openpilot-before-offline-20261013", "result": "DELETED", "allocated_bytes": 653418496, "df_delta_bytes": 653418496, "lsof_matches": 0}
+sudo rm -rf /data/prebuild-baseline-20261013
+{"path": "/data/prebuild-baseline-20261013", "result": "DELETED", "allocated_bytes": 630657024, "df_delta_bytes": 630657024, "lsof_matches": 0}
+sudo rm -rf /data/dev-sp-nav-prebuild-offline
+{"path": "/data/dev-sp-nav-prebuild-offline", "result": "DELETED", "allocated_bytes": 630644736, "df_delta_bytes": 630644736, "lsof_matches": 0}
+sudo rm -rf /data/c3xl-1344-build
+{"path": "/data/c3xl-1344-build", "result": "DELETED", "allocated_bytes": 524570624, "df_delta_bytes": 524570624, "lsof_matches": 0}
+sudo rm -rf /data/c3xl-resolution-20261010
+{"path": "/data/c3xl-resolution-20261010", "result": "DELETED", "allocated_bytes": 441757696, "df_delta_bytes": 441757696, "lsof_matches": 0}
+sudo rm -rf /data/dev-sp-nav-prebuild.tar.gz
+{"path": "/data/dev-sp-nav-prebuild.tar.gz", "result": "DELETED", "allocated_bytes": 375062528, "df_delta_bytes": 375062528, "lsof_matches": 0}
+sudo rm -rf /data/c3xl-ctm-1344-20260923
+{"path": "/data/c3xl-ctm-1344-20260923", "result": "DELETED", "allocated_bytes": 269312000, "df_delta_bytes": 269312000, "lsof_matches": 0}
+sudo rm -rf /data/c3xl-1344-evidence
+{"path": "/data/c3xl-1344-evidence", "result": "DELETED", "allocated_bytes": 246476800, "df_delta_bytes": 246472704, "lsof_matches": 0}
+Filesystem       1B-blocks        Used   Available Use% Mounted on
+/dev/sda12     31526391808 10155053056 19743948800  34% /data
+
+{"avail_after": 19743948800}

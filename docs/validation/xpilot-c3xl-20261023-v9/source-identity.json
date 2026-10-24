@@ -1,0 +1,23 @@
+{
+  "checkout": "/Users/mile/Desktop/mo-op/artifacts/xpilot-install-20261022/source",
+  "branch": "task/X-20261023-13",
+  "initial_head": "ae281f454c32f4b11408b682d9bba144fbdb02b4",
+  "target": "9258ebcb48981b95c81ff73471efb2979cc63727",
+  "plugin_main": "cb3f428b54aa3745df4c82acb1b7152b225bfbcb",
+  "bundle_sha256": "da5e03c53e90025a551dd9d0bf35b6c2c5c960e790432d4303d9ae9c4eb6aad5",
+  "read_files": {
+    "AGENTS.md": "b0ab1402148cd27f6bc98a6613ed557823baa686200bc0277f0362b827164be0",
+    "XPILOT.md": "c2d37e0b880431d08e031936e01d4282a70c62d7c05a3be3d1021a5acc2b9742",
+    "openpilot/tesla/core_host.py": "d6b8ee1c3ecb30a2fdbc4078b2547c692e6d099a52a07b628469911e20e9f2d9",
+    "tools/sp_tesla_e2e/phase4_check.py": "7e26197068cfbdaadff8b2add9bd399e1e655f1b9b487ee6887bed0daae0eac3"
+  },
+  "target_files": {
+    "AGENTS.md": "b0ab1402148cd27f6bc98a6613ed557823baa686200bc0277f0362b827164be0",
+    "XPILOT.md": "c2d37e0b880431d08e031936e01d4282a70c62d7c05a3be3d1021a5acc2b9742",
+    "openpilot/tesla/core_host.py": "d6b8ee1c3ecb30a2fdbc4078b2547c692e6d099a52a07b628469911e20e9f2d9",
+    "tools/sp_tesla_e2e/phase4_check.py": "7e26197068cfbdaadff8b2add9bd399e1e655f1b9b487ee6887bed0daae0eac3"
+  },
+  "v8_report_sha256": "4fb68103dd8d8a1f1863df5c840d8c3495851fc6399cf67931d5cf4d8da2679a",
+  "diag_report_sha256": "f1b502f086934ab1f13b98dcd486b7f92c0de1366f81480aab9f4d3668a2e56b",
+  "candidates_sha256": "849a404e4356f9ec5f1fdc96274f96f687f57b2a5f490fa5dd6b42c9caa92688"
+}

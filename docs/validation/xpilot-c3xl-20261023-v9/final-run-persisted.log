@@ -1,0 +1,6 @@
+kj/filesystem-disk-unix.c++:1734: warning: PWD environment variable doesn't match current directory; pwd = /data/openpilot
+Traceback (most recent call last):
+  File "/data/xpilot-X-20261023-16-evidence/alpha-long-persisted.py", line 21, in <module>
+    print(json.dumps({'stage':'before','CarParamsPersistent':cp,'param_bool':p.get_bool('AlphaLongitudinalEnabled'),'param_raw_hex':p.get('AlphaLongitudinalEnabled').hex() if p.get('AlphaLongitudinalEnabled') is not None else None}),flush=True)
+                                                                                                                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'bool' object has no attribute 'hex'
