@@ -18,4 +18,11 @@ A feature that needs both (for example a plugin that sends a new CAN message and
 5. CI does not build panda or run the safety tests or MISRA. Paste the commands, results and the machine for each of them into the pull request.
 6. A new panda safety plugin's header is `<plugin id>.h` (`gen_safety.py` rejects anything else). Every TX it allows without `controls_allowed` is listed in the XPILOT.md section 6 rules with the exact condition; the code must not allow more than the text says.
 7. Fill in the pull request template. Leave a box unchecked if you did not do that step and say why.
-8. Pull requests from forks wait for a maintainer to approve the CI run. Every new push needs a new approval.
+8. Pull requests from accounts new to GitHub wait for a maintainer to approve the CI run.
+
+## Automatic merge
+
+When CI passes, `.github/workflows/automerge.yml` squash-merges a pull request from a collaborator if `tools/ci/pr_risk.py`
+finds only documentation or `openpilot/tesla/ui/` changes. Anything else (car processes, panda safety, the store,
+checks, CI, rule files, SP files) or any outside author gets one comment asking the owner to review. A failing check
+on `xpilot` after a merge opens an issue.

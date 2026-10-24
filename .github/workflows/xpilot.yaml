@@ -6,6 +6,10 @@ on:
     branches: [xpilot]
   workflow_dispatch:
 
+permissions:
+  contents: read
+  issues: write
+
 jobs:
   host-checks:
     runs-on: ubuntu-24.04
@@ -30,6 +34,8 @@ jobs:
       run: |
         python3 openpilot/tesla/plugins/gen_params.py --check
         python3 openpilot/tesla/plugins/gen_safety.py --check
+    - name: Auto-merge classifier
+      run: python3 tools/ci/pr_risk.py --check
     - name: XPILOT.md section 11 host checks
       run: |
         set -e
@@ -41,3 +47,8 @@ jobs:
         done
     - name: Plugin repository end to end
       run: python3 tools/sp_tesla_e2e/store_e2e.py --repo xpilot-plugins
+    - name: Tell the owner xpilot is broken
+      if: failure() && github.event_name != 'pull_request'
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: gh issue create --title "xpilot checks failed at ${GITHUB_SHA::10}" --body "@onemiless $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
