@@ -681,10 +681,10 @@ class GuiApplication(GuiApplicationExt):
 
         if self._render_texture:
           rl.end_texture_mode()
+          dst_rect = self._host.viewport() if self._host else rl.Rectangle(0, 0, float(self._scaled_width), float(self._scaled_height))
           rl.begin_drawing()
           rl.clear_background(rl.BLACK)
           src_rect = rl.Rectangle(0, 0, float(self._scaled_width), -float(self._scaled_height))
-          dst_rect = self._host.viewport() if self._host else rl.Rectangle(0, 0, float(self._scaled_width), float(self._scaled_height))
           texture = self._render_texture.texture
           if texture and dst_rect is not None:  # host may return no viewport: tesla/ui/screen.py draws offroad pages natively
             if BURN_IN_MODE and self._burn_in_shader:

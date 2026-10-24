@@ -120,6 +120,7 @@ class BigScreenHost:
     self._drag: str | None = None
     self._back_pressed = False
     self._view: tuple | None = None  # set each frame by viewport(); to_logical runs on the touch thread
+    self._now, self._faced = time.monotonic(), {}  # set each frame by viewport(): tile faces drawn before the screen frame
     self._mode = "native"
     self._host_pass = False
     self._onboarding = OnboardingPage(self._onboarding_done)
@@ -235,7 +236,23 @@ class BigScreenHost:
       onboarding = self._main is None or gui_app.widget_in_stack(self._main._onboarding_window)
       top = gui_app.get_active_widget()
       self._mode, self._view = offroad.view_mode(onboarding, top is self._main, self._is_modal(top))
+    self._refresh_faces()
     return rl.Rectangle(*self._view) if self._view is not None else None
+
+  def _refresh_faces(self) -> None:
+    """Redraw changed tile textures here, before gui_app.render begins the screen frame. Switching to a tile texture
+    in the middle of the screen frame makes the tiled GPU resolve and reload the screen, suspected of the onroad tile flicker."""
+    self._now, self._faced = time.monotonic(), {}
+    if self._mode == "onroad":
+      placed = self._place("drive")
+    elif self._mode == "native" and not self._stack:
+      placed = self._place(self._layout)
+    else:
+      return
+    if self._sm is not None:
+      self._sm.update(0)
+    for tid, p in placed.items():
+      self._faced[tid] = self._face(self._entries[tid], p[2], self._now)
 
   def to_logical(self, x: float, y: float) -> tuple[float, float]:
     return offroad.to_logical(self._view, x, y)
@@ -245,7 +262,7 @@ class BigScreenHost:
   def render(self) -> None:
     if self._mode == "onroad":
       self._edit, self._drag, self._selected, self._layout = False, None, None, "park"
-      self._draw_tiles(self._place("drive"))
+      self._draw_tiles(self._place("drive"), self._now)
       self._draw_overlays()
     elif self._mode == "onboarding":
       events = [e._replace(pos=MousePos(*offroad.to_screen(None, e.pos.x, e.pos.y))) for e in gui_app.mouse_events]
@@ -284,13 +301,10 @@ class BigScreenHost:
       return False
     return True
 
-  def _draw_tiles(self, placed, now: float | None = None) -> None:
-    if self._sm is not None:
-      self._sm.update(0)
-    now = time.monotonic() if now is None else now
+  def _draw_tiles(self, placed, now: float) -> None:
     for tid, p in placed.items():
       e = self._entries[tid]
-      if tid == self._drag or not self._face(e, p[2], now):
+      if tid == self._drag or not (self._faced.pop(tid) if tid in self._faced else self._face(e, p[2], now)):  # edits re-place
         continue
       x, y, w, h = tiles.tile_rect(p)
       grow = 0.03 * w if self._edit and tid == self._selected else 0.0
@@ -350,7 +364,7 @@ class BigScreenHost:
   # tile screen and edit mode
 
   def _draw_start(self, events) -> None:
-    now = time.monotonic()
+    now = self._now
     placed = self._place(self._layout)
     for ev in events:
       if ev.slot != 0:
