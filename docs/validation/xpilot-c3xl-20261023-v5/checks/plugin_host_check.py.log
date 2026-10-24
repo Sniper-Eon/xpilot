@@ -1,0 +1,19 @@
+kj/filesystem-disk-unix.c++:1734: warning: PWD environment variable doesn't match current directory; pwd = /home/comma
+{
+ "plugins": [
+  "auto_speed",
+  "traffic_light",
+  "bms",
+  "external_compute",
+  "ambient_light",
+  "blindspot_edges",
+  "car_tile",
+  "clock_tile",
+  "lead_card",
+  "map_tile",
+  "speed_card",
+  "speed_limit_card",
+  "ip_tile"
+ ],
+ "errors": []
+}

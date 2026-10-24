@@ -1,0 +1,292 @@
+{
+  "passed": false,
+  "head": "2bd5436a36410018c83baf65de4cdc4aa100a1c4",
+  "scope": "real GPU, production widgets and mapped touch events; layout restored; synthetic onroad; no CAN transmission",
+  "cases": [
+    {
+      "name": "offroad",
+      "viewport": null,
+      "placed": {
+        "plugins": [
+          5,
+          2,
+          "medium"
+        ],
+        "lead_card": [
+          4,
+          1,
+          "small"
+        ],
+        "status": [
+          0,
+          0,
+          "small"
+        ],
+        "toggles": [
+          0,
+          1,
+          "small"
+        ],
+        "tesla": [
+          0,
+          2,
+          "medium"
+        ],
+        "models": [
+          1,
+          0,
+          "small"
+        ],
+        "network": [
+          1,
+          1,
+          "small"
+        ],
+        "device": [
+          2,
+          0,
+          "small"
+        ],
+        "software": [
+          2,
+          1,
+          "small"
+        ],
+        "developer": [
+          2,
+          2,
+          "small"
+        ],
+        "speed_card": [
+          2,
+          3,
+          "small"
+        ],
+        "speed_limit_card": [
+          3,
+          0,
+          "small"
+        ]
+      },
+      "mici_draws": 0
+    },
+    {
+      "name": "onboarding",
+      "standalone": true,
+      "size": [
+        2160,
+        1080
+      ],
+      "touches": 0
+    },
+    {
+      "name": "idle",
+      "frames": 60,
+      "tile_redraws": 0
+    },
+    {
+      "name": "status",
+      "title": "Status",
+      "page": "HomePage",
+      "active": "MiciMainLayout",
+      "stack": 1,
+      "nav_stack": 1,
+      "mici_draws": 0
+    },
+    {
+      "name": "toggles",
+      "title": "Toggles",
+      "page": "TogglesPage",
+      "active": "MiciMainLayout",
+      "stack": 1,
+      "nav_stack": 1,
+      "mici_draws": 0
+    },
+    {
+      "name": "plugins",
+      "title": "Plugins",
+      "page": "PluginsPage",
+      "active": "MiciMainLayout",
+      "stack": 1,
+      "nav_stack": 1,
+      "mici_draws": 0
+    },
+    {
+      "name": "Plugins > plugin > BACK",
+      "page": "PluginsPage",
+      "stack": 1
+    },
+    {
+      "name": "tesla",
+      "title": "Tesla",
+      "page": "TeslaPage",
+      "active": "MiciMainLayout",
+      "stack": 1,
+      "nav_stack": 1,
+      "mici_draws": 0
+    },
+    {
+      "name": "models",
+      "title": "Models",
+      "page": "ModelsPage",
+      "active": "MiciMainLayout",
+      "stack": 1,
+      "nav_stack": 1,
+      "mici_draws": 0
+    },
+    {
+      "name": "Models > Small models > BACK",
+      "skipped": true,
+      "reason": "no qcom bundles available"
+    },
+    {
+      "name": "network",
+      "title": "Network",
+      "page": "NetworkPage",
+      "active": "MiciMainLayout",
+      "stack": 1,
+      "nav_stack": 1,
+      "mici_draws": 0
+    },
+    {
+      "name": "device",
+      "title": "Device",
+      "page": "DevicePage",
+      "active": "MiciMainLayout",
+      "stack": 1,
+      "nav_stack": 1,
+      "mici_draws": 0
+    },
+    {
+      "name": "Device > training guide > BACK",
+      "page": "TrainingGuidePage",
+      "stack": 1
+    },
+    {
+      "name": "Device > driver camera",
+      "skipped": true,
+      "reason": "row hidden on this hardware"
+    },
+    {
+      "name": "Device > terms > BACK",
+      "page": "TermsPage",
+      "stack": 1
+    },
+    {
+      "name": "Device > regulatory",
+      "skipped": true,
+      "reason": "row hidden on this hardware"
+    },
+    {
+      "name": "software",
+      "title": "Software",
+      "page": "SoftwarePage",
+      "active": "MiciMainLayout",
+      "stack": 1,
+      "nav_stack": 1,
+      "mici_draws": 0
+    },
+    {
+      "name": "developer",
+      "title": "Developer",
+      "page": "DeveloperPage",
+      "active": "MiciMainLayout",
+      "stack": 1,
+      "nav_stack": 1,
+      "mici_draws": 0
+    },
+    {
+      "name": "edit",
+      "old_size": "small",
+      "new_size": "wide",
+      "empty_cell": [
+        4,
+        2
+      ]
+    },
+    {
+      "name": "edit drive default",
+      "order": [
+        "speed_card",
+        "speed_limit_card",
+        "lead_card",
+        "car",
+        "map"
+      ],
+      "placed": {
+        "speed_card": [
+          0,
+          0,
+          "small"
+        ],
+        "speed_limit_card": [
+          7,
+          0,
+          "small"
+        ],
+        "lead_card": [
+          0,
+          1,
+          "small"
+        ]
+      }
+    },
+    {
+      "name": "edit drive moved",
+      "tile": "speed_card",
+      "fixed": [
+        7,
+        3
+      ],
+      "expected": [
+        7,
+        3
+      ],
+      "moves": 20
+    },
+    {
+      "name": "onroad",
+      "viewport": [
+        300.0,
+        59.0,
+        1560.0,
+        699.0
+      ],
+      "placed": {
+        "speed_card": [
+          7,
+          3,
+          "small"
+        ],
+        "speed_limit_card": [
+          0,
+          0,
+          "small"
+        ],
+        "lead_card": [
+          7,
+          0,
+          "small"
+        ]
+      },
+      "blindspot_draws": 2
+    },
+    {
+      "name": "layout restored",
+      "file_matches": true,
+      "layouts_match": true
+    },
+    {
+      "name": "driver view restored",
+      "before": false,
+      "after": false
+    }
+  ],
+  "errors": [
+    "drive edit tiles: ['speed_card', 'speed_limit_card', 'lead_card']",
+    "default drive tile car: None, expected (7, 1)",
+    "default drive tile map: None, expected (0, 2)",
+    "onroad data tile car not placed",
+    "onroad data tile map not placed"
+  ]
+}
