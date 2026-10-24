@@ -1,0 +1,15 @@
+ XPILOT.md                                          |  8 +-
+ openpilot/tesla/manifest.py                        |  3 +-
+ openpilot/tesla/plugins/__init__.py                |  6 ++
+ .../tesla/plugins/blindspot_edges/plugin.json      |  2 +-
+ openpilot/tesla/plugins/ip_tile/plugin.json        |  2 +-
+ openpilot/tesla/ui/pages/plugins.py                |  3 +-
+ openpilot/tesla/ui/plugin_ui.py                    |  4 +-
+ openpilot/tesla/ui/screen.py                       |  5 +-
+ openpilot/tesla/ui/tile.py                         | 11 +--
+ tools/sp_tesla_e2e/big_screen_e2e.py               | 13 +--
+ tools/sp_tesla_e2e/manifest_check.py               |  5 +-
+ tools/sp_tesla_e2e/plugin_host_check.py            |  8 +-
+ tools/sp_tesla_e2e/store_check.py                  |  6 +-
+ tools/sp_tesla_e2e/ui_smoke.py                     | 94 ----------------------
+ 14 files changed, 47 insertions(+), 123 deletions(-)

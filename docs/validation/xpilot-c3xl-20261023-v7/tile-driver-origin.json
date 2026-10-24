@@ -1,0 +1,7 @@
+{
+  "ref": "origin/task/X-20261023-09",
+  "commit": "b88c71e480236cc554581d970b6079b1d4f037ff",
+  "path": "docs/validation/xpilot-c3xl-20261023-v6/tile_size_e2e.py",
+  "sha256": "b4bec962c8ee69bc0ab04a3ae161ed942d0abb6580b553de3136703928e217e8",
+  "changes": "TARGET, task id, and v7 labels only; behavior unchanged"
+}

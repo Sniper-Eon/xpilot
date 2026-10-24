@@ -1,0 +1,26 @@
+kj/filesystem-disk-unix.c++:1734: warning: PWD environment variable doesn't match current directory; pwd = /data/openpilot
+The bundle contains this ref:
+cc129b8829c8fd6d170ef75d9857840cb25ed726 refs/remotes/origin/xpilot
+The bundle requires this ref:
+b3130009d9bd3a61e143bf1e34dd48cc9ef6834f 
+The bundle uses this hash algorithm: sha1
+/data/xpilot-install-20261022/xpilot-20261023-v7.bundle is okay
+From /data/xpilot-install-20261022/xpilot-20261023-v7.bundle
+   b313000..cc129b8  origin/xpilot -> origin/xpilot
+kj/filesystem-disk-unix.c++:1734: warning: PWD environment variable doesn't match current directory; pwd = /data/openpilot
+Updating b313000..cc129b8
+Fast-forward
+ tools/sp_tesla_e2e/big_screen_e2e.py    | 13 ++---
+ tools/sp_tesla_e2e/manifest_check.py    |  5 +-
+ tools/sp_tesla_e2e/plugin_host_check.py |  8 +--
+ tools/sp_tesla_e2e/ui_smoke.py          | 94 ---------------------------------
+ 4 files changed, 15 insertions(+), 105 deletions(-)
+ delete mode 100644 tools/sp_tesla_e2e/ui_smoke.py
+kj/filesystem-disk-unix.c++:1734: warning: PWD environment variable doesn't match current directory; pwd = /data/openpilot
+cc129b8829c8fd6d170ef75d9857840cb25ed726
+progress: 100.0
+Building compilation database compile_commands.json
+scons: done building targets.
+real 14.06
+user 11.81
+sys 1.68

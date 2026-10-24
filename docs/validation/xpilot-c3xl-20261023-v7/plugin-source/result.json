@@ -1,0 +1,7 @@
+{
+  "passed": true,
+  "head": "cc129b8829c8fd6d170ef75d9857840cb25ed726",
+  "plugin": "overspeed_warning",
+  "source": "store (removable)",
+  "scope": "real GPU, production PluginsPage and PluginPage, no toggle/install/remove actions"
+}
