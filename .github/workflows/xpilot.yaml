@@ -1,0 +1,43 @@
+name: xpilot checks
+
+on:
+  pull_request:
+  push:
+    branches: [xpilot]
+  workflow_dispatch:
+
+jobs:
+  host-checks:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      PYTHONPATH: ${{ github.workspace }}/msgq_repo
+    steps:
+    - uses: actions/checkout@v4
+    - run: git submodule update --init --depth 1 msgq_repo
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - run: pip install pyzmq numpy pycapnp pytest zstandard setproctitle cython scons
+    - name: Build msgq
+      working-directory: msgq_repo
+      run: scons -j4 msgq/ipc_pyx.so
+    - uses: actions/checkout@v4
+      with:
+        repository: onemiless/xpilot-plugins
+        path: xpilot-plugins
+    - name: Generated files are current
+      run: |
+        python3 openpilot/tesla/plugins/gen_params.py --check
+        python3 openpilot/tesla/plugins/gen_safety.py --check
+    - name: XPILOT.md section 11 host checks
+      run: |
+        set -e
+        for check in static_imports tile_layout_check plugin_host_check manifest_check safety_manifest_check \
+                     phase2_check phase3_check phase4_check store_check offroad_pages_check; do
+          echo "::group::$check"
+          python3 tools/sp_tesla_e2e/$check.py > /tmp/$check.json
+          echo "::endgroup::"
+        done
+    - name: Plugin repository end to end
+      run: python3 tools/sp_tesla_e2e/store_e2e.py --repo xpilot-plugins

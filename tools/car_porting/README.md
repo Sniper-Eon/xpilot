@@ -15,16 +15,6 @@ Example:
 > openpilot/tools/cabana/cabana '1bbe6bf2d62f58a8|2022-07-14--17-11-43'
 ```
 
-### [tools/car_porting/auto_fingerprint.py](/tools/car_porting/auto_fingerprint.py)
-
-Given a route and platform, automatically inserts FW fingerprints from the platform into the correct place in fingerprints.py
-
-Example:
-```bash
-> python3 tools/car_porting/auto_fingerprint.py '1bbe6bf2d62f58a8|2022-07-14--17-11-43' 'OUTBACK'
-Attempting to add fw version for:  OUTBACK
-```
-
 ### [openpilot/selfdrive/car/tests/test_car_interfaces.py](/openpilot/selfdrive/car/tests/test_car_interfaces.py)
 
 Finds common bugs for car interfaces, without even requiring a route.
