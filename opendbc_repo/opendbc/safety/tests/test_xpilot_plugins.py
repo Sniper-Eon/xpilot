@@ -295,10 +295,168 @@ class TestAmbientLightPluginSafety(XpilotPluginSafetyBase):
     self.assertFalse(self.safety.get_relay_malfunction())
 
 
+TURN_SIGNAL_PARAM = 0x8000
+
+
+def _body_controls_checksum(data: bytearray) -> int:
+  return (0xE9 + 0x03 + sum(data[:7])) & 0xFF
+
+
+def _idle_template(counter=0) -> bytes:
+  data = bytearray(8)
+  data[2] = 8 << 1
+  data[6] = (counter & 0x0F) << 4
+  data[7] = _body_controls_checksum(data)
+  return bytes(data)
+
+
+def _turn_frame(request=1, counter=1, reason=None, template=None) -> bytes:
+  data = bytearray(template or _idle_template())
+  data[1] = (data[1] & 0xFC) | request
+  if reason is None:
+    reason = 4 if request == 3 else 8
+  data[2] = (data[2] & 0xE1) | ((reason & 0x0F) << 1)
+  data[6] = (data[6] & 0x0F) | ((counter & 0x0F) << 4)
+  data[7] = _body_controls_checksum(data)
+  return bytes(data)
+
+
+class TestTurnSignalPluginSafety(XpilotPluginSafetyBase):
+  ACTIVE_PARAM_SP = TeslaSafetyFlagsSP.HAS_VEHICLE_BUS | TURN_SIGNAL_PARAM
+
+  def setUp(self):
+    super().setUp()
+    self._set_tesla(self.ACTIVE_PARAM_SP)
+
+  @staticmethod
+  def _template():
+    return common.make_msg(1, 0x3E9, dat=_idle_template())
+
+  @staticmethod
+  def _frame(**kwargs):
+    return common.make_msg(1, 0x3E9, dat=_turn_frame(**kwargs))
+
+  def _prime(self, now=100):
+    self.safety.set_timer(now)
+    self.assertTrue(self._rx(self._template()))
+    self.safety.set_controls_allowed(True)
+
+  def test_activation_gates(self):
+    for mode, param_sp in (
+      (CarParams.SafetyModel.noOutput, self.ACTIVE_PARAM_SP),
+      (CarParams.SafetyModel.tesla, TeslaSafetyFlagsSP.HAS_VEHICLE_BUS),
+      (CarParams.SafetyModel.tesla, TURN_SIGNAL_PARAM),
+    ):
+      with self.subTest(mode=mode, param_sp=param_sp):
+        self._set_mode(mode, param_sp=param_sp)
+        self.safety.set_controls_allowed(True)
+        self.assertTrue(self._rx(self._template()))
+        self.assertFalse(self._tx(self._frame()))
+
+  def test_wrong_address_bus_or_length_not_owned(self):
+    self._prime()
+    for msg in (
+      common.make_msg(1, 0x3E8, dat=_turn_frame()),
+      common.make_msg(0, 0x3E9, dat=_turn_frame()),
+      common.make_msg(1, 0x3E9, length=7, dat=_turn_frame()[:7]),
+    ):
+      with self.subTest(addr=msg.addr, bus=msg.bus, length=msg.data_len_code):
+        self.assertFalse(self._tx(msg))
+
+  def test_no_template_or_stale(self):
+    self.safety.set_controls_allowed(True)
+    self.assertFalse(self._tx(self._frame()))
+    self._prime()
+    self.safety.set_timer(1_500_101)
+    self.assertFalse(self._tx(self._frame()))
+
+  def test_checksum_and_protected_bits(self):
+    self._prime()
+    bad_checksum = bytearray(_turn_frame())
+    bad_checksum[7] ^= 1
+    self.assertFalse(self._tx(common.make_msg(1, 0x3E9, dat=bytes(bad_checksum))))
+    for index in (0, 3, 4, 5):
+      with self.subTest(index=index):
+        data = bytearray(_turn_frame())
+        data[index] ^= 1
+        data[7] = _body_controls_checksum(data)
+        self.assertFalse(self._tx(common.make_msg(1, 0x3E9, dat=bytes(data))))
+    for index, mask in ((1, 0x04), (2, 0x01), (6, 0x01)):
+      with self.subTest(byte=index, mask=mask):
+        data = bytearray(_turn_frame())
+        data[index] ^= mask
+        data[7] = _body_controls_checksum(data)
+        self.assertFalse(self._tx(common.make_msg(1, 0x3E9, dat=bytes(data))))
+
+  def test_request_reason_and_counter(self):
+    self._prime()
+    for request, reason in ((0, 8), (4, 8), (1, 4), (2, 4), (3, 8)):
+      with self.subTest(request=request, reason=reason):
+        self.assertFalse(self._tx(self._frame(request=request, reason=reason)))
+    self.assertFalse(self._tx(self._frame(counter=2)))
+    self.assertTrue(self._tx(self._frame(counter=1)))
+    self.assertFalse(self._tx(self._frame(counter=1)))
+    self.safety.set_timer(100 + 100_000)
+    self.assertTrue(self._rx(common.make_msg(1, 0x3E9, dat=_idle_template(counter=3))))
+    self.assertFalse(self._tx(self._frame(counter=1)))
+    self.assertTrue(self._tx(self._frame(counter=4)))
+
+  def test_controls_allowed_but_cancel_allowed(self):
+    self._prime()
+    self.safety.set_controls_allowed(False)
+    self.assertFalse(self._tx(self._frame(request=1)))
+    self.assertTrue(self._tx(self._frame(request=3, counter=1)))
+
+  def test_rate_limit(self):
+    self._prime()
+    self.assertTrue(self._tx(self._frame()))
+    self.safety.set_timer(100 + 99_999)
+    self.assertFalse(self._tx(self._frame()))
+    self.safety.set_timer(100 + 100_000)
+    self.assertTrue(self._tx(self._frame()))
+
+  def test_session_cap_and_restart(self):
+    now = 100
+    for frame in range(200):
+      now = 100 + frame * 100_000
+      self.safety.set_timer(now)
+      self.assertTrue(self._rx(common.make_msg(1, 0x3E9, dat=_idle_template())))
+      self.safety.set_controls_allowed(True)
+      self.assertTrue(self._tx(self._frame()), frame)
+    self.safety.set_timer(100 + 200 * 100_000)
+    self.assertTrue(self._rx(common.make_msg(1, 0x3E9, dat=_idle_template())))
+    self.assertFalse(self._tx(self._frame()))
+    self.safety.set_timer(100 + 60_000_000)
+    self.assertTrue(self._rx(common.make_msg(1, 0x3E9, dat=_idle_template())))
+    self.assertTrue(self._tx(self._frame()))
+
+  def test_mode_reset_clears_template_and_rate_state(self):
+    self._prime()
+    self.assertTrue(self._tx(self._frame()))
+    self._set_mode(CarParams.SafetyModel.noOutput)
+    self._set_tesla(self.ACTIVE_PARAM_SP)
+    self.safety.set_controls_allowed(True)
+    self.assertFalse(self._tx(self._frame()))
+    self._prime()
+    self.assertTrue(self._tx(self._frame()))
+
+  def test_inactive_message_remains_stock_blocked(self):
+    self._set_tesla(TeslaSafetyFlagsSP.HAS_VEHICLE_BUS)
+    self.safety.set_controls_allowed(True)
+    self.assertFalse(self._tx(self._frame()))
+
+  def test_rx_does_not_change_stock_state(self):
+    self.safety.set_controls_allowed(True)
+    self.assertFalse(self.safety.get_relay_malfunction())
+    self.assertTrue(self._rx(self._template()))
+    self.assertTrue(self.safety.get_controls_allowed())
+    self.assertFalse(self.safety.get_relay_malfunction())
+
+
 @unittest.skip("TX inventory for common.SafetyTest's cross-mode scan")
 class XpilotPluginTxInventory(common.SafetyTest):
   SAFETY_MODEL = None
-  TX_MSGS = [[0x3C2, 1], [0x679, 1]]
+  TX_MSGS = [[0x3C2, 1], [0x679, 1], [0x3E9, 1]]
 
 
 if __name__ == "__main__":
