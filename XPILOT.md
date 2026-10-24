@@ -405,7 +405,7 @@ python3 tools/sp_tesla_e2e/store_e2e.py --repo ~/xpilot-plugins       # 插件�
 python3 tools/dev_sp_release/upstream_watch.py                        # 列出值得 cherry-pick 的上游提交
 ```
 
-CI（`.github/workflows/xpilot.yaml`）在每个 PR 上跑以上检查（`upstream_watch` 除外）和 `gen_params.py`/`gen_safety.py --check`。环境：Python 3.12，`pip install pyzmq numpy pycapnp pytest zstandard setproctitle cython scons`，`git submodule update --init msgq_repo`，在 `msgq_repo` 里 `scons msgq/ipc_pyx.so`，`PYTHONPATH=msgq_repo`。插件自己的测试和外接算力 TCP 桥接检查在插件仓库的 CI 里。
+CI（`.github/workflows/xpilot.yaml`）在每个 PR 上跑以上检查（`upstream_watch` 除外）和 `gen_params.py`/`gen_safety.py --check`。环境：Python 3.12，`pip install pyzmq numpy pycapnp pytest zstandard setproctitle cython scons setuptools`，`git submodule update --init msgq_repo`，在 `msgq_repo` 里 `scons msgq/ipc_pyx.so`，`PYTHONPATH=msgq_repo`。插件自己的测试和外接算力 TCP 桥接检查在插件仓库的 CI 里。
 
 编译、safety 测试、UI 渲染和上车验证只能在 Mac 或设备上做。
 
