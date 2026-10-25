@@ -31,6 +31,13 @@ Failure modes (listed before implementation):
 14. Onroad tiles use the chosen accent, or park/onroad transitions reuse a stale colored texture.
 15. Onroad/drive-edit view drags do not snap, clamp, persist or re-place covered fixed tiles;
     other onroad touches change state or reach mici widgets.
+16. Engaged camera shader output is desaturated, differs from disengaged color, or never renders the production shader.
+17. Drive edit omits enabled HUD boxes; dragging/toggling does not persist, restart loses it, the onroad renderer ignores
+    saved rect/visibility, dragging escapes the view, disabled overlays show, or moving the view loses HUD fractions.
+18. Drive/park add list includes the wrong show; adding/dropping/fixing a tile enters the Driving view; onroad info cannot
+    render outside the view as a Tile or in a ScreenOverlay side zone.
+19. Outline is absent from Toggles, its park/onroad tiles are not black with a thin gray border and white text,
+    or switching themes leaves stale black/bordered textures or changes other themes onroad.
 
 Run with comma service stopped and native libraries built. No CAN transmission,
 settings actions, store refresh/install, or reboot/reset/uninstall confirmation.
@@ -61,12 +68,13 @@ def host_check(output):
   sys.modules['openpilot.cereal'] = cereal
   sys.modules['openpilot.cereal.messaging'] = types.SimpleNamespace()
   sys.modules['openpilot.common.swaglog'] = types.SimpleNamespace(cloudlog=logging.getLogger('host-e2e'))
-  sys.modules['openpilot.common.hardware'] = types.SimpleNamespace(PC=True, HARDWARE=types.SimpleNamespace(get_device_type=lambda: 'pc'))
+  sys.modules['openpilot.common.hardware'] = types.SimpleNamespace(PC=True, HARDWARE=types.SimpleNamespace(get_device_type=lambda: 'pc'), COMMA_HARDWARE=False)
   from tools.sp_tesla_e2e.offroad_pages_check import FakeParams
   sys.modules['openpilot.common.params'] = types.SimpleNamespace(Params=FakeParams)
   params = FakeParams()
-  state = types.SimpleNamespace(started=False, engaged=False, sm={}, params=params)
-  sys.modules['openpilot.selfdrive.ui.ui_state'] = types.SimpleNamespace(ui_state=state, device=types.SimpleNamespace(awake=True))
+  state = types.SimpleNamespace(started=False, engaged=False, status=0, sm={}, params=params, add_offroad_transition_callback=lambda cb: None)
+  sys.modules['openpilot.selfdrive.ui.ui_state'] = types.SimpleNamespace(
+    ui_state=state, UIStatus=types.SimpleNamespace(DISENGAGED=0), device=types.SimpleNamespace(awake=True))
   sys.modules['openpilot.sunnypilot.hardware.profile'] = types.SimpleNamespace(HardwareProfile=types.SimpleNamespace(C3XL='c3xl'), get_hardware_profile=lambda: 'pc')
   import pyray as rl
   from openpilot.system.ui.lib.application import gui_app, FontWeight, MouseEvent, MousePos
@@ -85,11 +93,33 @@ def host_check(output):
 
   for module, name in (('device', 'DevicePage'), ('onboarding', 'OnboardingPage')):
     sys.modules['openpilot.tesla.ui.pages.' + module] = types.SimpleNamespace(**{name: Page})
-  from openpilot.tesla.ui import screen
-  screen.load = lambda base: [(None, type('DataTile', (Tile,), {'SPEC': tiles.TileSpec(str(i), title, sizes=('small',)),
+  from openpilot.tesla.ui import screen, plugin_ui
+  screen.load = lambda base: [(None, type('DataTile', (Tile,), {'SPEC': tiles.TileSpec(str(i), title, sizes=('small',), show='always'),
                             'draw': lambda self, rect, size, value: self.draw_value(rect, str(42 + int(self.SPEC.id)), 'km/h')})())
                             for i, title in enumerate(('Speed', 'Lead', 'Battery', 'Range', 'Temperature', 'Clock', 'Limit', 'Power'))]
-  screen.Overlays = lambda *args: types.SimpleNamespace(each=lambda fn: None)
+  class Hud(plugin_ui.HudOverlay):
+    def default_rect(self, view):
+      return rl.Rectangle(view.x + 12, view.y + 24, 120, 48)
+
+    def _render(self, rect):
+      hud_draws.append([rect.x, rect.y, rect.width, rect.height])
+      rl.draw_rectangle_rec(rect, rl.Color(0, 100, 210, 255))
+      rl.draw_text_ex(gui_app.font(FontWeight.MEDIUM), 'Plugin HUD', rl.Vector2(rect.x + 8, rect.y + 8), 20, 0, rl.WHITE)
+
+  class Side(plugin_ui.ScreenOverlay):
+    def draw(self, zones):
+      r = zones['right']
+      side_draws.append([r.x, r.y, r.width, r.height])
+      rl.draw_rectangle(int(r.x), int(r.y), int(r.width), 12, rl.GREEN)
+
+  hud_draws, side_draws = [], []
+  plugin_ui.load = lambda base: [('example', Hud())] if base is plugin_ui.HudOverlay else [('example', Side())]
+  plugin_ui.EnabledPlugins.get = lambda self: {'example'}
+  screen.messaging.SubMaster = lambda services: types.SimpleNamespace(update=lambda timeout: None)
+  park = type('ParkTile', (Tile,), {'SPEC': tiles.TileSpec('park', 'Park only', show='offroad')})()
+  original_load = screen.load
+  screen.load = lambda base: original_load(base) + [(None, park)]
+
   rl.set_trace_log_level(rl.TraceLogLevel.LOG_WARNING)
   rl.init_window(*tiles.SCREEN, 'xpilot host E2E')
   font = rl.load_font_ex('/System/Library/Fonts/Supplemental/Arial.ttf', 100, None, 0)
@@ -109,6 +139,29 @@ def host_check(output):
   main._onboarding_window = object()
   gui_app._nav_stack = [main]
   host.bind_settings(main, None)
+  # Production camera shader and HUD dispatch, with deterministic NV12 input and SP HUD excluded from this fixture.
+  import numpy as np
+  stream = types.SimpleNamespace(VISION_STREAM_CABIN=2, VISION_STREAM_NARROW_ROAD=0)
+  client = types.SimpleNamespace(width=96, stride=96, height=64, is_connected=lambda: True)
+  sys.modules['openpilot.cereal.visionipc'] = types.SimpleNamespace(VisionStreamType=stream)
+  sys.modules['msgq.visionipc'] = types.SimpleNamespace(VisionIpcClient=lambda *a, **kw: client, VisionBuf=object)
+  from openpilot.selfdrive.ui.mici.onroad.cameraview import CameraView
+  y = np.zeros((64, 96), dtype=np.uint8)
+  uv = np.zeros((32, 96), dtype=np.uint8)
+  for i, (red, green, blue) in enumerate(((.9, .1, .1), (.1, .9, .1), (.1, .1, .9))):
+    y[:, i * 32:(i + 1) * 32] = round(255 * (.299 * red + .587 * green + .114 * blue))
+    uv[:, i * 32:(i + 1) * 32:2] = round(255 * (-.168736 * red - .331264 * green + .5 * blue + .5))
+    uv[:, i * 32 + 1:(i + 1) * 32:2] = round(255 * (.5 * red - .418688 * green - .081312 * blue + .5))
+  camera_frame = types.SimpleNamespace(width=96, height=64, uv_offset=y.size, data=np.concatenate((y.ravel(), uv.ravel())))
+  client.recv = lambda **kw: camera_frame
+  camera = CameraView('fixture', stream.VISION_STREAM_NARROW_ROAD)
+  camera._initialize_textures()
+  logical = rl.load_render_texture(*tiles.MICI)
+  sys.modules['openpilot.selfdrive.ui.mici.onroad.hud_renderer'] = types.SimpleNamespace(HudRenderer=Page)
+  sys.modules['openpilot.selfdrive.ui.sunnypilot.onroad.blind_spot_indicators'] = types.SimpleNamespace(
+    BlindSpotIndicators=lambda: types.SimpleNamespace(update=lambda: None, render=lambda rect: None, detected=False))
+  from openpilot.selfdrive.ui.sunnypilot.mici.onroad.hud_renderer import HudRendererSP
+  renderer = HudRendererSP()
   target = rl.load_render_texture(*tiles.SCREEN)
   errors, cases, clicks = [], [], []
   mici = Button('mici', lambda: clicks.append(True))
@@ -117,17 +170,21 @@ def host_check(output):
     if not ok:
       errors.append(message)
 
-  def frame(events=(), name=None):
+  def frame(events=(), name=None, hud=True):
     gui_app._mouse_events = list(events)
     mici.render(rl.Rectangle(0, 0, *tiles.MICI))
     view = host.viewport()
+    if view is not None:
+      rl.begin_texture_mode(logical)
+      rl.clear_background(rl.BLACK)
+      camera.render(rl.Rectangle(0, 0, *tiles.MICI))
+      if hud:
+        renderer.render(rl.Rectangle(0, 0, *tiles.MICI))
+      rl.end_texture_mode()
     rl.begin_texture_mode(target)
     rl.clear_background(rl.BLACK)
     if view is not None:
-      rl.draw_rectangle_rec(view, rl.Color(48, 48, 48, 255))
-      rl.draw_text_ex(font, 'Simulated camera / host only', rl.Vector2(view.x + 40, view.y + 40), 38, 0, rl.WHITE)
-      rl.draw_line_ex(rl.Vector2(view.x + view.width * .3, view.y + view.height), rl.Vector2(view.x + view.width * .48, view.y + view.height * .3), 5, rl.WHITE)
-      rl.draw_line_ex(rl.Vector2(view.x + view.width * .7, view.y + view.height), rl.Vector2(view.x + view.width * .52, view.y + view.height * .3), 5, rl.WHITE)
+      rl.draw_texture_pro(logical.texture, rl.Rectangle(0, 0, tiles.MICI[0], -tiles.MICI[1]), view, rl.Vector2(0, 0), 0, rl.WHITE)
     host.render()
     rl.end_texture_mode()
     if name:
@@ -242,12 +299,135 @@ def host_check(output):
     state.started = False
     host._edit, host._layout = True, 'drive'
     frame()
-    start = (expected[0] + 100, expected[1] + 100)
+    start = (expected[0] + 800, expected[1] + 300)
     drag(start, (start[0] - 2 * tiles.PITCH, start[1] + tiles.PITCH))
     saved_edit = host._layout_params.get(tiles.LAYOUT_PARAM) or {}
     check(saved_edit.get('drive', {}).get('view') == [0, 1], '15 drive-edit placeholder did not move')
     frame(name='edit-drive-moved')
     cases.append({'id': 15, 'before': before, 'after': wanted, 'saved': raw, 'mici_clicks': clicks})
+    state.started = True
+    state.engaged, state.status = False, 0
+    frame(hud=False)
+    def camera_pixels():
+      image = rl.load_image_from_texture(logical.texture)
+      pixels = []
+      for x in (150, 268, 385):
+        c = rl.get_image_color(image, x, 120)
+        pixels.append([c.r, c.g, c.b])
+      rl.unload_image(image)
+      return pixels
+    disengaged = camera_pixels()
+    state.engaged, state.status = True, 1
+    frame(name='onroad-engaged-camera-color', hud=False)
+    engaged = camera_pixels()
+    check(engaged == disengaged and all(max(c) - min(c) > 120 for c in engaged), f'16 engaged camera desaturated: {disengaged} -> {engaged}')
+    cases.append({'id': 16, 'input': 'NV12 RGB bars', 'disengaged_rgb': disengaged, 'engaged_rgb': engaged,
+                  'shader': 'production CameraView PC shader; device EGL shader not executed'})
+    state.started, state.engaged, state.status = False, False, 0
+    host._edit, host._layout = True, 'drive'
+    frame()
+    try:
+      boxes = host._hud_boxes()
+      check(set(boxes) == {'example'}, f'17 missing enabled HUD boxes: {boxes}')
+      frame(name='drive-edit-hud-boxes')
+      original = boxes['example']
+      drag(center(original), (center(original)[0] + 260, center(original)[1] + 90))
+      raw = host._layout_params.get(tiles.LAYOUT_PARAM)
+      entry = raw['drive']['hud']['example']
+      check(entry[0] > 0 and entry[1] > 0 and entry[2] is True, f'17 HUD move not saved: {raw}')
+      restarted = screen.BigScreenHost()
+      check(restarted._hud == host._hud, '17 restart lost HUD fractions')
+      state.started, state.engaged, state.status = True, True, 1
+      hud_draws.clear()
+      frame(name='onroad-moved-hud')
+      check(len(hud_draws) == 1 and abs(hud_draws[0][0] / tiles.MICI[0] - entry[0]) < 1e-5
+            and abs(hud_draws[0][1] / tiles.MICI[1] - entry[1]) < 1e-5, f'17 saved HUD rect not applied: {hud_draws}')
+      before = hud_draws[-1]
+      drag(center(host._view), (center(host._view)[0] + tiles.PITCH, center(host._view)[1] - tiles.PITCH))
+      check(hud_draws[-1] == before and host._layout_params.get(tiles.LAYOUT_PARAM)['drive']['hud']['example'] == entry,
+            '17 moving view lost HUD fractions')
+      state.started, state.engaged, state.status = False, False, 0
+      host._edit, host._layout = True, 'drive'
+      frame()
+      touch(center(host._hud_boxes()['example']))
+      check(host._hud['example'][2] is False, '17 HUD tap did not hide')
+      frame(name='drive-edit-hidden-hud')
+      state.started = True
+      hud_draws.clear()
+      frame()
+      check(not hud_draws, '17 hidden HUD still drawn')
+      state.started = False
+      host._edit, host._layout = True, 'drive'
+      frame()
+      touch(center(host._hud_boxes()['example']))
+      drag(center(host._hud_boxes()['example']), (-10000, 10000))
+      box = host._hud_boxes()['example']
+      vx, vy, vw, vh = tiles.view(host._view_position)
+      check(vx <= box[0] <= box[0] + box[2] <= vx + vw + .001 and vy <= box[1] <= box[1] + box[3] <= vy + vh + .001,
+            f'17 HUD dragged outside view: {box}')
+      disabled = host._hud_overlays._enabled.shows
+      host._hud_overlays._enabled.shows = lambda name: False
+      check(not host._hud_boxes(), '17 disabled plugin appears in editor')
+      host._hud_overlays._enabled.shows = disabled
+      cases.append({'id': 17, 'saved': raw, 'onroad_rect': before, 'clamped_box': box, 'restart': True, 'hidden_draws': 0})
+    except Exception:
+      errors.append('17 HUD editor/render pipeline: ' + traceback.format_exc())
+    for mode in ('drive', 'park'):
+      host._layout, host._edit = mode, True
+      frame()
+      host._layouts[mode] = tiles.arrange([e.spec for e in host._entries.values()], {mode: {'hidden': list(host._entries)}}, mode)
+      host._placed_key = None
+      frame()
+      cell = tiles.add_cell(host._place(mode), mode == 'drive', host._view_position)
+      touch(center(tiles.cell_rect(*cell)))
+      page = host._stack[-1][1]
+      titles = [row.title for row in page._scroller._items]
+      check(('Park only' in titles) == (mode == 'park'), f'18 wrong {mode} add list: {titles}')
+      host._stack = []
+      host._layouts[mode] = tiles.arrange([e.spec for e in host._entries.values()], None, mode)
+    host._edit, host._layout = True, 'drive'
+    frame()
+    tile_id = next(iter(host._place('drive')))
+    before = deepcopy(host._layouts['drive'])
+    drag(center(tiles.tile_rect(host._placed[tile_id])), center(tiles.view(host._view_position)))
+    check(host._layouts['drive'] == before, '18 tile dropped inside view')
+    state.started = True
+    side_draws.clear()
+    frame()
+    check(bool(side_draws) and all(e.spec.show != 'offroad' for tid, e in host._entries.items() if tid in host._placed),
+          '18 onroad side zone/Tile unavailable')
+    cases.append({'id': 18, 'side_zone_rects': side_draws, 'outside_tiles': list(host._placed)})
+    state.started = False
+    host._edit, host._layout = False, 'park'
+    host._layout_params.put(tiles.THEME_PARAM, 'Outline')
+    host._theme()
+    samples = []
+    for onroad in (False, True):
+      state.started = onroad
+      frame(name='onroad-outline' if onroad else 'park-outline')
+      entry = host._entries[next(iter(host._placed))]
+      image = rl.load_image_from_texture(entry.texture.texture)
+      border = rl.get_image_color(image, 1, 1)
+      interior = rl.get_image_color(image, 4, 4)
+      pixels = np.frombuffer(rl.ffi.buffer(image.data, image.width * image.height * 4), dtype=np.uint8).reshape(-1, 4)
+      white = bool(np.any(np.all(pixels[:, :3] == 255, axis=1)))
+      sample = {'onroad': onroad, 'border': [border.r, border.g, border.b], 'interior': [interior.r, interior.g, interior.b], 'white_text': white}
+      samples.append(sample)
+      check(sample['border'] == [90, 92, 100] and sample['interior'] == [0, 0, 0] and white, f'19 wrong Outline tile: {sample}')
+      rl.unload_image(image)
+    state.started = False
+    host._layout_params.put(tiles.THEME_PARAM, 'Crimson')
+    host._theme()
+    frame()
+    check(color() == tiles.THEMES['Crimson'], '19 stale Outline texture after restoring theme')
+    state.started = True
+    frame()
+    check(color() == (32, 32, 32), '19 other onroad theme no longer neutral')
+    toggles = (root / 'openpilot/tesla/ui/pages/toggles.py').read_text()
+    check('list(THEMES)' in toggles and 'Outline' in tiles.THEMES, '19 Toggles theme list omits Outline')
+    cases.append({'id': 19, 'samples': samples, 'restored_onroad_rgb': color()})
+
+
   except Exception:
     errors.append(traceback.format_exc())
   finally:
@@ -256,6 +436,7 @@ def host_check(output):
               'scope': host_check.__doc__, 'cases': cases, 'errors': errors}
     (output / 'result.json').write_text(json.dumps(result, indent=2) + '\n')
     print(json.dumps(result, indent=2))
+    camera.close()
     rl.close_window()
     sandbox.cleanup()
   return 1 if errors else 0

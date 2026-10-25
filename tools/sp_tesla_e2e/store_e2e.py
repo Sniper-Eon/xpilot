@@ -12,6 +12,7 @@ Failure cases listed before running:
 - E4b the alert hook reads a service selfdrived does not subscribe (selfdrived has no carState unless a plugin
       declares it in SERVICES; overspeed_warning 1.0.0 raised KeyError every frame on the car)
 - E6 a setting written through the params view does not reach the plugin on the next start
+- E8 an installed plugin tile without explicit show is not reported by the shared M13 source check
 - E7 an installed model plugin (op_models) owns role:perception.model while off, does not take it from sp_models when
      switched on, or does not start its own op_modeld process
 """
@@ -85,6 +86,10 @@ def main() -> int:
   for e in entries:
     if not e.installable or (r := store.install(e)) is not None:
       errors.append(f"E1 {e.id}: installable={e.installable} {r if e.installable else ''}")
+
+  from tools.sp_tesla_e2e.manifest_check import tile_show_problems
+  for path in sorted(mf.INSTALL_DIR.glob("*/ui.py")):
+    errors += ["E8 " + problem for problem in tile_show_problems(path)]
 
   from openpilot.tesla import plugins
   from openpilot.tesla.plugin_params import ParamsView

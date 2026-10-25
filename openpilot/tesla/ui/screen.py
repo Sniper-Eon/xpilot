@@ -30,8 +30,8 @@ from openpilot.tesla.ui.offroad import BACK, CONTENT, TITLE_H
 from openpilot.tesla.ui.pages.base import ListPage
 from openpilot.tesla.ui.pages.device import DevicePage
 from openpilot.tesla.ui.pages.onboarding import OnboardingPage
-from openpilot.tesla.ui.plugin_ui import MAX_FAILURES, EnabledPlugins, Overlays, ScreenOverlay, load
-from openpilot.tesla.ui.tile import Tile
+from openpilot.tesla.ui.plugin_ui import MAX_FAILURES, EnabledPlugins, HudOverlay, Overlays, ScreenOverlay, load
+from openpilot.tesla.ui.tile import Tile, lines_in
 from openpilot.tesla.ui.tiles import LAYOUT_PARAM, LAYOUT_SPEC, SCREEN, THEME_PARAM, THEMES
 
 DIM = rl.Color(150, 152, 162, 255)
@@ -97,6 +97,7 @@ class BigScreenHost:
         continue
       self._entries[tile.SPEC.id] = _Entry(name, tile)
     self._overlays = Overlays(ScreenOverlay, self._params)
+    self._hud_overlays = Overlays(HudOverlay, self._params)
     self._enabled = EnabledPlugins(self._params)
     services = sorted({svc for e in self._entries.values() for svc in e.spec.services})
     self._sm = messaging.SubMaster(services) if services else None
@@ -105,9 +106,10 @@ class BigScreenHost:
     except Exception:
       saved = None
     self._view_position = tiles.view_position(saved)
+    self._hud, self._hud_drag = tiles.hud_layout(saved), None
     self._view_drag = False
     specs = [e.spec for e in self._entries.values()]
-    self._layouts = {mode: tiles.arrange([s for s in specs if tiles.shows(s, mode == "drive")], saved, mode) for mode in ("park", "drive")}
+    self._layouts = {mode: tiles.arrange(specs, saved, mode) for mode in ("park", "drive")}
     self._layout = "park"  # the layout the tile screen shows and edit mode edits; onroad always shows "drive"
     self._placed_key = None
     self._placed: dict[str, tuple[int, int, str]] = {}
@@ -133,7 +135,7 @@ class BigScreenHost:
       color = THEMES.get(self._layout_params.get(THEME_PARAM), tiles.ACCENT)
     except Exception:
       color = tiles.ACCENT
-    if self._mode == "onroad":
+    if self._mode == "onroad" and color != THEMES["Outline"]:
       color = (32, 32, 32)
     if color != Tile.COLOR:
       Tile.COLOR = color
@@ -171,6 +173,7 @@ class BigScreenHost:
     try:
       saved = {mode: tiles.saved(*layout) for mode, layout in self._layouts.items()}
       saved["drive"]["view"] = list(self._view_position)
+      saved["drive"]["hud"] = self._hud
       self._layout_params.put(LAYOUT_PARAM, saved)
     except Exception:
       cloudlog.exception("tile layout not saved")
@@ -242,6 +245,7 @@ class BigScreenHost:
       self._view_drag = False
     if ui_state.started:
       self._mode = "onroad"
+      self._hud_drag = None
       self._edit, self._drag, self._selected, self._layout = False, None, None, "park"
       events = [e._replace(pos=MousePos(*offroad.to_screen(None, e.pos.x, e.pos.y))) for e in gui_app.mouse_events]
       self._touch(events, self._place("drive"))
@@ -282,6 +286,26 @@ class BigScreenHost:
       x += min(max(dx, -col * tiles.PITCH), (tiles.COLS - tiles.DRIVE_CELLS[2] - col) * tiles.PITCH)
       y += min(max(dy, -row * tiles.PITCH), (tiles.ROWS - tiles.DRIVE_CELLS[3] - row) * tiles.PITCH)
     return x, y, w, h
+
+  def _hud_boxes(self) -> dict:
+    """Enabled HUD boxes in screen pixels, including hidden ones so they can be shown again."""
+    view = self._drive_view()
+    vx, vy, vw, vh = view
+    boxes = {}
+
+    def box(widget):
+      default = widget.default_rect(rl.Rectangle(0, 0, *tiles.MICI))
+      default = (vx + default.x * vw / tiles.MICI[0], vy + default.y * vh / tiles.MICI[1],
+                 default.width * vw / tiles.MICI[0], default.height * vh / tiles.MICI[1])
+      entry = self._hud.get(widget.plugin_id)
+      rect = tiles.hud_rect(entry, default, view)
+      if self._hud_drag == widget.plugin_id and self._gesture.start is not None:
+        dx, dy = (p - s for p, s in zip(self._gesture.pos, self._gesture.start[:2], strict=True))
+        rect = tiles.hud_rect([(rect[0] + dx - vx) / vw, (rect[1] + dy - vy) / vh, True], default, view)
+      boxes[widget.plugin_id] = rect
+
+    self._hud_overlays.each(box)
+    return boxes
 
   # drawing
 
@@ -420,6 +444,13 @@ class BigScreenHost:
     self._draw_tiles(placed, now)
     if not self._edit:
       return
+    if drive:
+      for name, rect in self._hud_boxes().items():
+        visible = self._hud.get(name, [0, 0, True])[2]
+        rl.draw_rectangle_rec(rl.Rectangle(*rect), rl.Color(*Tile.COLOR, 255) if visible else rl.Color(60, 62, 70, 255))
+        rl.draw_rectangle_lines_ex(rl.Rectangle(*rect), 3, rl.WHITE if visible else DIM)
+        x, y, w, h = rect
+        lines_in(rl.Rectangle(x + 12, y + 12, w - 24, h - 24), [name, "Tap to hide" if visible else "Tap to show"], 32)
     cell = tiles.add_cell(placed, drive, self._view_position)
     if cell is not None:
       x, y, w, h = tiles.cell_rect(*cell)
@@ -471,6 +502,24 @@ class BigScreenHost:
       if event == "tap":
         self._bar_tap(sx, sy, bar)
       return
+    if self._mode != "onroad" and self._edit and self._layout == "drive":
+      boxes = self._hud_boxes()
+      name = self._hud_drag or next((name for name, (bx, by, bw, bh) in reversed(list(boxes.items()))
+                                    if bx <= sx < bx + bw and by <= sy < by + bh), None)
+      if name is not None:
+        bx, by, bw, bh = boxes[name]
+        vx, vy, vw, vh = self._drive_view()
+        visible = self._hud.get(name, [0, 0, True])[2]
+        if event == "drag":
+          self._hud_drag = name
+        elif event in ("drop", "tap"):
+          entry = [(bx - vx + (x - sx if event == "drop" else 0)) / vw,
+                   (by - vy + (y - sy if event == "drop" else 0)) / vh, visible]
+          bx, by, _, _ = tiles.hud_rect(entry, boxes[name], (vx, vy, vw, vh))
+          self._hud[name] = [(bx - vx) / vw, (by - vy) / vh, not visible if event == "tap" else visible]
+          self._hud_drag = None
+          self._save()
+        return
     if self._mode == "onroad" or (self._edit and self._layout == "drive"):
       vx, vy, vw, vh = tiles.view(self._view_position)
       if vx <= sx < vx + vw and vy <= sy < vy + vh:
@@ -504,7 +553,7 @@ class BigScreenHost:
   def _bar_tap(self, x, y, bar) -> None:
     for name, (x0, y0, w, h) in bar.items():
       if x0 <= x < x0 + w and y0 <= y < y0 + h:
-        self._selected = None
+        self._selected, self._hud_drag = None, None
         if name == "done":
           self._edit, self._layout = False, "park"
         else:

@@ -8,7 +8,7 @@ Tiles with a fixed position go there first; the rest go, in list order, to the f
 column by column (Win 8 landscape), driving row by row from both edges inward (left and right fill alternately).
 Onroad the cells under the mici driving view (DRIVE_CELLS) are blocked and a tile shrinks to a smaller supported size
 when its saved size does not fit."""
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Literal
 
 SCREEN = (2160, 1080)
@@ -18,7 +18,7 @@ PITCH = CELL + GAP
 ORIGIN = ((SCREEN[0] - COLS * PITCH + GAP) // 2, (SCREEN[1] - ROWS * PITCH + GAP) // 2)
 SIZES = {"small": (1, 1), "medium": (2, 2), "wide": (4, 2), "large": (4, 4)}
 THEMES = {"Cobalt": (0, 80, 239), "Teal": (0, 140, 140), "Emerald": (0, 128, 0), "Crimson": (162, 0, 37), "Violet": (106, 0, 255),
-          "Graphite": (52, 56, 66)}  # tile colors (WP accents); every tile uses the chosen one
+          "Graphite": (52, 56, 66), "Outline": (0, 0, 0)}  # tile colors (WP accents); every tile uses the chosen one
 ACCENT = THEMES["Cobalt"]
 
 DRIVE_CELLS = (1, 0, 6, 3)  # col, row, cols, rows under the mici driving view
@@ -70,6 +70,26 @@ def view_position(saved) -> tuple[int, int]:
   return DRIVE_CELLS[:2]
 
 
+def hud_layout(saved) -> dict:
+  """Valid saved plugin HUD fractions and visibility; invalid entries use the widget default."""
+  drive = saved.get("drive") if isinstance(saved, dict) else None
+  hud = drive.get("hud") if isinstance(drive, dict) else None
+  if not isinstance(hud, dict):
+    return {}
+  return {name: list(entry) for name, entry in hud.items() if isinstance(name, str) and isinstance(entry, list)
+          and len(entry) == 3 and all(type(v) in (int, float) and 0 <= v <= 1 for v in entry[:2]) and type(entry[2]) is bool}
+
+
+def hud_rect(entry, default, view) -> tuple[float, float, float, float]:
+  """Clamp a HUD rectangle to its view; saved fractions locate its top left."""
+  vx, vy, vw, vh = view
+  x, y, w, h = default
+  w, h = min(w, vw), min(h, vh)
+  if entry is not None:
+    x, y = vx + entry[0] * vw, vy + entry[1] * vh
+  return min(max(x, vx), vx + vw - w), min(max(y, vy), vy + vh - h), w, h
+
+
 MIN_FONT = 24  # px; smaller is not readable from the driver's seat
 
 
@@ -105,7 +125,7 @@ class TileSpec:
   title: str                                # drawn at the bottom left of the tile
   sizes: tuple[str, ...] = ("small", "medium")  # supported sizes, the first is the default; onroad needs "small"
   services: tuple[str, ...] = ()            # every service state() reads; empty means it reads ui_state.sm
-  show: Literal["always", "onroad", "offroad"] = "always"
+  show: Literal["always", "onroad", "offroad"] = field(kw_only=True)
   hz: float = 10.0                          # max state() polls per second; the face is redrawn only when state changes
   order: int = 100                          # default position, lower first
 
@@ -223,6 +243,7 @@ def arrange(specs: list[TileSpec], saved, mode: str) -> tuple[list[tuple[str, st
   """(pinned [(id, size, fixed)] in order, hidden ids) of one layout ("park"/"drive") from the saved layout; specs are the
   tiles that belong to it. Unknown ids, unsupported sizes, bad positions, duplicates and malformed entries are dropped;
   tiles in neither list are appended in (order, id) order at their default size."""
+  specs = [s for s in specs if shows(s, mode == "drive")]
   by_id = {s.id: s for s in specs}
   saved = saved if isinstance(saved, dict) else {}
   layout = saved.get(mode) if mode in saved else (saved if mode == "park" and "tiles" in saved else {})

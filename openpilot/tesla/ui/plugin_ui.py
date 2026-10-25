@@ -6,8 +6,12 @@ import inspect
 import pkgutil
 import time
 
+import pyray as rl
+
 from openpilot.common.swaglog import cloudlog
 from openpilot.system.ui.widgets import Widget
+from openpilot.tesla.plugin_params import ParamsView
+from openpilot.tesla.ui import tiles
 from openpilot.tesla.plugins import PLUGINS, resolve, ui_module
 
 MAX_FAILURES = 3  # a widget that raises this many times in a row is not drawn again
@@ -15,6 +19,10 @@ MAX_FAILURES = 3  # a widget that raises this many times in a row is not drawn a
 
 class HudOverlay(Widget):
   """Drawn over the mici onroad HUD. Subclass in a plugin's ui.py; must construct with no arguments."""
+
+  def default_rect(self, view):
+    """Default logical box; override for the overlay's footprint. Draw relative to render(rect)."""
+    return rl.Rectangle(view.x, view.y, 120, 48)
 
   def update(self) -> None:
     """Every frame before render(); read ui_state.sm here."""
@@ -85,6 +93,28 @@ class Overlays:
   def __init__(self, base, params):
     self._entries = [[name, w, 0] for name, w in load(base)]
     self._enabled = EnabledPlugins(params)
+    self._layout_params = ParamsView(params, tiles.LAYOUT_SPEC)
+    if base is HudOverlay:
+      for name, widget, _ in self._entries:
+        widget.plugin_id = name or type(widget).__name__
+
+  def render_hud(self, rect) -> None:
+    """Apply the persisted HUD rect before Widget.render; hidden overlays never render."""
+    hud = tiles.hud_layout(self._layout_params.get(tiles.LAYOUT_PARAM))
+
+    def draw(widget):
+      entry = hud.get(widget.plugin_id)
+      if entry is not None and not entry[2]:
+        return
+      default = widget.default_rect(rect)
+      widget.render(rl.Rectangle(*tiles.hud_rect(entry, (default.x, default.y, default.width, default.height),
+                                                (rect.x, rect.y, rect.width, rect.height))))
+
+    rl.begin_scissor_mode(int(rect.x), int(rect.y), int(rect.width), int(rect.height))
+    try:
+      self.each(draw)
+    finally:
+      rl.end_scissor_mode()
 
   def each(self, fn) -> None:
     for entry in self._entries:

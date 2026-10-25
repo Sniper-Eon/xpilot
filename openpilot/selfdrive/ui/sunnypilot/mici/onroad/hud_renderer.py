@@ -32,7 +32,7 @@ class HudRendererSP(HudRenderer):
   def _render(self, rect: rl.Rectangle) -> None:
     super()._render(rect)
     self.blind_spot_indicators.render(rect)
-    self.plugin_overlays.each(lambda w: w.render(rect))
+    self.plugin_overlays.render_hud(rect)
 
   def _has_blind_spot_detected(self) -> bool:
 

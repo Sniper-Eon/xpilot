@@ -43,6 +43,11 @@ Failure cases listed before implementation:
 - T20 a view drag drops off screen or between cells; tiles, add cell, edit bar or overlay zones use the old position
 - T21 a fixed tile covered by the moved view overlaps it instead of flowing into a free cell
 - T22 an onroad tap or drag starting outside the view changes layout/pages or reaches a mici widget
+- T23 HUD fractions/visibility do not round-trip, or missing/invalid saved HUD entries lose the default position
+- T24 a dragged HUD box leaves the view, or its relative position changes when the view moves
+- T25 TileSpec accepts a missing show, or a drive/park add list offers tiles belonging only to the other mode
+- T26 adding, dropping or fixing a tile can occupy any cell inside any supported drive-view position
+- T27 Outline is missing/not black in THEMES, or adding it changes an existing theme
 """
 import ast
 import itertools
@@ -224,15 +229,15 @@ def check_view_covered(errors):
 def check_spec(errors):
   for bad in ({"sizes": ()}, {"sizes": ("huge",)}, {"show": "never"}, {"hz": 0}):
     try:
-      T.TileSpec("bad", "Bad", **bad)
+      T.TileSpec("bad", "Bad", **{"show": "always", **bad})
       errors.append(f"T12 accepted {bad}")
     except ValueError:
       pass
 
 
 def specs():
-  return [T.TileSpec("a", "A", sizes=("medium", "small"), order=1), T.TileSpec("b", "B", order=2),
-          T.TileSpec("c", "C", sizes=("wide", "medium", "small"), order=2), T.TileSpec("d", "D", order=0)]
+  return [T.TileSpec("a", "A", show="always", sizes=("medium", "small"), order=1), T.TileSpec("b", "B", show="always", order=2),
+          T.TileSpec("c", "C", show="always", sizes=("wide", "medium", "small"), order=2), T.TileSpec("d", "D", show="always", order=0)]
 
 
 def check_layout(errors):
@@ -415,10 +420,75 @@ def check_text(errors):
         errors.append(f"T13 {path.relative_to(ROOT)} non-ASCII {text!r}")
 
 
+def check_hud(errors):
+  if not hasattr(T, "hud_layout") or not hasattr(T, "hud_rect"):
+    errors.extend(["T23 saved HUD layout unsupported", "T24 bounded HUD rectangles unsupported"])
+    return
+  default = (20, 30, 120, 48)
+  view = (0, 0, *T.MICI)
+  entry = [0.4, 0.3, False]
+  saved = json.loads(json.dumps({"drive": {"hud": {"example": entry}}}))
+  if T.hud_layout(saved) != {"example": entry}:
+    errors.append("T23 HUD position/visibility did not round trip")
+  bad = [None, [], {}, {"drive": []}, {"drive": {"hud": []}}]
+  bad += [{"drive": {"hud": {"example": v}}} for v in
+          (None, [], [0, 0], [0, 0, 1], [True, 0, True], [-0.1, 0, True], [0, 1.1, True], [float("nan"), 0, True], [0, float("inf"), True])]
+  for raw in bad:
+    if T.hud_layout(raw) or T.hud_rect(T.hud_layout(raw).get("example"), default, view) != default:
+      errors.append(f"T23 invalid HUD entry did not use default: {raw}")
+  for x, y in itertools.product((-10000, 0, .5, 1, 10000), repeat=2):
+    r = T.hud_rect([x, y, True], default, view)
+    if not inside(r, view):
+      errors.append(f"T24 HUD leaves view: {r}")
+  for pos in itertools.product(range(3), range(2)):
+    vx, vy, vw, vh = T.view(pos)
+    rect = T.hud_rect(entry, (vx + 20, vy + 30, 120, 48), (vx, vy, vw, vh))
+    if abs((rect[0] - vx) / vw - entry[0]) > 1e-6 or abs((rect[1] - vy) / vh - entry[1]) > 1e-6:
+      errors.append(f"T24 HUD fractions changed with view: {pos}")
+
+
+def check_explicit_show(errors):
+  try:
+    T.TileSpec("missing", "Missing")
+    errors.append("T25 TileSpec accepted missing show")
+  except TypeError:
+    pass
+  specs = [T.TileSpec(s, s, show=s) for s in ("always", "onroad", "offroad")]
+  for mode in ("drive", "park"):
+    pinned, hidden = T.arrange(specs, {mode: {"hidden": [s.id for s in specs]}}, mode)
+    ids = T.addable(pinned, hidden, {})
+    if set(ids) != {s.id for s in specs if T.shows(s, mode == "drive")}:
+      errors.append(f"T25 wrong add list for {mode}: {ids}")
+
+
+def check_view_exclusion(errors):
+  for pos in itertools.product(range(3), range(2)):
+    blocked = T.blocked(True, pos)
+    pinned = [("tile", "small", None)]
+    placed = T.place([("tile", "small", ("small",), None)], True, pos)
+    for cell in blocked:
+      if T.move(pinned, placed, "tile", cell, True, pos) != pinned:
+        errors.append(f"T26 tile dropped in view {pos}: {cell}")
+      fixed = T.place([("tile", "small", ("small",), cell)], True, pos)
+      if any(cells(*p) & blocked for p in fixed.values()):
+        errors.append(f"T26 fixed tile inside view {pos}: {cell}")
+    filled = T.place([(str(i), "small", ("small",), None) for i in range(32)], True, pos)
+    if T.add_cell(filled, True, pos) is not None or T.add_cell({}, True, pos) in blocked:
+      errors.append(f"T26 add cell inside view {pos}")
+
+
+def check_themes(errors):
+  existing = {"Cobalt": (0, 80, 239), "Teal": (0, 140, 140), "Emerald": (0, 128, 0), "Crimson": (162, 0, 37),
+              "Violet": (106, 0, 255), "Graphite": (52, 56, 66)}
+  if T.THEMES != {**existing, "Outline": (0, 0, 0)}:
+    errors.append(f"T27 Outline missing/changed existing theme: {T.THEMES}")
+
+
 def main() -> int:
   errors: list[str] = []
   for check in (check_grid, check_view, check_place, check_show, check_spec, check_layout, check_edit, check_hits, check_bar, check_gesture,
-                check_poll, check_fit, check_text, check_view_saved, check_view_moved, check_view_covered):
+                check_poll, check_fit, check_text, check_view_saved, check_view_moved, check_view_covered,
+                check_hud, check_explicit_show, check_view_exclusion, check_themes):
     try:
       check(errors)
     except Exception as e:

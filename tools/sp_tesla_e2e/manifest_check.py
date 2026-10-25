@@ -18,7 +18,9 @@ Failure cases listed before implementation:
      outside ui.py passes; or a built-in plugin breaks the rules
 - M12 a new plugin directory appears under openpilot/tesla/plugins/ (only the SP core plugins stay built in;
       everything else goes to the plugin repository, github.com/onemiless/xpilot-plugins)
+- M13 a built-in or store TileSpec omits an explicit valid show; the repository scan misses it (store_e2e included)
 """
+import ast
 import json
 from pathlib import Path
 import sys
@@ -57,8 +59,37 @@ class FakeParams:
     return bool(self.values.get(key, False))
 
 
+def tile_show_problems(path: Path) -> list[str]:
+  """Explicit TileSpec.show in source, including plugins not importable on this host."""
+  errors = []
+  for node in ast.walk(ast.parse(path.read_text())):
+    if not isinstance(node, ast.Call) or not (isinstance(node.func, ast.Name) and node.func.id == "TileSpec"
+                                            or isinstance(node.func, ast.Attribute) and node.func.attr == "TileSpec"):
+      continue
+    show = next((kw.value for kw in node.keywords if kw.arg == "show"), None)
+    if not isinstance(show, ast.Constant) or show.value not in ("onroad", "offroad", "always"):
+      tid = ast.literal_eval(node.args[0]) if node.args and isinstance(node.args[0], ast.Constant) else "?"
+      errors.append(f"M13 {path}:{node.lineno} tile {tid}: explicit show required (onroad/offroad/always)")
+  return errors
+
+
 def main() -> int:
   errors = []
+  from openpilot.tesla.ui.tiles import TileSpec
+  try:
+    TileSpec("missing", "Missing")
+    errors.append("M13 runtime TileSpec accepted missing show")
+  except TypeError:
+    pass
+  for path in sorted((ROOT / "openpilot/tesla/ui/slots").rglob("*.py")) + sorted(mf.PLUGINS_DIR.glob("*/ui.py")):
+    errors += tile_show_problems(path)
+  with tempfile.TemporaryDirectory() as tmp:
+    path = Path(tmp) / "ui.py"
+    for declaration, count in (('TileSpec("x", "X")', 1), ('TileSpec("x", "X", show="never")', 1),
+                               ('TileSpec("x", "X", show="onroad")', 0)):
+      path.write_text(declaration)
+      if len(tile_show_problems(path)) != count:
+        errors.append(f"M13 declaration check: {declaration}")
   with tempfile.TemporaryDirectory() as tmp:
     root = Path(tmp)
     write(root, "good_b", priority=50)
