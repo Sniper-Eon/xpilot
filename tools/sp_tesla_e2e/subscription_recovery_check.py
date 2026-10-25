@@ -6,15 +6,17 @@ plugin exemptions suppress stock health checks; two OSM publishers run together.
 """
 import ast
 import math
+import sys
 from pathlib import Path
 from types import SimpleNamespace as N
 import unittest
 from unittest.mock import patch
 
-from openpilot.cereal import messaging
-from openpilot.tesla import plugins
-
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT))
+
+from openpilot.cereal import messaging  # noqa: E402
+from openpilot.tesla import plugins  # noqa: E402
 
 
 class SubscriptionRecovery(unittest.TestCase):
