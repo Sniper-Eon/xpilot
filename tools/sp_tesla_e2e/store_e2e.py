@@ -4,7 +4,8 @@ discovery -> enable via the params view -> the plugin's hook runs in the host. U
   python3 tools/sp_tesla_e2e/store_e2e.py --repo ~/xpilot-plugins
 
 Failure cases listed before running:
-- E1 an index entry from the repository is not installable on this host, or fails to install
+- E1 a matching-platform index entry from the repository is not installable, or fails to install
+- E1b a native archive for another platform is installed or incorrectly counted as a missing local plugin
 - E2 an installed repository plugin is not discovered, or reports a load error
 - E3 a plugin that is off by default is active before it is switched on
 - E4 after switching on, its alert hook is not collected or gives no alert when it should (overspeed_warning)
@@ -46,7 +47,7 @@ except Exception:
 from openpilot.common.swaglog import cloudlog  # noqa: E402
 for _level in ("error", "exception", "warning", "info"):
   setattr(cloudlog, _level, lambda *a, **k: None)
-from openpilot.tesla import store  # noqa: E402
+from openpilot.tesla import store, manifest  # noqa: E402
 
 
 class CP:
@@ -78,13 +79,18 @@ def main() -> int:
   entries, err = store.fetch_index((TMP / "index.json").as_uri())
   if err or not entries:
     errors.append(f"E1 index: {err}")
+  skipped_platform = [e.id for e in entries if not manifest.platform_ok(e.platform)]
   for e in entries:
+    if e.id in skipped_platform:
+      if e.installable:
+        errors.append(f"E1b {e.id}: wrong-platform plugin offered for installation")
+      continue
     if not e.installable or (r := store.install(e)) is not None:
       errors.append(f"E1 {e.id}: installable={e.installable} {r if e.installable else ''}")
 
   from openpilot.tesla import plugins
   from openpilot.tesla.plugin_params import ParamsView
-  ids = {e.id for e in entries}
+  ids = {e.id for e in entries if e.id not in skipped_platform}
   found = {c.NAME for c in plugins.PLUGINS} & ids
   if found != ids or ids & set(plugins.LOAD_ERRORS):
     errors.append(f"E2 discovered {found}, load errors {plugins.LOAD_ERRORS}")
@@ -124,7 +130,7 @@ def main() -> int:
       errors.append(f"E7 owner off={off} on={on}, op_modeld onroad-only={runs}")
 
   server.shutdown()
-  print(json.dumps({"installed": sorted(found), "errors": errors}, indent=1))
+  print(json.dumps({"installed": sorted(found), "skipped_platform": skipped_platform, "errors": errors}, indent=1))
   return 1 if errors else 0
 
 
