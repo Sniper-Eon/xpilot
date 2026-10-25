@@ -73,6 +73,8 @@ def plugin_status(plugin, faults, conflicts) -> str:
     return "fault"
   if plugin.NAME in conflicts:
     return "conflict"
+  if (mf.INSTALL_DIR / plugin.NAME).is_dir():
+    return store.plugin_state(plugin.NAME, plugin.MANIFEST.version)
   return ""
 
 
@@ -108,28 +110,38 @@ def plugin_rows(params) -> list[tuple[str, str, str]]:
   return rows
 
 
-def switch_plugin(plugin, value: bool, params) -> str | None:
+def switch_changes(name, value, items, enabled) -> tuple[dict[str, bool], str | None]:
+  """Shared toggle plan for loaded UI plugins and newly installed disk manifests. items: id/priority/claims/key."""
+  claims = [(n, priority, resources) for n, priority, resources, _ in items]
+  off = set(conflicting(name, claims)) if value else {name}
+  remaining = {n for n, _, _, key in items if n in enabled and (n not in off or key is None)}
+  if value:
+    remaining.add(name)
+  for role in REQUIRED_ROLES:
+    if any(role in c for n, _, c, _ in items if n in enabled) and not any(role in c for n, _, c, _ in items if n in remaining):
+      return {}, f"required role {role}"
+  changes = {key: False for n, _, _, key in items if n in off and key is not None}
+  changes.update({key: value for n, _, _, key in items if n == name and key is not None})
+  return changes, None
+
+
+def switch_plugin(plugin, value: bool, params, jobs=None) -> str | None:
   """Switch a plugin; switching on switches off every plugin sharing an exclusive claim. Clears its fault mark.
   None on success, else the required-role refusal. params = plugins.view(...); callers check offroad."""
+  if jobs is not None and jobs.busy:
+    return "store busy"
   if value:
     ok, reason = mf.compatible(plugin.MANIFEST, mf.HOST_CAPS)
     if not ok:
       return reason
   if plugin.ENABLE_PARAM is None:
     return
-  off = conflicting(plugin.NAME, [(p.NAME, p.PRIORITY, p.CLAIMS) for p in PLUGINS]) if value else {plugin.NAME}
-  enabled = [p for p in PLUGINS if is_enabled(p, params)]
-  remaining = [p for p in enabled if p.NAME not in off or p.ENABLE_PARAM is None]
-  if value:
-    remaining.append(plugin)
-  for role in REQUIRED_ROLES:
-    if any(role in p.CLAIMS for p in enabled) and not any(role in p.CLAIMS for p in remaining):
-      return f"required role {role}"
-  if value:
-    for p in PLUGINS:
-      if p.NAME in off and p.ENABLE_PARAM is not None:
-        params.put_bool(p.ENABLE_PARAM, False, block=True)
-  params.put_bool(plugin.ENABLE_PARAM, value, block=True)
+  changes, error = switch_changes(plugin.NAME, value, [(p.NAME, p.PRIORITY, p.CLAIMS, p.ENABLE_PARAM) for p in PLUGINS],
+                                  {p.NAME for p in PLUGINS if is_enabled(p, params)})
+  if error:
+    return error
+  for key, state in changes.items():
+    params.put_bool(key, state, block=True)
   faults = params.get(FAULTS_PARAM) or {}
   if faults.pop(plugin.NAME, None) is not None:
     params.put(FAULTS_PARAM, faults, block=True)
@@ -171,6 +183,7 @@ class StoreJobs:
     self.entries: list[store.IndexEntry] = []
     self.installed: dict[str, str] = store.installed_versions()
     self.dirty = False  # set after a fetch; the UI thread rebuilds its rows and clears it
+    self.states = {}
 
   def run(self, job, wait: bool = False) -> None:
     if self.busy:
@@ -188,6 +201,7 @@ class StoreJobs:
       self.status = f"error: {e}"[:60]
     finally:
       self.installed = store.installed_versions()
+      self.states.clear()
       self.busy = False
 
   def fetch(self) -> None:
@@ -214,8 +228,8 @@ class StoreJobs:
       self.status = f"{pid}: {error}"[:60] if error else f"removed {pid}: restart to apply"
     elif entry.installable:
       self.status = f"installing {entry.id}..."
-      error = store.install(entry)
-      self.status = f"{entry.id}: {error}"[:60] if error else f"installed {entry.id}: restart to apply"
+      error = store.install(entry, activate=have is None, offroad=self.offroad)
+      self.status = f"{entry.id}: {error}"[:60] if error else (f"enabled {entry.id}: restarting" if have is None else f"installed {entry.id}: restart to apply")
 
   def can_act(self, pid: str) -> bool:
     return not self.busy and self.offroad() and (pid in self.installed or getattr(self.current(pid), "installable", False))
@@ -229,12 +243,17 @@ class StoreJobs:
       return "REMOVE"
     if not entry.installable:
       return "N/A"
-    return "UPDATE" if have else "INSTALL"
+    return "UPDATE" if have else "INSTALL & ENABLE"
 
   def row_value(self, entry: store.IndexEntry) -> str:
     have = self.installed.get(entry.id)
     if not entry.installable:
       return f"needs api {entry.api}" if have is None else f"v{have} installed"
     if have == entry.version:
-      return f"v{have} installed"
+      key = (entry.id, have)
+      cached = self.states.get(key)
+      now = time.monotonic()
+      if cached is None or now - cached[0] >= 1:
+        cached = self.states[key] = (now, store.plugin_state(entry.id, have))
+      return f"v{have} {cached[1]}"
     return f"v{have} -> v{entry.version}" if have else f"v{entry.version}"

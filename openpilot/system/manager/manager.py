@@ -15,12 +15,18 @@ from openpilot.common.hardware import HARDWARE, PC
 from openpilot.system.manager.helpers import unblock_stdout, save_bootlog
 from openpilot.system.manager.process import ensure_running
 from openpilot.sunnypilot.hardware.driver_monitoring import latch_driver_monitoring
-from openpilot.system.manager.process_config import managed_processes
 from openpilot.common.swaglog import cloudlog, add_file_handler
 from openpilot.common.version import get_build_metadata
 from openpilot.common.hardware.hw import Paths
 
 from openpilot.sunnypilot.system.params_migration import run_migration
+from openpilot.tesla.store import recover
+
+try:
+  recover()
+except Exception:
+  cloudlog.exception("store recovery failed; journal kept for next boot")
+from openpilot.system.manager.process_config import managed_processes
 
 
 def manager_init() -> None:
