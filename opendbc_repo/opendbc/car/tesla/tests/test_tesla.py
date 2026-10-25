@@ -1,12 +1,21 @@
+"""CarState failure cases:
+CS1 stock Autosteer enabled still raises invalidLkasSetting.
+CS2 the Autosteer override changes another CarState field.
+"""
 import re
 import unittest
+from unittest.mock import patch
 
-from opendbc.car import gen_empty_fingerprint
-from opendbc.car.structs import CarParams
+from opendbc.can import CANPacker
+from opendbc.car import Bus, gen_empty_fingerprint
+from opendbc.car.structs import CarParams, CarParamsSP
+from opendbc.car.tesla.carstate import CarState
 from opendbc.car.tesla.interface import CarInterface
 from opendbc.car.tesla.fingerprints import FW_VERSIONS
 from opendbc.car.tesla.radar_interface import RADAR_START_ADDR
-from opendbc.car.tesla.values import CAR
+from opendbc.car.tesla.values import CAR, DBC, CANBUS, TeslaFlags
+from opendbc.sunnypilot.car.tesla.carstate_ext import CarStateExt
+from opendbc.sunnypilot.car.tesla.values import TeslaFlagsSP
 
 Ecu = CarParams.Ecu
 
@@ -46,6 +55,37 @@ PLATFORM_TO_CAR = {
   b'Y': CAR.TESLA_MODEL_Y,
   b'X': CAR.TESLA_MODEL_X,
 }
+
+
+class TestTeslaCarState(unittest.TestCase):
+  def test_stock_autosteer_setting(self):
+    update_ext = CarStateExt.update
+    for candidate in CAR:
+      for flags in (0, TeslaFlags.MISSING_DAS_SETTINGS):
+        for vehicle_bus in (False, True):
+          for autosteer in (0, 1):
+            with self.subTest(candidate=candidate, flags=flags, vehicle_bus=vehicle_bus, autosteer=autosteer):
+              CP = CarParams(carFingerprint=candidate.value, flags=int(flags))
+              CP_SP = CarParamsSP(flags=TeslaFlagsSP.HAS_VEHICLE_BUS if vehicle_bus else 0)
+              cs = CarState(CP, CP_SP)
+              parsers = cs.get_can_parsers(CP, CP_SP)
+              self.assertIn("DAS_autosteerEnabled", parsers[Bus.ap_party].vl["DAS_settings"])
+              packer = CANPacker(DBC[candidate][Bus.party])
+              parsers[Bus.ap_party].update([(0, [packer.make_can_msg("DAS_settings", CANBUS.autopilot_party,
+                                                                   {"DAS_autosteerEnabled": autosteer})])])
+              self.assertEqual(parsers[Bus.ap_party].vl["DAS_settings"]["DAS_autosteerEnabled"], autosteer)
+
+              def check_update(state, ret, ret_sp, can_parsers):
+                before = ret.to_dict()
+                update_ext(state, ret, ret_sp, can_parsers)
+                after = ret.to_dict()
+                before.pop("invalidLkasSetting")
+                after.pop("invalidLkasSetting")
+                self.assertEqual(after, before, "CS2: only invalidLkasSetting may change")
+
+              with patch.object(CarStateExt, "update", check_update):
+                ret, _ = cs.update(parsers)
+              self.assertFalse(ret.invalidLkasSetting, "CS1: stock Autosteer is allowed")
 
 
 class TestTeslaFingerprint(unittest.TestCase):

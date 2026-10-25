@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+"""RX failure cases:
+RX1 exempt UI_status2 at 2 Hz keeps safety_rx_checks_invalid true.
+RX2 a non-exempt message configured below 10 Hz leaves RX checks valid.
+"""
 import random
 import unittest
 import numpy as np
@@ -15,6 +19,8 @@ from opendbc.safety.tests.libsafety import libsafety_py
 from opendbc.safety.tests.common import CANPackerSafety, MAX_SPEED_DELTA, MAX_WRONG_COUNTERS, away_round, round_speed
 
 from opendbc.sunnypilot.car.tesla.values import TeslaSafetyFlagsSP
+
+libsafety_py.ffi.cdef('extern safety_config current_safety_config; extern bool safety_rx_checks_invalid;')
 
 MSG_DAS_steeringControl = 0x488
 MSG_APS_eacMonitor = 0x27d
@@ -476,6 +482,29 @@ class TestTeslaIgnition(common.SafetyTestBase):
 class TestTeslaVehicleBusSafety(TestTeslaSafetyBase):
 
   LONGITUDINAL = False
+
+  def test_rx_minimum_frequency(self):
+    values = {0x155: {"ESP_wheelSpeedsQF": 1}, 0x145: {"ESP_driverBrakeApply": 1}, 0x257: {"DI_vehicleSpeed": 0}}
+    for ignore_frequency_check in (False, True):
+      with self.subTest(ignore_frequency_check=ignore_frequency_check):
+        self.setUp()
+        cfg = self.safety.current_safety_config
+        ui_status = cfg.rx_checks[cfg.rx_checks_len - 1].msg[0]
+        self.assertEqual((ui_status.addr, ui_status.bus, ui_status.frequency), (0x3DF, 1, 2))
+        ui_status.ignore_frequency_check = ignore_frequency_check
+        for ts in range(0, 2_000_001, 10_000):
+          self.safety.set_timer(ts)
+          for i in range(cfg.rx_checks_len):
+            msg = cfg.rx_checks[i].msg[0]
+            if ts % (1_000_000 // msg.frequency) == 0:
+              packer = self.packer_adas if msg.bus == CANBUS.vehicle else self.packer
+              self.assertTrue(self._rx(packer.make_can_msg_safety(msg.addr, msg.bus, values.get(msg.addr, {}))))
+          if ts and ts % 1_000_000 == 0:
+            self.safety.set_controls_allowed(True)
+            self.safety.safety_tick()
+            self.assertTrue(self.safety.safety_config_valid())
+            self.assertEqual(self.safety.safety_rx_checks_invalid, not ignore_frequency_check)
+            self.assertEqual(self.safety.get_controls_allowed(), ignore_frequency_check)
 
   def setUp(self):
     super().setUp()

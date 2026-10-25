@@ -324,6 +324,7 @@ typedef struct {
 ```
 
 规则：一个插件只负责一个报文，原有 safety 模式的白名单和检查一律不改；校验报文模板、新鲜度、频率、Tesla 模式、vehicle bus、自有 `safetyParam` 位和会话上限。`auto_speed` 必须有 `controls_allowed`；`ambient_light` 是车身盲区告警，允许未接管时告警。
+Tesla 接管例外（用户 2026-10-25 决定）：`safety.h` 的最低频率检查遵守 `ignore_frequency_check`，时效、校验和、计数器和质量检查不变；SP 扩展允许原车 Autosteer 设置（mixed AP），以后由 mixed AP 插件接管，不改上游 `carstate.py` 或 panda 的 Autosteer 安全逻辑。
 
 新增 safety 插件的附加规则：
 - 头文件名必须是 `<profile 名>.h`，头文件注释里的名字也用 profile 名（`gen_safety.py` 检查）。
