@@ -13,7 +13,7 @@ import unittest
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT))
+sys.path[:0] = [str(ROOT), str(ROOT / "opendbc_repo")]
 
 from openpilot.cereal import messaging  # noqa: E402
 from openpilot.tesla import plugins  # noqa: E402
