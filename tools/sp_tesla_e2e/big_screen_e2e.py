@@ -36,11 +36,15 @@ Failure modes (listed before implementation):
     saved rect/visibility, dragging escapes the view, disabled overlays show, or moving the view loses HUD fractions.
 18. Drive/park add list includes the wrong show; adding/dropping/fixing a tile enters the Driving view; onroad info cannot
     render outside the view as a Tile or in a ScreenOverlay side zone.
-19. Outline is absent from Toggles, its park/onroad tiles are not black with a thin gray border and white text,
+19. Black is absent from Toggles, its park/onroad tiles have a border or are not black with white text,
     or switching themes leaves stale black/bordered textures or changes other themes onroad.
 
 Run with comma service stopped and native libraries built. No CAN transmission,
 settings actions, store refresh/install, or reboot/reset/uninstall confirmation.
+20. Edit bar buttons are smaller than twice their old height, retain small text, or cover tiles/the Driving view.
+21. Built-in HUD boxes cannot move/hide/persist, or production HUD drawing ignores their layout.
+22. Saved hidden/invalid entries hide steering/model/blindspot safety indications, or alerts enter the editor/are suppressed.
+23. Plugins page omits the declared use next to a plugin.
 """
 import argparse
 from copy import deepcopy
@@ -59,12 +63,14 @@ def host_check(output):
   import os
   import types
   root = Path(__file__).resolve().parents[2]
-  sys.path.insert(0, str(root))
+  sys.path[:0] = [str(root), str(root / 'opendbc_repo')]
   output.mkdir(parents=True, exist_ok=True)
   sandbox = tempfile.TemporaryDirectory()
   os.environ.update(XPILOT_PLUGINS_DIR=sandbox.name, SCALE='1', SUNNYPILOT_UI='0')
   cereal = types.ModuleType('openpilot.cereal')
   cereal.__path__ = [str(root / 'openpilot/cereal')]
+  import capnp
+  cereal.log = capnp.load(str(root / 'openpilot/cereal/log.capnp'), imports=[str(root / 'opendbc_repo/opendbc/car')])
   sys.modules['openpilot.cereal'] = cereal
   sys.modules['openpilot.cereal.messaging'] = types.SimpleNamespace()
   sys.modules['openpilot.common.swaglog'] = types.SimpleNamespace(cloudlog=logging.getLogger('host-e2e'))
@@ -74,7 +80,8 @@ def host_check(output):
   params = FakeParams()
   state = types.SimpleNamespace(started=False, engaged=False, status=0, sm={}, params=params, add_offroad_transition_callback=lambda cb: None)
   sys.modules['openpilot.selfdrive.ui.ui_state'] = types.SimpleNamespace(
-    ui_state=state, UIStatus=types.SimpleNamespace(DISENGAGED=0), device=types.SimpleNamespace(awake=True))
+    ui_state=state, UIStatus=types.SimpleNamespace(DISENGAGED=0, ENGAGED=1, LAT_ONLY=2, LONG_ONLY=3),
+    ChestnutState=types.SimpleNamespace(LOADING=1, UNCOMPILED=2, FAILED=3, ACTIVE=4), device=types.SimpleNamespace(awake=True))
   sys.modules['openpilot.sunnypilot.hardware.profile'] = types.SimpleNamespace(HardwareProfile=types.SimpleNamespace(C3XL='c3xl'), get_hardware_profile=lambda: 'pc')
   import pyray as rl
   from openpilot.system.ui.lib.application import gui_app, FontWeight, MouseEvent, MousePos
@@ -139,7 +146,7 @@ def host_check(output):
   main._onboarding_window = object()
   gui_app._nav_stack = [main]
   host.bind_settings(main, None)
-  # Production camera shader and HUD dispatch, with deterministic NV12 input and SP HUD excluded from this fixture.
+  # Production camera shader and HUD with deterministic services, NV12 input and fixture icons.
   import numpy as np
   stream = types.SimpleNamespace(VISION_STREAM_CABIN=2, VISION_STREAM_NARROW_ROAD=0)
   client = types.SimpleNamespace(width=96, stride=96, height=64, is_connected=lambda: True)
@@ -157,11 +164,30 @@ def host_check(output):
   camera = CameraView('fixture', stream.VISION_STREAM_NARROW_ROAD)
   camera._initialize_textures()
   logical = rl.load_render_texture(*tiles.MICI)
-  sys.modules['openpilot.selfdrive.ui.mici.onroad.hud_renderer'] = types.SimpleNamespace(HudRenderer=Page)
-  sys.modules['openpilot.selfdrive.ui.sunnypilot.onroad.blind_spot_indicators'] = types.SimpleNamespace(
-    BlindSpotIndicators=lambda: types.SimpleNamespace(update=lambda: None, render=lambda rect: None, detected=False))
+  gui_app._host = host
+  gui_app.sunnypilot_ui = lambda: True
+  state.started_frame, state.chestnut_state, state.is_metric, state.blindspot = 0, 1, True, True
+  class SM(dict):
+    recv_frame = {'carState': 1}
+  state.sm = SM(carState=types.SimpleNamespace(vCruiseCluster=70, vEgoCluster=18, vEgo=18, steeringAngleDeg=0,
+                                               leftBlindspot=True, rightBlindspot=True),
+                controlsState=types.SimpleNamespace(deprecated=types.SimpleNamespace(vCruise=70),
+                  lateralControlState=types.SimpleNamespace(which=lambda: 'torqueState')),
+                selfdriveState=types.SimpleNamespace(enabled=True),
+                carOutput=types.SimpleNamespace(actuatorsOutput=types.SimpleNamespace(torque=.4)), onroadEvents=[])
+
   from openpilot.selfdrive.ui.sunnypilot.mici.onroad.hud_renderer import HudRendererSP
   renderer = HudRendererSP()
+  builtin_draws = {}
+  for name, obj, method in (('torque_bar', renderer._torque_bar, 'render'), ('set_speed', renderer, '_draw_set_speed'),
+                             ('model_source', renderer, '_draw_model_source'), ('steering_wheel', renderer, '_draw_steering_wheel'),
+                             ('blind_spot_indicators', renderer.blind_spot_indicators, 'render')):
+    original = getattr(obj, method)
+    def record(rect, name=name, original=original):
+      builtin_draws.setdefault(name, []).append([rect.x, rect.y, rect.width, rect.height])
+      return original(rect)
+    setattr(obj, method, record)
+
   target = rl.load_render_texture(*tiles.SCREEN)
   errors, cases, clicks = [], [], []
   mici = Button('mici', lambda: clicks.append(True))
@@ -328,7 +354,8 @@ def host_check(output):
     frame()
     try:
       boxes = host._hud_boxes()
-      check(set(boxes) == {'example'}, f'17 missing enabled HUD boxes: {boxes}')
+      check(set(boxes) == {'example', 'builtin:torque_bar', 'builtin:set_speed', 'builtin:steering_wheel',
+                           'builtin:model_source', 'builtin:blind_spot_indicators'}, f'17 missing enabled HUD boxes: {boxes}')
       frame(name='drive-edit-hud-boxes')
       original = boxes['example']
       drag(center(original), (center(original)[0] + 260, center(original)[1] + 90))
@@ -367,7 +394,7 @@ def host_check(output):
             f'17 HUD dragged outside view: {box}')
       disabled = host._hud_overlays._enabled.shows
       host._hud_overlays._enabled.shows = lambda name: False
-      check(not host._hud_boxes(), '17 disabled plugin appears in editor')
+      check('example' not in host._hud_boxes(), '17 disabled plugin appears in editor')
       host._hud_overlays._enabled.shows = disabled
       cases.append({'id': 17, 'saved': raw, 'onroad_rect': before, 'clamped_box': box, 'restart': True, 'hidden_draws': 0})
     except Exception:
@@ -378,7 +405,7 @@ def host_check(output):
       host._layouts[mode] = tiles.arrange([e.spec for e in host._entries.values()], {mode: {'hidden': list(host._entries)}}, mode)
       host._placed_key = None
       frame()
-      cell = tiles.add_cell(host._place(mode), mode == 'drive', host._view_position)
+      cell = tiles.add_cell(host._place(mode), mode == 'drive', host._view_position, edit=True)
       touch(center(tiles.cell_rect(*cell)))
       page = host._stack[-1][1]
       titles = [row.title for row in page._scroller._items]
@@ -404,7 +431,7 @@ def host_check(output):
     samples = []
     for onroad in (False, True):
       state.started = onroad
-      frame(name='onroad-outline' if onroad else 'park-outline')
+      frame(name='onroad-black' if onroad else 'park-black')
       entry = host._entries[next(iter(host._placed))]
       image = rl.load_image_from_texture(entry.texture.texture)
       border = rl.get_image_color(image, 1, 1)
@@ -413,7 +440,7 @@ def host_check(output):
       white = bool(np.any(np.all(pixels[:, :3] == 255, axis=1)))
       sample = {'onroad': onroad, 'border': [border.r, border.g, border.b], 'interior': [interior.r, interior.g, interior.b], 'white_text': white}
       samples.append(sample)
-      check(sample['border'] == [90, 92, 100] and sample['interior'] == [0, 0, 0] and white, f'19 wrong Outline tile: {sample}')
+      check(sample['border'] == [0, 0, 0] and sample['interior'] == [0, 0, 0] and white, f'19 border/incorrect Black tile: {sample}')
       rl.unload_image(image)
     state.started = False
     host._layout_params.put(tiles.THEME_PARAM, 'Crimson')
@@ -424,8 +451,82 @@ def host_check(output):
     frame()
     check(color() == (32, 32, 32), '19 other onroad theme no longer neutral')
     toggles = (root / 'openpilot/tesla/ui/pages/toggles.py').read_text()
-    check('list(THEMES)' in toggles and 'Outline' in tiles.THEMES, '19 Toggles theme list omits Outline')
+    check('list(THEMES)' in toggles and 'Black' in tiles.THEMES and 'Outline' not in tiles.THEMES, '19 Toggles theme list omits Black')
     cases.append({'id': 19, 'samples': samples, 'restored_onroad_rgb': color()})
+    state.started = False
+    host._layout_params.put(tiles.THEME_PARAM, 'Black')
+    host._theme()
+    frame()
+    check(color() == (0, 0, 0), '19 new Black theme is not black')
+    for mode in ('park', 'drive'):
+      host._layout, host._edit = mode, True
+      frame(name='edit-bar-' + mode)
+      bars = tiles.bar_buttons(host._placed, mode == 'drive', host._view_position)
+      from tools.sp_tesla_e2e.tile_layout_check import overlap
+      check(all(r[3] >= 152 for r in bars.values()), '20 edit bar height not doubled')
+      check(all(not overlap(r, tiles.tile_rect(p)) for r in bars.values() for p in host._placed.values()), '20 edit bar covers tiles')
+      check(mode == 'park' or all(not overlap(r, tiles.view(host._view_position)) for r in bars.values()), '20 edit bar covers view')
+      cases.append({'id': 20, 'mode': mode, 'buttons': bars})
+    screen_source = (root / 'openpilot/tesla/ui/screen.py').read_text()
+    check('label, 56' in screen_source, '20 edit bar font not enlarged')
+    host._view_position = (1, 0)
+    host._hud = {}
+    frame(name='drive-edit-builtin-hud-boxes')
+    expected = {'builtin:torque_bar', 'builtin:set_speed', 'builtin:steering_wheel', 'builtin:model_source', 'builtin:blind_spot_indicators'}
+    boxes = host._hud_boxes()
+    check(expected <= set(boxes) and not any('alert' in name for name in boxes), '21/22 built-in boxes missing or alert editable')
+    defaults = tiles.builtin_hud_boxes((0, 0, *tiles.MICI))
+    box = boxes['builtin:set_speed']
+    drag(center(box), (center(box)[0] + 320, center(box)[1]))
+    moved = list(host._hud['builtin:set_speed'])
+    # Torque box edges avoid the overlapping steering/model safety groups.
+    box = host._hud_boxes()['builtin:torque_bar']
+    touch((box[0] + box[2] / 2, box[1] + box[3] - 10))
+    check(not host._hud['builtin:torque_bar'][2], '21 torque bar tap did not hide')
+    for name in ('builtin:steering_wheel', 'builtin:model_source'):
+      box = host._hud_boxes()[name]
+      touch((box[0] + box[2] / 2, box[1] + box[3] / 2))
+      check(host._hud.get(name, [0, 0, True])[2], '22 protected indicator hid: ' + name)
+    restarted = screen.BigScreenHost()
+    check(restarted._hud == host._hud, '21 restart lost built-in layout')
+    state.started, state.status = True, 1
+    builtin_draws.clear()
+    frame(name='onroad-builtin-moved-hidden')
+    check(not builtin_draws.get('torque_bar'), '21 hidden torque bar still drawn')
+    actual = builtin_draws.get('set_speed', [[-999, -999]])[-1]
+    check(abs(actual[0] + defaults['builtin:set_speed'][0] - moved[0] * tiles.MICI[0]) < .001, '21 saved built-in position not applied')
+    raw = deepcopy(host._hud)
+    for name in tiles.HUD_REQUIRED:
+      host._hud[name] = [.1, .1, False]
+    builtin_draws.clear()
+    frame(name='onroad-protected-indicators')
+    check(all(builtin_draws.get(name.split(':')[1]) for name in tiles.HUD_REQUIRED), '22 persisted hide disabled protected indication')
+    for entry in ([float('nan'), 0, False], [0, float('inf'), True], [0, 0, 0], 'garbage', None):
+      host._layout_params.put(tiles.LAYOUT_PARAM, {'drive': {'hud': {'builtin:set_speed': entry}}})
+      restored = screen.BigScreenHost()
+      check('builtin:set_speed' not in restored._hud, '22 invalid entry survived restart')
+    host._hud = raw
+    host._save()
+    before = builtin_draws.get('set_speed', [])[-1]
+    drag(center(host._view), (center(host._view)[0] + tiles.PITCH, center(host._view)[1] + tiles.PITCH))
+    check(host._hud == raw and builtin_draws.get('set_speed', [])[-1] == before, '21 moving view lost built-in fractions')
+    cases.append({'id': 21, 'saved': raw, 'draws': builtin_draws, 'restart': True})
+    augmented = (root / 'openpilot/selfdrive/ui/mici/onroad/augmented_road_view.py').read_text()
+    check('if gui_app.host is None:  # big screens draw alerts' not in augmented and
+          '    self._alert_renderer.render(self._content_rect)' in augmented, '22 big-screen alerts suppressed')
+    cases.append({'id': 22, 'protected': sorted(tiles.HUD_REQUIRED), 'alerts': 'SP call remains unconditional; no alert editor entry'})
+    from openpilot.tesla import plugins
+    from openpilot.tesla.ui.pages.plugins import PluginsPage, PluginPage
+    page = PluginsPage()
+    page._build()
+    for plugin in plugins.PLUGINS:
+      text = 'onroad + offroad' if plugin.MANIFEST.use == 'both' else plugin.MANIFEST.use
+      descriptions = [row.description for _, section in page.sections for row in section._scroller._items]
+      check(any(text in d for d in descriptions), '23 plugin list omits use: ' + plugin.NAME)
+      detail = PluginPage(plugin, page.jobs)
+      check(any(row.title == 'Use' for row in detail._scroller._items), '23 plugin detail omits use: ' + plugin.NAME)
+    cases.append({'id': 23, 'plugins': [p.NAME for p in plugins.PLUGINS]})
+
 
 
   except Exception:

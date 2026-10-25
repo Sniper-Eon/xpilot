@@ -686,7 +686,7 @@ def service_checks(plugins) -> list[str]:
       path = Path(tmp) / name
       path.mkdir()
       (path / "__init__.py").write_text("")
-      (path / "plugin.json").write_text(json.dumps({"id": name, "api": 1, "category": "tools", "entry": "plugin:P"}))
+      (path / "plugin.json").write_text(json.dumps({"id": name, "api": 1, "category": "tools", "use": "both", "entry": "plugin:P"}))
       (path / "plugin.py").write_text(f"from openpilot.tesla.plugin import Plugin\nclass P(Plugin):\n  SERVICES = {services!r}\n")
     with patch.object(plugins.mf, "INSTALL_DIR", Path(tmp)):
       loaded, faults, _ = plugins._discover()

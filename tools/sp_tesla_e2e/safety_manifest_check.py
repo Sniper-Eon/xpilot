@@ -49,7 +49,7 @@ def main():
     assert registry.read_bytes() == original
     builtin = root / 'openpilot/tesla/plugins/x/plugin.json'
     builtin.parent.mkdir()
-    manifest = {'id': 'x', 'api': 1, 'category': 'tools', 'entry': 'plugin:X'}
+    manifest = {'id': 'x', 'api': 1, 'category': 'tools', 'use': 'onroad', 'entry': 'plugin:X'}
     for label in ('duplicate-bit', 'missing-header', 'tx-differs-from-header', 'builtin-claim-undeclared'):
       data = json.loads(json.dumps(declared))
       if label == 'duplicate-bit':

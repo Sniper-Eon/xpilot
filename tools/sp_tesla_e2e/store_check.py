@@ -38,6 +38,8 @@ Failure cases listed before implementation:
 - S33 uninstall refuses a replacement when a built-in or another installed claimant remains
 - S34 the host Params stub accepts a key absent from params_keys.h and plugin_params.inc
 - S35 install or uninstall succeeds while IsOffroad is False
+- S36 missing/invalid use installs, damages an old version, or loads without a reason
+- S37 tile/use mismatch installs instead of preserving the old version
 """
 import hashlib
 import http.server
@@ -93,7 +95,7 @@ from openpilot.tesla.plugin_params import ParamsView  # noqa: E402
 
 def manifest(pid, **over):
   m = {"id": pid, "name": pid, "version": "1.0.0", "api": mf.API_VERSION, "category": "tools", "entry": "plugin:P",
-       "enable_param": f"Ext{pid}On", "claims": [],
+       "use": "both", "enable_param": f"Ext{pid}On", "claims": [],
        "params": {f"Ext{pid}On": {"type": "BOOL", "default": "1"}, f"Ext{pid}Level": {"type": "INT", "default": "7"},
                   f"Ext{pid}Cfg": {"type": "JSON"}}}
   m.update(over)
@@ -243,6 +245,29 @@ def main() -> int:
   if json.loads((TMP / "installed" / "ext_ok" / "plugin.json").read_text())["version"] != "1.0.0":
     errors.append("S3 broken update damaged the installed version")
 
+  use_target = mf.INSTALL_DIR / "ext_ok"
+  before_use = {p.name: p.read_bytes() for p in use_target.iterdir() if p.is_file()}
+  for code, use, show in [("S36", None, None), ("S36", "never", None), ("S36", [], None),
+                           ("S37", "onroad", "offroad"), ("S37", "offroad", "onroad"), ("S37", "onroad", "always")]:
+    files = good_files("ext_ok", use=use)
+    if use is None:
+      data = json.loads(files["plugin.json"])
+      del data["use"]
+      files["plugin.json"] = json.dumps(data)
+    if show:
+      files["ui.py"] = f'from openpilot.tesla.ui.tiles import TileSpec\nSPEC = TileSpec("x", "X", show={show!r})\n'
+    publish("ext_ok", archive("ext_ok", files), version="3.0.0")
+    error = store.install(store.IndexEntry(**{**entries[-1], "installable": True}))
+    after = {p.name: p.read_bytes() for p in use_target.iterdir() if p.is_file()}
+    if not error or after != before_use:
+      errors.append(f"{code} use={use!r} show={show!r}: error={error!r}, preserved={after == before_use}")
+  publish("ext_ok", archive("ext_ok", good_files("ext_ok")), version="1.0.0")
+  store.install(store.IndexEntry(**{**entries[-1], "installable": True}))
+  bad_use = mf.INSTALL_DIR / "bad_use"
+  bad_use.mkdir()
+  for name, content in good_files("bad_use", use="never").items():
+    (bad_use / name).write_text(content)
+
   # S14: the installed ext_here manifest now claims another platform (as after a Python upgrade)
   here_json = TMP / "installed" / "ext_here" / "plugin.json"
   here_json.write_text(json.dumps({**json.loads(here_json.read_text()), "platform": other}))
@@ -257,6 +282,8 @@ def main() -> int:
   if any(c.NAME == "ext_here" for c in plugins.PLUGINS) or "ext_here" not in plugins.LOAD_ERRORS:
     errors.append("S14 installed plugin for another platform loaded")
   names = [c.NAME for c in plugins.PLUGINS]
+  if "bad_use" in names or "use" not in plugins.LOAD_ERRORS.get("bad_use", ""):
+    errors.append("S36 invalid installed use loaded or lost its reason")
   for pid in bad_safety:
     if pid in names or not plugins.LOAD_ERRORS.get(pid):
       errors.append(f"S31 {pid} not skipped with a reason")

@@ -24,7 +24,7 @@ Failure cases listed before implementation:
       tiles it now overlaps, moves a tile onto the drive view, or reorders the list
 - T17 edit bar: Park, Drive and Done buttons overlap each other or leave the screen; editing the park layout they cover a
       tile while a free cell other than the "+" cell exists (they go into the last free cell), or cover the "+" cell;
-      editing the drive layout they are not inside the drive view
+      editing the drive layout they cover the drive view
 - T10 hit tests: a gap hits a tile, a cell center does not map back to its cell, corner buttons leave their tile or
       overlap each other
 - T11 gestures: a short press without movement is not a tap, a held press is not one long press, a moved press still
@@ -48,6 +48,9 @@ Failure cases listed before implementation:
 - T25 TileSpec accepts a missing show, or a drive/park add list offers tiles belonging only to the other mode
 - T26 adding, dropping or fixing a tile can occupy any cell inside any supported drive-view position
 - T27 Outline is missing/not black in THEMES, or adding it changes an existing theme
+- T28 edit buttons are under 152 px high, overlap a tile/add cell/view, or leave the screen
+- T29 built-in HUD defaults/fractions are lost, invalid entries survive, or protected indicators can hide
+- T30 Black is missing or old Outline does not resolve to Black
 """
 import ast
 import itertools
@@ -211,7 +214,7 @@ def check_view_moved(errors):
     blocked = {(c, r) for c in range(pos[0], pos[0] + 6) for r in range(pos[1], pos[1] + 3)}
     if T.blocked(True, pos) != blocked or any(cells(*p) & blocked for p in placed.values()) or len(placed) != 14:
       errors.append(f"T20 tiles use old view position {pos}")
-    if T.add_cell({}, True, pos) in blocked or any(not inside(r, view) for r in T.bar_buttons(placed, True, pos).values()):
+    if T.add_cell({}, True, pos) in blocked or any(overlap(r, view) for r in T.bar_buttons(placed, True, pos).values()):
       errors.append(f"T20 add cell/bar uses old view position {pos}")
     pinned = [("x", "small", None)]
     cell = next(iter(blocked))
@@ -320,23 +323,24 @@ def check_bar(errors):
   for n in range(200):
     items = [(f"t{i}", rng.choice(ALL), ALL, None) for i in range(rng.randint(0, 14))]
     for started in (False, True):
-      placed = T.place(items, started)
+      placed = T.place(items, started, edit=True)
       b = T.bar_buttons(placed, started)
       rects = list(b.values())
       if set(b) != {"park", "drive", "done"} or any(overlap(x, y) for x, y in itertools.combinations(rects, 2)):
         errors.append(f"T17 bar buttons {b}")
         return
+      if any(r[3] < 152 for r in rects):
+        errors.append(f"T28 bar buttons too short: {b}")
       if any(not inside(r, (0, 0, *T.SCREEN)) for r in rects):
         errors.append(f"T17 bar off screen {b}")
       if started:
-        if any(not inside(r, T.VIEW) for r in rects):
-          errors.append(f"T17 drive bar outside the view {b}")
-        continue
+        if any(overlap(r, T.VIEW) for r in rects):
+          errors.append(f"T28 drive bar covers the view {b}")
       taken = set().union(*(cells(*p) for p in placed.values())) if placed else set()
       free = [c for c in T.scan(False) if c not in taken]
-      add = T.add_cell(placed, False)
+      add = T.add_cell(placed, started, edit=True)
       if len(free) > 1:
-        tile_rects = [T.tile_rect(p) for p in placed.values()] + [T.cell_rect(*add)]
+        tile_rects = [T.tile_rect(p) for p in placed.values()] + ([T.cell_rect(*add)] if add else [])
         if any(overlap(r, t) for r in rects for t in tile_rects):
           errors.append(f"T17 n={n} bar covers a tile or the + cell with {len(free)} free cells: {b}")
 
@@ -480,15 +484,42 @@ def check_view_exclusion(errors):
 def check_themes(errors):
   existing = {"Cobalt": (0, 80, 239), "Teal": (0, 140, 140), "Emerald": (0, 128, 0), "Crimson": (162, 0, 37),
               "Violet": (106, 0, 255), "Graphite": (52, 56, 66)}
-  if T.THEMES != {**existing, "Outline": (0, 0, 0)}:
-    errors.append(f"T27 Outline missing/changed existing theme: {T.THEMES}")
+  if T.THEMES != {**existing, "Black": (0, 0, 0)}:
+    errors.append(f"T30 Black missing/changed existing theme: {T.THEMES}")
+
+
+def check_builtin_hud(errors):
+  required = {"builtin:steering_wheel", "builtin:model_source", "builtin:blind_spot_indicators"}
+  if not hasattr(T, "builtin_hud_boxes") or not hasattr(T, "HUD_REQUIRED"):
+    errors.append("T29 built-in HUD defaults/protection missing")
+    return
+  boxes = T.builtin_hud_boxes((0, 0, *T.MICI))
+  if set(boxes) != required | {"builtin:torque_bar", "builtin:set_speed"} or not required <= T.HUD_REQUIRED:
+    errors.append(f"T29 wrong built-in boxes/protection: {boxes}, {T.HUD_REQUIRED}")
+  for name, default in boxes.items():
+    if not inside(default, (0, 0, *T.MICI)):
+      errors.append(f"T29 default box outside view: {name} {default}")
+    raw = {"drive": {"hud": {name: [.2, .1, False]}}}
+    entry = T.hud_layout(json.loads(json.dumps(raw)))[name]
+    if entry != [.2, .1, name in required]:
+      errors.append(f"T29 visibility/fractions: {name} {entry}")
+    for bad in ([0, 0, 1], [float("nan"), 0, True], [0, float("inf"), True], [True, 0, True], [0, 2, True]):
+      if name in T.hud_layout({"drive": {"hud": {name: bad}}}):
+        errors.append(f"T29 invalid saved entry survives: {name} {bad}")
+  items = [(str(i), "small", ("small",), None) for i in range(40)]
+  for pos in itertools.product(range(3), range(2)):
+    placed = T.place(items, True, pos, edit=True)
+    bar = T.bar_buttons(placed, True, pos)
+    if any(overlap(r, T.view(pos)) or r[3] < 152 or not inside(r, (0, 0, *T.SCREEN))
+           or any(overlap(r, T.tile_rect(p)) for p in placed.values()) for r in bar.values()):
+      errors.append(f"T28 moved view/bar/tiles overlap: {pos}")
 
 
 def main() -> int:
   errors: list[str] = []
   for check in (check_grid, check_view, check_place, check_show, check_spec, check_layout, check_edit, check_hits, check_bar, check_gesture,
                 check_poll, check_fit, check_text, check_view_saved, check_view_moved, check_view_covered,
-                check_hud, check_explicit_show, check_view_exclusion, check_themes):
+                check_hud, check_explicit_show, check_view_exclusion, check_themes, check_builtin_hud):
     try:
       check(errors)
     except Exception as e:

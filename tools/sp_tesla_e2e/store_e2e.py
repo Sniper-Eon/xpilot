@@ -15,6 +15,7 @@ Failure cases listed before running:
 - E8 an installed plugin tile without explicit show is not reported by the shared M13 source check
 - E7 an installed model plugin (op_models) owns role:perception.model while off, does not take it from sp_models when
      switched on, or does not start its own op_modeld process
+- E9 repository source/archive lacks valid use or a tile conflicts with use
 """
 import argparse
 import http.server
@@ -71,6 +72,14 @@ def main() -> int:
   ap.add_argument("--repo", type=Path, required=True)
   repo = ap.parse_args().repo.expanduser().resolve()
   errors = []
+
+  for path in sorted((repo / "plugins").glob("*/plugin.json")):
+    try:
+      m = mf.parse(path)
+      if (ui := path.with_name("ui.py")).exists():
+        errors += [f"E9 {m.id}: {p}" for p in mf.tile_problems(ui, m.use)]
+    except ValueError as e:
+      errors.append(f"E9 {path.parent.name}: {e}")
 
   http.server.SimpleHTTPRequestHandler.log_message = lambda *a: None
   server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), lambda *a, **k: http.server.SimpleHTTPRequestHandler(*a, directory=str(repo), **k))

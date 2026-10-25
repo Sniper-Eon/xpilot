@@ -19,6 +19,8 @@ Failure cases listed before implementation:
 - M12 a new plugin directory appears under openpilot/tesla/plugins/ (only the SP core plugins stay built in;
       everything else goes to the plugin repository, github.com/onemiless/xpilot-plugins)
 - M13 a built-in or store TileSpec omits an explicit valid show; the repository scan misses it (store_e2e included)
+- M14 a missing/invalid use is accepted or discovery loses the rejection reason
+- M15 a plugin tile show conflicts with its declared use
 """
 import ast
 import json
@@ -45,7 +47,7 @@ CORE_PLUGINS = {"sp_engagement", "sp_models", "sp_safety_fallback"}
 
 def write(root: Path, d: str, **over) -> None:
   m = {"id": d, "name": d, "version": "1.0.0", "api": mf.API_VERSION, "category": "body_comfort", "entry": "plugin:X",
-       "enable_param": f"{d}On", "claims": [], "priority": 100}
+       "use": "both", "enable_param": f"{d}On", "claims": [], "priority": 100}
   m.update(over)
   (root / d).mkdir()
   (root / d / "plugin.json").write_text(json.dumps(m))
@@ -115,6 +117,28 @@ def main() -> int:
       errors.append("M9 unknown claim kind accepted")
     if ids != ["early", "good_a", "good_b"]:
       errors.append(f"M2 order {ids}")
+
+  with tempfile.TemporaryDirectory() as tmp:
+    root = Path(tmp)
+    for i, use in enumerate((None, "", "never", [], {}, True, 1)):
+      write(root, f"bad_use_{i}", use=use)
+    write(root, "missing_use")
+    path = root / "missing_use" / "plugin.json"
+    data = json.loads(path.read_text())
+    del data["use"]
+    path.write_text(json.dumps(data))
+    for use in ("onroad", "offroad", "both"):
+      write(root, use, use=use)
+    found, rejected = mf.load_all(root)
+    if {m.id for m in found} != {"onroad", "offroad", "both"} or len(rejected) != 8 or any("use" not in e for e in rejected.values()):
+      errors.append(f"M14 invalid use accepted/missing reason: {found}, {rejected}")
+    path = root / "ui.py"
+    for use in ("onroad", "offroad", "both"):
+      for show in ("onroad", "offroad", "always"):
+        path.write_text(f'TileSpec("x", "X", show={show!r})')
+        expected = use != "both" and show != use
+        if not hasattr(mf, "tile_problems") or bool(mf.tile_problems(path, use)) != expected:
+          errors.append(f"M15 tile show={show} use={use}")
 
   X = "can.tx:0x3C2:1"
   items = [("b", 10, (X, "long.target")), ("a", 10, (X,)), ("c", 5, (X,)), ("d", 1, ("long.target", "plan.filter"))]
@@ -200,6 +224,8 @@ def main() -> int:
     errors.append(f"M8 {len(found)} manifests but {len(builtin)} built-in plugin classes")
 
   for m in found:
+    if (path := mf.PLUGINS_DIR / m.id / "ui.py").exists() and hasattr(mf, "tile_problems"):
+      errors += [f"M15 {m.id}: {p}" for p in mf.tile_problems(path, m.use)]
     errors += [f"M11 {m.id}/{p}" for p in mf.layout_problems(mf.PLUGINS_DIR / m.id, m.entry.split(":")[0])]
   extra = {d.name for d in mf.PLUGINS_DIR.iterdir() if d.is_dir() and d.name != "__pycache__"} - CORE_PLUGINS
   if extra:
