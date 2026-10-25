@@ -74,7 +74,9 @@ class Plugin:
   def lane_change_policy(cls, params):
     """None, or an object with allow(carstate, direction, default) -> bool: replaces only SP's "start without
     steering nudge" decision (default) during preLaneChange. Blinker, minimum speed, blind spot and road edge stay
-    hard requirements in DesireHelper."""
+    hard requirements in DesireHelper. An optional constraints(carstate, direction)
+    returns tesla.lane_policy.LaneChangeLimits, applied before desire output.
+    Limits only veto/prepare/abort; they never start a change or grant clearance."""
     return None
 
   # ---- controlsd (claim "lat.correction") ----

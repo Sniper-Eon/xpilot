@@ -338,6 +338,14 @@ def lane_change_policies(params) -> list:
   return _collect(params, "lane_change_policy", "role:lane_change.policy", "modeld", params)
 
 
+from openpilot.tesla.lane_policy import LaneChangeLimits  # noqa: E402,F401
+
+
+def apply_lane_change_context(helper, carstate, lateral_active):
+  from openpilot.tesla.lane_policy import apply_context
+  apply_context(helper, carstate, lateral_active, _call, record_fault)
+
+
 def lane_change_allowed(policies: list, carstate, direction, default: bool) -> bool:
   """DesireHelper: the policy's decision, or SP's default when there is none or it raises."""
   if not policies:

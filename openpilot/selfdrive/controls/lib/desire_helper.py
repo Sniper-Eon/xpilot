@@ -94,6 +94,7 @@ class DesireHelper:
             self.lane_change_state = LaneChangeState.off
             self.lane_change_direction = LaneChangeDirection.none
 
+    plugins.apply_lane_change_context(self, carstate, lateral_active)
     self.prev_one_blinker = one_blinker and lateral_active
 
     if self.lane_turn_direction != TurnDirection.none:

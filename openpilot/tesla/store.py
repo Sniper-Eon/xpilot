@@ -1,6 +1,6 @@
 """Plugin store client: read the plugin repository index, install, update and remove downloaded plugins.
 
-Repository (https://github.com/onemiless/xpilot-plugins): plugins/<id>/ sources, dist/<id>-<version>.tar.gz built
+Repository (https://github.com/Sniper-Eon/xpilot-plugins): plugins/<id>/ sources, dist/<id>-<version>.tar.gz built
 reproducibly by its tools/build_index.py, and index.json:
   {"api": 1, "plugins": [{"id", "name", "version", "api", "category", "author", "description", "url", "sha256"}]}
 Third parties send pull requests; the maintainer reviews and merges. Archives are not signed (yet): the sha256 only
@@ -28,7 +28,7 @@ from openpilot.tesla import manifest as mf
 from openpilot.tesla.plugin_params import STORE_TYPES
 
 SAFETY_JSON = Path(__file__).resolve().parents[2] / "opendbc_repo/opendbc/safety/plugins/safety.json"
-INDEX_URL = "https://raw.githubusercontent.com/onemiless/xpilot-plugins/main/index.json"
+INDEX_URL = "https://raw.githubusercontent.com/Sniper-Eon/xpilot-plugins/main/index.json"
 # First boot: display plugins installed once (marker file in INSTALL_DIR, so a removed default stays removed).
 DEFAULTS = ("speed_card", "lead_card", "speed_limit_card", "car_tile", "map_tile", "clock_tile", "ip_tile", "blindspot_edges")
 DEFAULTS_DONE = ".defaults_done"

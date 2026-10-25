@@ -5,7 +5,7 @@
 ## 1. 项目是什么
 
 - **定位**：sunnypilot（下称 SP）只适配 Tesla 的精简版，分支名 `xpilot`。
-- **仓库**：系统 `github.com/onemiless/xpilot`（默认分支 `xpilot`），只放框架、商店和核心插件；其他插件在 `github.com/onemiless/xpilot-plugins`（默认分支 `main`），设备通过商店安装。推送分流见规则 15。
+- **仓库**：系统 `github.com/Sniper-Eon/xpilot`（默认分支 `xpilot`），只放框架、商店和核心插件；其他插件在 `github.com/Sniper-Eon/xpilot-plugins`（默认分支 `main`），设备通过商店安装。推送分流见规则 15。
 - **基线**：sunnypilot `922513f`，opendbc `5be750714`。只做这一次基准，之后不再整体合并上游，只手工挑修复（`tools/dev_sp_release/upstream_watch.py`）。
 - **主体**：横向、纵向、模型都是 SP 原版，Tesla 车端代码是上游原版。
 - **扩展**：xpilot 的功能全部以插件形式接入，不改 SP 主体逻辑。
@@ -49,7 +49,7 @@ C3/C3XL 保留各自锁定的 mr-one 引导链和写前白名单校验，禁止�
 12. **车端数据只读、只经插件**：插件在 card 里用 `observe_can` 自己解析，再写进 `carStateSP` 里自己的字段（cereal 规则见第 7 条）；UI 和其他进程只读这些消息，不直接读 CAN。
 13. **UI**：文字只用英文和 ASCII（设备字体没有 `‹ › · —` 等字）；磁贴只读消息、不写参数（设置写在详情页）；`hz` 按需要取最低值。
 14. **不加新依赖**：只用标准库和仓库里已有的库。商店插件需要编译的部分以预编译二进制发布（见 8c）。
-15. **推送分流**：插件的改动（`plugins/<id>/`、它的测试、`dist/`、`index.json`）只推到 `onemiless/xpilot-plugins`；系统的改动（宿主、商店、UI、核心插件、panda safety、`safety.json`、检查脚本、文档）只推到 `onemiless/xpilot`。一个功能两边都要改时分成两个提交、两个 PR，先合系统仓库。两个仓库的默认分支都受保护：走 PR，CI 通过才能合并（管理员可以直接推）。
+15. **推送分流**：插件的改动（`plugins/<id>/`、它的测试、`dist/`、`index.json`）只推到 `Sniper-Eon/xpilot-plugins`；系统的改动（宿主、商店、UI、核心插件、panda safety、`safety.json`、检查脚本、文档）只推到 `Sniper-Eon/xpilot`。一个功能两边都要改时分成两个提交、两个 PR，先合系统仓库。两个仓库的默认分支都受保护：走 PR，CI 通过才能合并（管理员可以直接推）。
 
 ## 3. 目录
 
@@ -339,7 +339,7 @@ typedef struct {
 
 ## 8c. 插件商店（`openpilot/tesla/store.py`）
 
-- **仓库**：`github.com/onemiless/xpilot-plugins`。`plugins/<id>/` 是源码，`tools/build_index.py` 生成可复现的 `dist/<id>-<版本>.tar.gz` 和 `index.json`（每个插件的 url 和 sha256）。第三方提 PR，维护者审核后合并。**暂不签名**：sha256 只防下载损坏或被替换，可信度来自审核过的仓库。
+- **仓库**：`github.com/Sniper-Eon/xpilot-plugins`。`plugins/<id>/` 是源码，`tools/build_index.py` 生成可复现的 `dist/<id>-<版本>.tar.gz` 和 `index.json`（每个插件的 url 和 sha256）。第三方提 PR，维护者审核后合并。**暂不签名**：sha256 只防下载损坏或被替换，可信度来自审核过的仓库。
 - **设备端**：Plugins 磁贴就是插件市场（见第 9 节），左下角 Refresh 拉取索引（第一次打开时自动拉一次）。只能停车时安装、更新、删除，重启后生效。
 - **安装位置**：`/data/xpilot_plugins/<id>/`（可用环境变量 `XPILOT_PLUGINS_DIR` 改），系统更新不会动它。安装过程：限制大小下载 → 校验 sha256 → 只解出普通文件（拒绝 `../`、绝对路径、链接）→ 校验清单（id、api、入口模块、不能和内置插件同 id、参数名不能重复）→ 用改名的方式整体替换。任何一步失败，原来装的版本保持不变。
 - **下载插件的代码**：作为包 `xpilot_ext.<id>` 导入，插件内部要用相对导入（`from .controller import X`）。
@@ -432,3 +432,7 @@ CI（`.github/workflows/xpilot.yaml`）在每个 PR 上跑以上检查（`upstre
 ```
 
 加完后重启会话。safety 的改动必须先编译并跑测试，再上车。
+
+## Personal fork development
+
+This checkout is the user fork. Upstream reference repositories are onemiless/xpilot and onemiless/xpilot-plugins; do not push user work upstream without a separate request. New system work stays on xpilot, plugins on the paired main branch. Migration status and actual device activation are separate.
