@@ -22,9 +22,8 @@ Failure cases listed before implementation:
 - T9  edit ops: resize does not cycle through the tile's sizes or drops the position, unpin/pin do not move between pinned
       and hidden, a drop does not fix the tile at the drop cell (pulled back inside the grid), does not free other fixed
       tiles it now overlaps, moves a tile onto the drive view, or reorders the list
-- T17 edit bar: Park, Drive and Done buttons overlap each other or leave the screen; editing the park layout they cover a
-      tile while a free cell other than the "+" cell exists (they go into the last free cell), or cover the "+" cell;
-      editing the drive layout they cover the drive view
+- T17 edit bar: Park, Drive and Done buttons overlap each other or leave the screen; reserved edit cells prevent
+      covering tiles or the add cell; the drive bar stays outside the view (supersedes the old in-view bar)
 - T10 hit tests: a gap hits a tile, a cell center does not map back to its cell, corner buttons leave their tile or
       overlap each other
 - T11 gestures: a short press without movement is not a tap, a held press is not one long press, a moved press still
@@ -47,7 +46,7 @@ Failure cases listed before implementation:
 - T24 a dragged HUD box leaves the view, or its relative position changes when the view moves
 - T25 TileSpec accepts a missing show, or a drive/park add list offers tiles belonging only to the other mode
 - T26 adding, dropping or fixing a tile can occupy any cell inside any supported drive-view position
-- T27 Outline is missing/not black in THEMES, or adding it changes an existing theme
+- T27 an existing theme changes when adding the black theme (Outline renamed Black by T30)
 - T28 edit buttons are under 152 px high, overlap a tile/add cell/view, or leave the screen
 - T29 built-in HUD defaults/fractions are lost, invalid entries survive, or protected indicators can hide
 - T30 Black is missing or old Outline does not resolve to Black

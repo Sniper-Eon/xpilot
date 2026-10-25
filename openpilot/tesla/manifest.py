@@ -4,6 +4,7 @@ the checks read manifests without importing plugin code. Format and rules: XPILO
 plugin.json:
   id           directory name                     name, description, author, version   shown on the Plugins page
   api          API_VERSION this plugin targets    category  one of CATEGORIES
+  use          onroad | offroad | both (required; metadata, not hook gating)
   entry        "module:Class" inside the plugin package (e.g. "plugin:AutoSpeed")
   priority     lower wins an exclusive claim (then id); also orders plugins in a category. Default 100
   enable_param BOOL param that switches the plugin; null = always on
@@ -15,6 +16,7 @@ plugin.json:
   platform     null (pure Python) or {"machine": "aarch64", "python": "cpython-312"} for plugins with prebuilt binaries;
                such a plugin installs and loads only where host_platform() matches
 """
+import ast
 from dataclasses import dataclass, field
 import json
 import os
@@ -90,6 +92,7 @@ class Manifest:
   version: str
   api: int
   category: str
+  use: str
   entry: str
   description: str = ""
   author: str = ""
@@ -129,6 +132,8 @@ def parse(path: Path) -> Manifest:
     raise ValueError(f"unknown category {d.get('category')!r}")
   if not isinstance(d.get("entry"), str) or not re.fullmatch(r"[a-z_][a-z0-9_]*:[A-Za-z_]\w*", d["entry"]):
     raise ValueError(f"bad entry {d.get('entry')!r}")
+  if d.get("use") not in ("onroad", "offroad", "both"):
+    raise ValueError(f"bad use {d.get('use')!r}: expected onroad/offroad/both")
   plat = d.get("platform")
   if plat is not None and not (isinstance(plat, dict) and isinstance(plat.get("machine"), str) and isinstance(plat.get("python"), str)):
     raise ValueError(f"bad platform {plat!r}")
@@ -158,7 +163,7 @@ def parse(path: Path) -> Manifest:
     raise ValueError("can.tx must match safety profile tx")
   try:
     return Manifest(id=d["id"], name=str(d.get("name") or d["id"]), version=str(d.get("version", "0")), api=d["api"],
-                    category=d["category"], entry=d["entry"], description=str(d.get("description", "")),
+                    category=d["category"], use=d["use"], entry=d["entry"], description=str(d.get("description", "")),
                     author=str(d.get("author", "")), priority=int(d.get("priority", 100)), enable_param=d.get("enable_param"),
                     claims=tuple(claims), settings=tuple(_setting(s) for s in d.get("settings", [])), params=dict(d.get("params", {})),
                     platform=plat, safety=safety)
@@ -238,3 +243,18 @@ def layout_problems(d: Path, entry_module: str = "plugin") -> list[str]:
     if rel.name != "ui.py" and re.search(r"^\s*(import|from)\s+pyray\b", src, re.M):
       out.append(f"{rel}: imports pyray outside ui.py")
   return out
+
+
+def tile_problems(path: Path, use: str | None = None) -> list[str]:
+  """Check tile declarations without importing device-only plugin UI code."""
+  errors = []
+  for node in ast.walk(ast.parse(path.read_text())):
+    if not isinstance(node, ast.Call) or not (isinstance(node.func, ast.Name) and node.func.id == "TileSpec"
+                                            or isinstance(node.func, ast.Attribute) and node.func.attr == "TileSpec"):
+      continue
+    show = next((kw.value for kw in node.keywords if kw.arg == "show"), None)
+    if not isinstance(show, ast.Constant) or show.value not in ("onroad", "offroad", "always"):
+      errors.append(f"{path.name}:{node.lineno}: explicit show required (onroad/offroad/always)")
+    elif use is not None and use != "both" and show.value != use:
+      errors.append(f"{path.name}:{node.lineno}: tile show {show.value!r} conflicts with use {use!r}")
+  return errors

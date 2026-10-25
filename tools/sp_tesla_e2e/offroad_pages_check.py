@@ -3,7 +3,7 @@
 (openpilot/tesla/ui/offroad.py) and the static shape of openpilot/tesla/ui/pages/ and the settings tiles. Drawing is not checked here (tools/sp_tesla_e2e/big_screen_e2e.py on the device).
 
 Failure cases listed before implementation:
-- O1 a settings tile (ui/slots/settings.py, plugins/sp_models/ui.py) has no PAGE, its PAGE is not imported from a pages/<name>.py whose class defines
+- O1 a settings tile (ui/slots/settings.py, ui/slots/models.py) has no PAGE, its PAGE is not imported from a pages/<name>.py whose class defines
      show_event, a tile still sets MICI (no settings tile opens a mici layout), or the Store sub-page has no such module
 - O2 a page reads or writes a param key (string literal in get/get_bool/put/put_bool/remove) the compiled Params does not know
 - O3 the Plugins rows miss a PLUGINS entry or one of its settings, or a plugin that failed to load is not listed first
@@ -75,7 +75,7 @@ PARAM_CALLS = {"get", "get_bool", "put", "put_bool", "remove"}
 def check_tiles(errors: list) -> None:
   pages = {f"openpilot.tesla.ui.pages.{m}" for m in PAGE_MODULES.values()}
   tiles = []
-  for f in ("tesla/ui/slots/settings.py", "tesla/plugins/sp_models/ui.py"):  # the Models tile belongs to sp_models
+  for f in ("tesla/ui/slots/settings.py", "tesla/ui/slots/models.py"):
     tree = ast.parse((PKG / f).read_text())
     imported = {a.asname or a.name: n.module for n in tree.body if isinstance(n, ast.ImportFrom) for a in n.names}
     tiles += [(n, imported) for n in tree.body if isinstance(n, ast.ClassDef) and any(isinstance(b, ast.Assign) and b.targets[0].id == "SPEC" for b in n.body

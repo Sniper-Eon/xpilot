@@ -76,7 +76,9 @@ def main() -> int:
   for path in sorted((repo / "plugins").glob("*/plugin.json")):
     try:
       m = mf.parse(path)
-      if (ui := path.with_name("ui.py")).exists():
+      if getattr(m, "use", None) is None:
+        errors.append(f"E9 {m.id}: use not validated by manifest.parse")
+      elif (ui := path.with_name("ui.py")).exists():
         errors += [f"E9 {m.id}: {p}" for p in mf.tile_problems(ui, m.use)]
     except ValueError as e:
       errors.append(f"E9 {path.parent.name}: {e}")

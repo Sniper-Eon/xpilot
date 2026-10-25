@@ -48,6 +48,7 @@ class IndexEntry:
   sha256: str
   platform: dict | None = None  # None: pure Python; else must equal manifest.host_platform()
   installable: bool = False  # api and platform match this host and the id is not a built-in plugin
+  use: str | None = None
 
 
 def _get(url: str, limit: int) -> bytes:
@@ -72,7 +73,7 @@ def fetch_index(url: str = INDEX_URL) -> tuple[list[IndexEntry], str | None]:
   for raw in doc.get("plugins", []) if isinstance(doc, dict) else []:
     try:
       e = IndexEntry(**{f: raw[f] for f in ("id", "name", "version", "api", "category", "author", "description", "url", "sha256")},
-                     platform=raw.get("platform"))
+                     platform=raw.get("platform"), use=raw.get("use"))
     except (KeyError, TypeError):
       continue
     ok = e.api == mf.API_VERSION and e.id not in builtin and mf.platform_ok(e.platform)
@@ -116,6 +117,8 @@ def _validate(staged: Path, entry: IndexEntry) -> None:
       raise ValueError(f"missing {f}")
   if problems := mf.layout_problems(staged, module):
     raise ValueError("layout: " + "; ".join(problems))
+  if (ui := staged / "ui.py").exists() and (problems := mf.tile_problems(ui, m.use)):
+    raise ValueError("tiles: " + "; ".join(problems))
   taken = mf.compiled_param_keys() | {k for o in mf.load_all(mf.INSTALL_DIR)[0] if o.id != m.id for k in o.params}
   for key, spec in m.params.items():
     if key in taken:

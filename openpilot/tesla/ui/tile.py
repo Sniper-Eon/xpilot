@@ -67,8 +67,6 @@ class Tile:
   def face(self, rect: rl.Rectangle, icon: str | None = None) -> None:
     """Square tile in COLOR with the title at the bottom left and an optional centered icon (assets path)."""
     rl.draw_rectangle_rec(rect, rl.Color(*self.COLOR, 255))
-    if self.COLOR == (0, 0, 0):
-      rl.draw_rectangle_lines_ex(rect, 3, rl.Color(90, 92, 100, 255))
     if icon is not None:
       side = int(min(rect.width, rect.height) * 0.36)
       tex = gui_app.texture(icon, side, side)

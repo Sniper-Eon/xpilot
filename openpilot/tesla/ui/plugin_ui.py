@@ -9,6 +9,7 @@ import time
 import pyray as rl
 
 from openpilot.common.swaglog import cloudlog
+from openpilot.system.ui.lib.application import gui_app
 from openpilot.system.ui.widgets import Widget
 from openpilot.tesla.plugin_params import ParamsView
 from openpilot.tesla.ui import tiles
@@ -132,3 +133,18 @@ class Overlays:
       except Exception:
         entry[2] += 1
         cloudlog.exception(f"overlay {type(widget).__name__} failed")
+
+
+def draw_builtin(name, rect, draw) -> None:
+  """Offset the original SP drawing rectangle; keep safety indications visible even in hand-edited files."""
+  host = gui_app.host
+  if host is None:
+    draw(rect)
+    return
+  key = "builtin:" + name
+  entry = host._hud.get(key)
+  if entry is not None and not entry[2] and key not in tiles.HUD_REQUIRED:
+    return
+  default = tiles.builtin_hud_boxes((rect.x, rect.y, rect.width, rect.height))[key]
+  x, y, _, _ = tiles.hud_rect(entry, default, (rect.x, rect.y, rect.width, rect.height))
+  draw(rl.Rectangle(rect.x + x - default[0], rect.y + y - default[1], rect.width, rect.height))

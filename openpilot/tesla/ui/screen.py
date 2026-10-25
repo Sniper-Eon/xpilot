@@ -132,10 +132,11 @@ class BigScreenHost:
   def _theme(self) -> None:
     """Apply the tile color chosen on the Toggles page; read when the tile screen shows again."""
     try:
-      color = THEMES.get(self._layout_params.get(THEME_PARAM), tiles.ACCENT)
+      name = self._layout_params.get(THEME_PARAM)
+      color = THEMES.get("Black" if name == "Outline" else name, tiles.ACCENT)
     except Exception:
       color = tiles.ACCENT
-    if self._mode == "onroad" and color != THEMES["Outline"]:
+    if self._mode == "onroad" and color != THEMES["Black"]:
       color = (32, 32, 32)
     if color != Tile.COLOR:
       Tile.COLOR = color
@@ -155,15 +156,17 @@ class BigScreenHost:
     out = []
     for tid, size, fixed in self._layouts[mode][0]:
       e = self._entries[tid]
+      if tid == "models" and "sp_models" not in enabled:
+        continue
       if e.failures < MAX_FAILURES and (e.plugin is None or e.plugin in enabled):
         out.append((tid, size, e.spec.sizes, fixed))
     return out
 
   def _place(self, mode: str) -> dict[str, tuple[int, int, str]]:
     items = self._visible(mode)
-    key = (mode, tuple(items), self._view_position)
+    key = (mode, tuple(items), self._view_position, self._edit)
     if key != self._placed_key:
-      self._placed_key, self._placed = key, tiles.place(items, mode == "drive", self._view_position)
+      self._placed_key, self._placed = key, tiles.place(items, mode == "drive", self._view_position, edit=self._edit)
     return self._placed
 
   def _save(self, pinned=None, hidden=None) -> None:
@@ -292,21 +295,22 @@ class BigScreenHost:
     """Enabled HUD boxes in screen pixels, including hidden ones so they can be shown again."""
     view = self._drive_view()
     vx, vy, vw, vh = view
-    boxes = {}
+    defaults = tiles.builtin_hud_boxes((0, 0, *tiles.MICI))
 
     def box(widget):
-      default = widget.default_rect(rl.Rectangle(0, 0, *tiles.MICI))
-      default = (vx + default.x * vw / tiles.MICI[0], vy + default.y * vh / tiles.MICI[1],
-                 default.width * vw / tiles.MICI[0], default.height * vh / tiles.MICI[1])
-      entry = self._hud.get(widget.plugin_id)
-      rect = tiles.hud_rect(entry, default, view)
-      if self._hud_drag == widget.plugin_id and self._gesture.start is not None:
-        dx, dy = (p - s for p, s in zip(self._gesture.pos, self._gesture.start[:2], strict=True))
-        rect = tiles.hud_rect([(rect[0] + dx - vx) / vw, (rect[1] + dy - vy) / vh, True], default, view)
-      boxes[widget.plugin_id] = rect
+      r = widget.default_rect(rl.Rectangle(0, 0, *tiles.MICI))
+      defaults[widget.plugin_id] = (r.x, r.y, r.width, r.height)
 
     self._hud_overlays.each(box)
-    return boxes
+    boxes = {}
+    for name, (x, y, w, h) in defaults.items():
+      default = (vx + x * vw / tiles.MICI[0], vy + y * vh / tiles.MICI[1], w * vw / tiles.MICI[0], h * vh / tiles.MICI[1])
+      rect = tiles.hud_rect(self._hud.get(name), default, view)
+      if self._hud_drag == name and self._gesture.start is not None:
+        dx, dy = (p - s for p, s in zip(self._gesture.pos, self._gesture.start[:2], strict=True))
+        rect = tiles.hud_rect([(rect[0] + dx - vx) / vw, (rect[1] + dy - vy) / vh, True], default, view)
+      boxes[name] = rect
+    return dict(sorted(boxes.items(), key=lambda item: -item[1][2] * item[1][3]))
 
   # drawing
 
@@ -446,13 +450,18 @@ class BigScreenHost:
     if not self._edit:
       return
     if drive:
-      for name, rect in self._hud_boxes().items():
-        visible = self._hud.get(name, [0, 0, True])[2]
+      boxes = self._hud_boxes()
+      for name, rect in boxes.items():
+        visible = name in tiles.HUD_REQUIRED or self._hud.get(name, [0, 0, True])[2]
         rl.draw_rectangle_rec(rl.Rectangle(*rect), rl.Color(*Tile.COLOR, 255) if visible else rl.Color(60, 62, 70, 255))
         rl.draw_rectangle_lines_ex(rl.Rectangle(*rect), 3, rl.WHITE if visible else DIM)
-        x, y, w, h = rect
-        lines_in(rl.Rectangle(x + 12, y + 12, w - 24, h - 24), [name, "Tap to hide" if visible else "Tap to show"], 32)
-    cell = tiles.add_cell(placed, drive, self._view_position)
+      for name, (x, y, w, h) in boxes.items():
+        visible = name in tiles.HUD_REQUIRED or self._hud.get(name, [0, 0, True])[2]
+        label = name.removeprefix("builtin:").replace("_", " ").title() if name.startswith("builtin:") else name
+        width = min(w - 24, 360)
+        lines_in(rl.Rectangle(x + (w - width) / 2, y + 12, width, h - 24),
+                 [label, "Move only" if name in tiles.HUD_REQUIRED else "Tap to hide" if visible else "Tap to show"], 32)
+    cell = tiles.add_cell(placed, drive, self._view_position, edit=self._edit)
     if cell is not None:
       x, y, w, h = tiles.cell_rect(*cell)
       rl.draw_rectangle_lines_ex(rl.Rectangle(x, y, w, h), 3, DIM)
@@ -474,8 +483,8 @@ class BigScreenHost:
       active = name == self._layout
       rl.draw_rectangle(x, y, w, h, rl.Color(*Tile.COLOR, 255) if active else rl.Color(72, 75, 88, 255))
       label = name.capitalize()
-      width = measure_text_cached(medium, label, 40).x
-      rl.draw_text_ex(medium, label, rl.Vector2(x + (w - width) / 2, y + (h - 40) / 2), 40, 0, rl.WHITE)
+      width = measure_text_cached(medium, label, 56).x
+      rl.draw_text_ex(medium, label, rl.Vector2(x + (w - width) / 2, y + (h - 56) / 2), 56, 0, rl.WHITE)
 
   @staticmethod
   def _draw_corner_buttons(rect) -> None:
@@ -510,14 +519,14 @@ class BigScreenHost:
       if name is not None:
         bx, by, bw, bh = boxes[name]
         vx, vy, vw, vh = self._drive_view()
-        visible = self._hud.get(name, [0, 0, True])[2]
+        visible = name in tiles.HUD_REQUIRED or self._hud.get(name, [0, 0, True])[2]
         if event == "drag":
           self._hud_drag = name
         elif event in ("drop", "tap"):
           entry = [(bx - vx + (x - sx if event == "drop" else 0)) / vw,
                    (by - vy + (y - sy if event == "drop" else 0)) / vh, visible]
           bx, by, _, _ = tiles.hud_rect(entry, boxes[name], (vx, vy, vw, vh))
-          self._hud[name] = [(bx - vx) / vw, (by - vy) / vh, not visible if event == "tap" else visible]
+          self._hud[name] = [(bx - vx) / vw, (by - vy) / vh, True if name in tiles.HUD_REQUIRED else not visible if event == "tap" else visible]
           self._hud_drag = None
           self._save()
         return
@@ -574,7 +583,7 @@ class BigScreenHost:
       self._selected = None if tid == self._selected else tid
       return
     drive = self._layout == "drive"
-    if tiles.cell_at(x, y) is not None and tiles.cell_at(x, y) == tiles.add_cell(placed, drive, self._view_position):
+    if tiles.cell_at(x, y) is not None and tiles.cell_at(x, y) == tiles.add_cell(placed, drive, self._view_position, edit=self._edit):
       ids = tiles.addable(self._visible(self._layout), self._layouts[self._layout][1], placed)
       self._open("add tiles", AddTilesPage([self._entries[i] for i in ids], self._pin))
       return

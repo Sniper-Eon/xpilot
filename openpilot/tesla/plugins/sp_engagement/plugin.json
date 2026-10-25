@@ -3,6 +3,7 @@
   "name": "SP Engagement",
   "version": "1.0.0",
   "api": 1,
+  "use": "onroad",
   "category": "engagement",
   "entry": "plugin:SpEngagement",
   "author": "sunnypilot",

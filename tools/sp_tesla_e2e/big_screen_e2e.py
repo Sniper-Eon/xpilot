@@ -166,6 +166,7 @@ def host_check(output):
   logical = rl.load_render_texture(*tiles.MICI)
   gui_app._host = host
   gui_app.sunnypilot_ui = lambda: True
+  state.is_offroad = lambda: not state.started
   state.started_frame, state.chestnut_state, state.is_metric, state.blindspot = 0, 1, True, True
   class SM(dict):
     recv_frame = {'carState': 1}
@@ -325,7 +326,7 @@ def host_check(output):
     state.started = False
     host._edit, host._layout = True, 'drive'
     frame()
-    start = (expected[0] + 800, expected[1] + 300)
+    start = (expected[0] + 800, expected[1] + 30)
     drag(start, (start[0] - 2 * tiles.PITCH, start[1] + tiles.PITCH))
     saved_edit = host._layout_params.get(tiles.LAYOUT_PARAM) or {}
     check(saved_edit.get('drive', {}).get('view') == [0, 1], '15 drive-edit placeholder did not move')
@@ -405,7 +406,7 @@ def host_check(output):
       host._layouts[mode] = tiles.arrange([e.spec for e in host._entries.values()], {mode: {'hidden': list(host._entries)}}, mode)
       host._placed_key = None
       frame()
-      cell = tiles.add_cell(host._place(mode), mode == 'drive', host._view_position, edit=True)
+      cell = tiles.add_cell(host._place(mode), mode == 'drive', host._view_position)
       touch(center(tiles.cell_rect(*cell)))
       page = host._stack[-1][1]
       titles = [row.title for row in page._scroller._items]
@@ -469,6 +470,23 @@ def host_check(output):
       cases.append({'id': 20, 'mode': mode, 'buttons': bars})
     screen_source = (root / 'openpilot/tesla/ui/screen.py').read_text()
     check('label, 56' in screen_source, '20 edit bar font not enlarged')
+    augmented = (root / 'openpilot/selfdrive/ui/mici/onroad/augmented_road_view.py').read_text()
+    check('if gui_app.host is None:  # big screens draw alerts' not in augmented and
+          '    self._alert_renderer.render(self._content_rect)' in augmented, '22 big-screen alerts suppressed')
+    cases.append({'id': 22, 'protected': sorted(getattr(tiles, 'HUD_REQUIRED', ())), 'alerts': 'SP call remains unconditional; no alert editor entry'})
+    from openpilot.tesla import plugins
+    from openpilot.tesla.ui.pages.plugins import PluginsPage, PluginPage
+    page = PluginsPage()
+    page._build()
+    for plugin in plugins.PLUGINS:
+      use = getattr(plugin.MANIFEST, 'use', None)
+      check(use is not None, '23 plugin manifest has no use: ' + plugin.NAME)
+      text = 'onroad + offroad' if use == 'both' else use or 'missing use'
+      descriptions = [row.description for _, section in page.sections for row in section._scroller._items]
+      check(any(text in d for d in descriptions), '23 plugin list omits use: ' + plugin.NAME)
+      detail = PluginPage(plugin, page.jobs)
+      check(any(row.title == 'Use' for row in detail._scroller._items), '23 plugin detail omits use: ' + plugin.NAME)
+    cases.append({'id': 23, 'plugins': [p.NAME for p in plugins.PLUGINS]})
     host._view_position = (1, 0)
     host._hud = {}
     frame(name='drive-edit-builtin-hud-boxes')
@@ -498,9 +516,18 @@ def host_check(output):
     raw = deepcopy(host._hud)
     for name in tiles.HUD_REQUIRED:
       host._hud[name] = [.1, .1, False]
+    renderer.set_wheel_critical_icon(True)
     builtin_draws.clear()
     frame(name='onroad-protected-indicators')
+    check(renderer._wheel_alpha_filter.x > 0, '22 critical steering icon faded away')
     check(all(builtin_draws.get(name.split(':')[1]) for name in tiles.HUD_REQUIRED), '22 persisted hide disabled protected indication')
+    for name in tiles.HUD_REQUIRED:
+      default = defaults[name]
+      expected_rect = tiles.hud_rect([.1, .1, False], default, (0, 0, *tiles.MICI))
+      actual = builtin_draws[name.split(':')[1]][-1]
+      check(abs(actual[0] + default[0] - expected_rect[0]) < .001 and
+            abs(actual[1] + default[1] - expected_rect[1]) < .001, '21 protected indicator did not move: ' + name)
+    renderer.set_wheel_critical_icon(False)
     for entry in ([float('nan'), 0, False], [0, float('inf'), True], [0, 0, 0], 'garbage', None):
       host._layout_params.put(tiles.LAYOUT_PARAM, {'drive': {'hud': {'builtin:set_speed': entry}}})
       restored = screen.BigScreenHost()
@@ -511,21 +538,7 @@ def host_check(output):
     drag(center(host._view), (center(host._view)[0] + tiles.PITCH, center(host._view)[1] + tiles.PITCH))
     check(host._hud == raw and builtin_draws.get('set_speed', [])[-1] == before, '21 moving view lost built-in fractions')
     cases.append({'id': 21, 'saved': raw, 'draws': builtin_draws, 'restart': True})
-    augmented = (root / 'openpilot/selfdrive/ui/mici/onroad/augmented_road_view.py').read_text()
-    check('if gui_app.host is None:  # big screens draw alerts' not in augmented and
-          '    self._alert_renderer.render(self._content_rect)' in augmented, '22 big-screen alerts suppressed')
-    cases.append({'id': 22, 'protected': sorted(tiles.HUD_REQUIRED), 'alerts': 'SP call remains unconditional; no alert editor entry'})
-    from openpilot.tesla import plugins
-    from openpilot.tesla.ui.pages.plugins import PluginsPage, PluginPage
-    page = PluginsPage()
-    page._build()
-    for plugin in plugins.PLUGINS:
-      text = 'onroad + offroad' if plugin.MANIFEST.use == 'both' else plugin.MANIFEST.use
-      descriptions = [row.description for _, section in page.sections for row in section._scroller._items]
-      check(any(text in d for d in descriptions), '23 plugin list omits use: ' + plugin.NAME)
-      detail = PluginPage(plugin, page.jobs)
-      check(any(row.title == 'Use' for row in detail._scroller._items), '23 plugin detail omits use: ' + plugin.NAME)
-    cases.append({'id': 23, 'plugins': [p.NAME for p in plugins.PLUGINS]})
+
 
 
 

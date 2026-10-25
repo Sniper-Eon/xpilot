@@ -261,8 +261,7 @@ class AugmentedRoadView(CameraView):
     self._hud_renderer.set_can_draw_top_icons(alert_to_render is None)
     self._hud_renderer.set_wheel_critical_icon(alert_to_render is not None and not not_animating_out and
                                                alert_to_render.visual_alert == car.CarControl.HUDControl.VisualAlert.steerRequired)
-    if gui_app.host is None:  # big screens draw alerts in the host banner instead
-      self._alert_renderer.render(self._content_rect)
+    self._alert_renderer.render(self._content_rect)  # xpilot: SP alerts always render, including big screens
     self._hud_renderer.render(self._content_rect)
 
     # Draw fake rounded border

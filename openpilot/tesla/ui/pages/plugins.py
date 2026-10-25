@@ -80,6 +80,7 @@ class PluginPage(ListPage):
     self.add(text_item("Source", "store (removable)" if plugin.NAME in jobs.installed else "built-in (switch off only)"),
              text_item("Version", f"v{m.version}"), text_item("Author", m.author or "unknown"),
              text_item("Category", CATEGORIES.get(plugin.CATEGORY, plugin.CATEGORY)),
+             text_item("Use", m.use.replace("both", "onroad + offroad")),
              text_item("Claims", ", ".join(plugin.CLAIMS) or "none"), text_item("Priority", str(plugin.PRIORITY)))
     pid = plugin.NAME
     if pid in jobs.installed:
@@ -120,12 +121,13 @@ class PluginsPage(Widget):
     for title, plugins, entries in market_sections(jobs.entries):
       page = ListPage()
       for p in plugins:
-        summary = f"v{p.MANIFEST.version} - {p.MANIFEST.author or 'unknown'} - {p.DESCRIPTION}"
+        summary = f"{p.MANIFEST.use.replace('both', 'onroad + offroad')} - v{p.MANIFEST.version} - {p.MANIFEST.author or 'unknown'} - {p.DESCRIPTION}"
         if p.SETTINGS:
           summary += f"\nTap for settings ({len(p.SETTINGS)})"
         page.add(self.switches.make(p, summary, on_tap=lambda p=p: self._open_plugin(p)))
       for e in entries:
-        page.add(InfoRow(lambda e=e: f"{e.name} - {jobs.row_value(jobs.current(e.id) or e)}", f"v{e.version} - {e.author} - {e.description}",
+        use = e.use.replace("both", "onroad + offroad") if e.use in ("onroad", "offroad", "both") else "use not declared"
+        page.add(InfoRow(lambda e=e: f"{e.name} - {jobs.row_value(jobs.current(e.id) or e)}", f"{use} - v{e.version} - {e.author} - {e.description}",
                          ButtonAction(lambda e=e: jobs.action(jobs.current(e.id) or e), enabled=lambda e=e: jobs.can_act(e.id)),
                          callback=lambda e=e: jobs.run(lambda: jobs.act(e.id))))
       self.sections.append((title, page))

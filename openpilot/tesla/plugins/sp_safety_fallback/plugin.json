@@ -3,6 +3,7 @@
   "name": "SP Safety Fallback",
   "version": "1.0.0",
   "api": 1,
+  "use": "onroad",
   "category": "safety_fallback",
   "entry": "plugin:SpSafetyFallback",
   "author": "sunnypilot",

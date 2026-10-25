@@ -3,6 +3,7 @@
   "name": "SP Model Manager",
   "version": "1.0.0",
   "api": 1,
+  "use": "onroad",
   "category": "perception_model",
   "entry": "plugin:SpModels",
   "author": "sunnypilot",

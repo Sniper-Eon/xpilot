@@ -82,7 +82,7 @@ opendbc_repo/opendbc/safety/plugins/
 ```json
 {
   "id": "my_feature", "name": "My Feature", "version": "1.0.0", "api": 1,
-  "category": "longitudinal_planning", "entry": "plugin:MyFeature",
+  "category": "longitudinal_planning", "use": "onroad", "entry": "plugin:MyFeature",
   "author": "someone", "description": "What it does and what it needs.",
   "priority": 100, "enable_param": "XpMyFeature",
   "claims": ["long.target", "can.tx:0x3C2:1"],
@@ -96,6 +96,7 @@ opendbc_repo/opendbc/safety/plugins/
 | `id` | 必须和目录名一致 |
 | `api` | 插件面向的宿主接口版本，必须等于 `manifest.API_VERSION`（现在是 1），否则不加载 |
 | `category` | 类别，见下表 |
+| `use` | 必填：`onroad`、`offroad` 或 `both`；表示使用场景，Plugins 页显示。缺失或无效时带原因跳过。不改变钩子运行条件 |
 | `entry` | 插件包内的 `模块:类名` |
 | `priority` | 数字越小越优先：争同一个独占资源时它赢；同类插件的执行顺序也按它，数字相同按 id |
 | `enable_param` | BOOL 总开关；`null` 表示一直开启。关闭时 card 不创建插件、进程不启动、plan filter/目标车速不加载、UI 不显示。车端下一次行程生效，UI 1 秒内生效 |
@@ -103,7 +104,9 @@ opendbc_repo/opendbc/safety/plugins/
 | `settings` | 设置项：只有 key 和 label 是开关；带 `range: [最小, 最大, 步长, 单位, 除数]` 或 `choices: [[标签, 值], ...]` 是选择项 |
 | `params` | 参数声明，格式见 `gen_params.py`；改完运行 `python3 openpilot/tesla/plugins/gen_params.py` |
 
-清单有错（id 不对、类别未知、api 不匹配、资源格式错、JSON 坏了）或代码导入失败的插件会被跳过，在 Plugins 页顶部显示 "Failed: <id>"，不影响其他插件。
+清单有错（id 不对、类别未知、use 缺失或无效、api 不匹配、资源格式错、JSON 坏了）或代码导入失败的插件会被跳过，在 Plugins 页顶部显示 "Failed: <id>"，不影响其他插件。
+
+磁贴声明须与 `use` 一致：`onroad` 不能有 `show="offroad"`，`offroad` 不能有 `show="onroad"`，`show="always"` 必须配 `both`。`manifest.tile_problems()` 是清单检查、商店安装和插件仓库检查共用的源码校验；安装拒绝不一致的包且保留旧版本。`use` 不授予或门控任何运行钩子。
 
 ### 4.2 类别（`manifest.CATEGORIES`，按控制链路顺序）
 
@@ -395,7 +398,7 @@ Tesla 接管例外（用户 2026-10-25 决定）：`safety.h` 的最低频率检
 - **行驶时**：mici 画面默认在 `(300,59,1560,699)`（第 1–6 列 × 第 0–2 行这块区域里按 536:240 居中，缩放约 2.91），这 18 格不放磁贴；磁贴绕着它排：第 0 列、第 7 列和第 3 行的第 1–6 列，共 14 格。没固定位置的磁贴在自己支持的尺寸里从保存的尺寸往小试，放得下就用。2026-10-25 用户决定覆盖旧的“画面固定”规则：从画面内开始拖动可移动画面，松手时吸附到整格，6×3 格的占位保持在网格内（列 0–2、行 0–1）。位置改变后沿用上述 first-fit 重排，覆盖的固定磁贴也重新找空位。其余触摸全部忽略，画面内点击也不交给 mici 控件；报警仍只由 mici 在画面内显示一次。
 - **摄像头颜色**：接合与未接合都保持彩色；`cameraview.py` 固定 shader 的 `engaged=0`，保留原 shader 和驾驶员相机增强。
 - **停车时**：显示停车布局。点一下磁贴打开它的详情页（有 `PAGE` 的）；长按（0.6 s）磁贴或空格进入编辑模式。
-- **编辑模式**（只在停车时）：三个按钮 `Park | Drive | Done`（`tiles.bar_buttons(placed, started)`）：编辑停车布局时竖排放进最后一个空格（第一个空格是"+"），只剩不到两个空格时才横排压在底部居中；编辑行驶布局时横排在 mici 画面占位的底部：Park/Drive 切换正在编辑的布局（编辑行驶布局时 mici 画面的位置画成一块灰色占位，也支持同样的拖动和吸附），Done 退出。其他磁贴变暗，选中的磁贴右上角是"取消固定"圆钮、右下角是"改尺寸"圆钮（图形用线画，不用字符）。点改尺寸按 `sizes` 的顺序循环；点取消固定把它移到隐藏列表；按住拖动磁贴，松手处的格子成为它的固定位置（磁贴左上角落在这格，超出网格就往回挪；压到 mici 画面则不动），和它重叠的其他固定磁贴变回不固定；点别的磁贴改选它；第一个空格显示"+"，点它打开"Add tiles"页，列出隐藏和放不下的磁贴，点一个就以它最小的尺寸固定到最后（不固定位置）；点其他空格或再点一次选中的磁贴取消选中。
+- **编辑模式**（只在停车时）：三个按钮 `Park | Drive | Done` 为 320×160 px、56 px 字号。三个大按钮不能竖排进一个空格，因此横排放在底部一行中间的四格；编辑行驶布局时，如果画面在下方，就改放顶部空行。编辑期间 `place/add_cell` 保留这四格，磁贴临时重排且不覆盖按钮、加号或 Driving view；退出后释放，不改保存的磁贴位置。Park/Drive 切换布局，Done 退出。编辑行驶布局时灰色画面仍可拖动吸附，HUD 框的交互优先于画面。选中磁贴可改尺寸、取消固定或拖动固定；点加号打开 Add tiles；点空白取消选中。
 - **保存**：布局存在 `XpilotTileLayout`（JSON `{"park": {"tiles": [[id, 尺寸, 列, 行], ...], "hidden": [id, ...]}, "drive": {"tiles": [...], "hidden": [...], "view": [列, 行], "hud": {"插件 id": [fx, fy, visible]}}}`，列/行为 `null` 表示不固定；旧格式 `{"tiles": [[id, 尺寸]], "hidden": [...]}` 读作停车布局），不进 `params_keys.h`，由 `plugin_params.ParamsView` 存成文件 `/data/xpilot_plugins/.params/XpilotTileLayout`。读取时丢掉不认识的 id、不属于这套布局的磁贴和不支持的尺寸；新出现的磁贴按 (`order`, `id`) 用默认尺寸排到最后；插件关闭时它的磁贴不显示但位置保留。`drive.view` 缺失、格式错误或越界时回到默认 `(1,0)`；移动画面时两套磁贴布局一起保存。
 - **加磁贴**：插件的写在 `plugins/<名字>/ui.py`；不属于插件的放 `openpilot/tesla/ui/slots/`。继承 `Tile`，写 `SPEC = TileSpec(id, title, sizes=..., services=..., show="onroad"|"offroad"|"always", hz=..., order=...)`，会被自动发现。磁贴没有自己的颜色：都使用宿主设置的 `Tile.COLOR`，行驶时为中性深灰，停车时为所选主题色。
   - `show` 必填、只接受上述三个值、没有默认值；`manifest_check.py` M13 检查内置声明，`store_e2e.py` E8 用同一检查扫描商店安装后的 `ui.py`。Park 的添加列表只含 offroad/always，Drive 只含 onroad/always。`tiles.add_cell/move/place` 始终避开当前 Driving view，不能把磁贴放入画面。
@@ -404,10 +407,10 @@ Tesla 接管例外（用户 2026-10-25 决定）：`safety.h` 的最低频率检
   - 外观用 `Tile.face(rect, ...)`（底色、左下角标题）、`draw_value`（大数字、单位、灰色副行）或 `draw_lines`，保持统一。
   - **文字自动适配尺寸**（`tile.py`、`tiles.py`）：不要自己算字号。字号随磁贴变大（`tiles.scale`：small 1，medium 及以上 2；标题 34/51 px），宽度放不下就缩小，最小 `tiles.MIN_FONT`（24 px），还放不下就截断加 `...`（`tile.clip`）。`draw_lines` 放不下的行从末尾丢掉，所以重要的行放前面。自己画文字时用 `tile.text`、`tile.fit`、`tile.clip`、`tile.lines_in`；不要直接调 `rl.draw_text_ex`：gui_app 会把它放大 FONT_SCALE 倍（1.16），而 `rl.measure_text_ex` 不放大，量出的宽度就不对，文字会被裁掉。文字只用 ASCII（设备字体缺 `‹ › · —` 等字，会显示成 `?`；`tile_layout_check.py` 检查）。
   - 连续出错 3 次停止绘制，不影响其他磁贴。
-- **配色**：`tiles.THEMES`（Cobalt、Teal、Emerald、Crimson、Violet、Graphite、Outline），在 Toggles 页的"Tile color"里选，存在 `XpilotTileTheme`（STRING，和布局一样存成 `.params` 文件，不进 `params_keys.h`）。宿主启动时和每次回到磁贴屏时读取，停车时设置 `Tile.COLOR` 并让所有磁贴重画；编辑栏的选中按钮也用这个颜色。Outline 为纯黑底、3 px 灰边 `(90,92,100)`，文字保持白色，停车和行驶都使用同一外观；其他主题行驶时 `Tile.COLOR=(32,32,32)`，文字保持白/灰色；每次行驶/停车切换都会使磁贴缓存失效，恢复停车主题色。
-- **插件市场**（Plugins 磁贴，`pages/plugins.py`）：左边一列是 `manifest.CATEGORIES` 里有插件的分类（加载失败时最前面多一个 "Failed"），左下角是商店的 Refresh；右边是选中分类的列表：每个插件一行开关，标题下是版本、作者和简介，后面是商店里有、这次没加载的插件（Install）。点插件行（开关以外）打开插件页：开关、设置项、Source/Version/Author/Category/Claims/Priority，商店下载的插件还有 Update/Remove。Source 说明能不能卸载：内置插件（代码在仓库里，随系统更新）只能关掉开关，不能卸载；商店插件可以 Remove。分类和行由 `offroad.market_sections` 生成（`offroad_pages_check.py` O12），分类未知的商店插件归到 tools。原来单独的 Store 子页已删除。
+- **配色**：`tiles.THEMES`（Cobalt、Teal、Emerald、Crimson、Violet、Graphite、Black），在 Toggles 页的"Tile color"里选，存在 `XpilotTileTheme`（STRING，和布局一样存成 `.params` 文件，不进 `params_keys.h`）。宿主启动时和每次回到磁贴屏时读取，停车时设置 `Tile.COLOR` 并让所有磁贴重画；编辑栏的选中按钮也用这个颜色。Black 为纯黑底 `(0,0,0)`、没有任何主题边框，文字保持白色，停车和行驶一致；旧保存值 `Outline` 读作 Black。编辑框、加号和选择控件的线仍用于编辑反馈；其他主题行驶时 `Tile.COLOR=(32,32,32)`，文字保持白/灰色；每次行驶/停车切换都会使磁贴缓存失效，恢复停车主题色。
+- **插件市场**（Plugins 磁贴，`pages/plugins.py`）：左边一列是 `manifest.CATEGORIES` 里有插件的分类（加载失败时最前面多一个 "Failed"），左下角是商店的 Refresh；右边是选中分类的列表：每个插件一行开关，标题下是 use（`both` 显示为 `onroad + offroad`）、版本、作者和简介，后面是商店里有、这次没加载的插件（Install）。点插件行（开关以外）打开插件页：开关、设置项、Source/Version/Author/Category/Use/Claims/Priority，商店下载的插件还有 Update/Remove。Source 说明能不能卸载：内置插件（代码在仓库里，随系统更新）只能关掉开关，不能卸载；商店插件可以 Remove。分类和行由 `offroad.market_sections` 生成（`offroad_pages_check.py` O12），分类未知的商店插件归到 tools。原来单独的 Store 子页已删除。
 - **Tesla 页**（`pages/tesla.py`）：Vehicle 组第一行是 "Car model"，打开子页选 Auto 或 sunnypilot 车型列表（`car_list.json`）里的某一款 Tesla。选车型写 `CarPlatformBundle`（`{**car_list[名字], "name": 名字}`，和 params_migration 一样），card 下次启动时把 `platform` 当作固定指纹；Auto 删除这个参数，恢复自动识别。只在停车时可用。列表由 `offroad.tesla_models` 生成（O13 检查平台都在 opendbc 里）。
-- **设置磁贴（内置）**：Status（原 Home）、Toggles、Models、Plugins、Tesla、Network、Device、Software、Developer，放在 `ui/slots/settings.py`（Models 磁贴属于 `sp_models` 插件，在 `plugins/sp_models/ui.py`，模型被别的插件替换时隐藏，替换插件自带自己的磁贴），`show="offroad"`。`PAGE` 是 `ui/pages/` 里对应的原生页面（Models 是 `pages/models.py` 的 `ModelsPage`：当前模型和下载状态、小模型/大模型列表子页（默认模型，再按文件夹分组，收藏在前，按钮 CURRENT/QUEUED/SELECT）、取消下载、刷新列表、清除缓存；选择、刷新、清缓存只在停车时可用）。设置磁贴不再打开 mici 页面（`offroad_pages_check.py` O1 不允许 `MICI`）。
+- **设置磁贴（内置）**：Status（原 Home）、Toggles、Models、Plugins、Tesla、Network、Device、Software、Developer，放在 `ui/slots/settings.py`（Models 是宿主设置磁贴 `ui/slots/models.py`，仅当 `sp_models` 生效时显示；它从核心插件移回宿主，使三个核心插件都能声明 `use="onroad"`，同时严格满足 tile/use 一致性；替换插件自带自己的设置磁贴，其 `use` 需包含 offroad），`show="offroad"`。`PAGE` 是 `ui/pages/` 里对应的原生页面（Models 是 `pages/models.py` 的 `ModelsPage`：当前模型和下载状态、小模型/大模型列表子页（默认模型，再按文件夹分组，收藏在前，按钮 CURRENT/QUEUED/SELECT）、取消下载、刷新列表、清除缓存；选择、刷新、清缓存只在停车时可用）。设置磁贴不再打开 mici 页面（`offroad_pages_check.py` O1 不允许 `MICI`）。
 - **详情页（WP 风格）**：整屏。左上角是返回圆钮（线画的箭头，点击区 `BACK=(0,0,140,230)`），右边小号大写的上级名（`XPILOT` 或父页面名），下面是大号小写标题；内容区 `CONTENT=(140,230,1920,850)`，由宿主按屏幕像素直接画 `ui/pages/` 里的原生列表页（tici 的 `list_view`/`scroller_tici` 控件）。页面打开的子页（如 Plugins 的插件页、Tesla 的 Car model）压栈，返回一层层退回，退到底回到磁贴屏。
   - 每页一个模块：`openpilot/tesla/ui/pages/<页>.py`，带 `show_event` 的 Widget（`show_event` 时从 params 重新读状态）。共用部分在 `pages/base.py`。不画图的逻辑在 `ui/offroad.py`（视口模式、触摸映射、插件行、商店任务 `StoreJobs`、停车提示），`offroad_pages_check.py` 在本机测。
   - 页面内容和 mici 一致（同样的参数、动作和可用条件，行驶中或接合时不能改）。重置校准、重启、关机、卸载用 `ConfirmDialog`；这些 tici 弹窗压在导航栈上，在 mici 那一遍里隐藏；宿主 modal 模式只全屏画栈顶弹窗，不渲染背景详情页或磁贴屏，避免 NetworkUI 的 NEEDS_AUTH 每帧重置键盘。
@@ -415,13 +418,14 @@ Tesla 接管例外（用户 2026-10-25 决定）：`safety.h` 的最低频率检
   - 宿主里已经没有 3 倍的 mici 页面；`FALLBACK_VIEW=(296,295,1608,720)` 只留给意外压到 main 之上的 mici 控件。
   - 页面调用 `self.open(None, None)` 表示返回上一层。
   - 开机引导：mici 的 `OnboardingWindow` 在栈里时，宿主不画 mici 纹理，改为全屏画原生 `pages/onboarding.py` 的 `OnboardingPage`（同样的参数：`HasAcceptedTerms`、`HasAcceptedTermsSP`、`CompletedTrainingVersion`、`DoUninstall`；拒绝前在页内再确认一次），完成后宿主 `pop_widgets_to(main)`，和 mici 的回调一样。
-- **不画 mici 纹理**靠 `system/ui/lib/application.py` 里一行钩子：`host.viewport()` 返回 `None` 时跳过 `draw_texture_pro`。这行放在 `begin_drawing()` 之前，宿主在里面重画变化的磁贴纹理。此时 `to_logical` 把所有触摸映射到 mici 屏幕很远之外，下面继续运行的 mici 控件不会响应。这是对 SP 文件唯一的改动。
-- **插件 HUD 布局**：停车时进入编辑模式并选 Drive，灰色 Driving view 内为每个已开启的 `HudOverlay` 画带插件 id 的框；拖动框移动，点击框切换显示/隐藏（隐藏框仍可点击恢复）。拖动空白处继续移动整个画面；SP 的速度、报警、路径不参与编辑。位置按框左上角相对画面的宽高比例保存为 `drive.hud[id]=[fx,fy,visible]`，移动画面不改变比例；框被限制在画面内。缺失、非数字、非有限、越界或非 BOOL 的条目使用插件默认位置；关闭插件时保留其布局。
-  - `HudOverlay.default_rect(view)` 返回默认矩形（mici 逻辑坐标）；基类为画面原点的 120×48 框，保留既有绘制原点，插件可覆盖为实际占位。宿主在调用 `render(rect)` 前设置 Widget 矩形，插件以传入矩形或 `self.rect` 的原点画内容；固定绝对屏幕坐标的旧插件需在插件仓库适配。编辑框按相同比例放大到大屏；行驶端绘制前读取布局，隐藏项不调用 render，绘制裁剪到 Driving view 内。每个插件 id 对应一个 HUD 位置。
-  - `HudOverlay` 与 `ScreenOverlay` 的类型本身明确声明只在 onroad 使用；停车只显示 HUD 编辑框，不运行它的绘制。画面外信息可直接使用 `show="onroad"` 的 Tile，或在 ScreenOverlay 的 left/right/top/bottom 区域绘制，现有宿主已支持两种方式；traffic_light 的图标迁移由插件仓库的独立任务完成。
+- **不画 mici 纹理**靠 `system/ui/lib/application.py` 里一行钩子：`host.viewport()` 返回 `None` 时跳过 `draw_texture_pro`。这行放在 `begin_drawing()` 之前，宿主在里面重画变化的磁贴纹理。此时 `to_logical` 把所有触摸映射到 mici 屏幕很远之外，下面继续运行的 mici 控件不会响应。这是纹理合成入口的改动；HUD 平移和报警绘制的最小改动见下条。
+- **HUD 布局**：停车时编辑 Drive，Driving view 内同时显示已开启插件 `HudOverlay` 和内置 HUD 的有标签框。拖动移动，点击可隐藏/恢复允许隐藏的项；框不越出画面。内置项保存为 `drive.hud["builtin:<name>"]=[fx,fy,visible]`，插件仍用插件 id；左上角比例随画面移动保持。缺失、非数字、非有限、越界或非 BOOL 的条目回到原位置和可见状态。关闭插件时保留位置。`tiles.builtin_hud_boxes()` 提供默认占位；`plugin_ui.draw_builtin()` 只给 SP 原绘制函数传平移后的 rect，不改其绘制和状态条件；小屏无宿主时保持原调用。
+  - 可隐藏：`torque_bar`（转向弧线）、`set_speed`（设定速度）。只允许移动：`steering_wheel`（接管状态、critical 图标及叹号、turn intent 一起移动）、`model_source`（加载/失败状态）、`blind_spot_indicators`（两侧一组）。编辑器显示 Move only，手写 `visible=false` 也不会隐藏安全指示。
+  - `_draw_current_speed()` 在此基线没有调用，旧坐标超出 240 px 高画面；按用户补充不增加新元素。其他可分离内容：方向盘组内的 turn intent/critical 叹号；外层的 DMoji、纵向状态、置信度球、书签和导航不参与本次编辑。报警不进入布局；移除 `augmented_road_view.py` 中错误的大屏跳过条件，始终由 SP 在原处绘制。
+  - 插件 `HudOverlay.default_rect(view)` 返回 mici 逻辑坐标的默认矩形，基类为 120×48。宿主在调用 `render(rect)` 前设置 Widget 矩形；固定绝对坐标的旧插件须在插件仓库适配。绘制裁剪到 Driving view；ScreenOverlay 继续使用画面外区域。`use` 不增加运行期门控。
 - **整屏叠加层**：`ScreenOverlay`（`update(sm)`、`draw(zones)`），行驶时在磁贴之后绘制；`zones` 是当前行驶画面四周的 left/right/top/bottom 和 view 本身的屏幕矩形。出错隔离同上，插件关闭时隐藏。例：`blindspot_edges`。
 - 已知：`NetworkUI` 自己建一个 `WifiManager`，mici 的 `NetworkLayoutMici` 只在 mici 设置里构造（大屏不构造），所以大屏进程里只有 Network 页那一个。
-- Mac GPU 检查：`python3 tools/sp_tesla_e2e/big_screen_e2e.py --host --output <目录>`。运行真实宿主、NetworkUI、键盘、CameraView 的 PC shader、插件 HUD 渲染入口和触摸映射；替换设备服务、SP 自带 HUD、磁贴数据、图标和 NV12 摄像头输入；使用 macOS Arial 字体。保存 `result.json`、键盘、接合彩色、HUD 编辑/隐藏、HUD 移动后 onroad 和画面移动前后截图，不连接设备、不发送 CAN、不写真实参数。证明主机合成与交互；设备字体、图标、实时摄像头和物理触摸仍须设备验证。
+- Mac GPU 检查：`python3 tools/sp_tesla_e2e/big_screen_e2e.py --host --output <目录>`。运行真实宿主、NetworkUI、键盘、CameraView 的 PC shader、插件 HUD 渲染入口和触摸映射；替换设备服务、磁贴数据、图标和 NV12 摄像头输入；SP HUD 与插件 HUD 使用真实绘制入口；使用 macOS Arial 字体。保存 `result.json`、键盘、接合彩色、Park/Drive 大按钮、内置/插件 HUD 编辑与隐藏、HUD 移动后 onroad、Black 无边框 和画面移动前后截图，不连接设备、不发送 CAN、不写真实参数。证明主机合成与交互；设备字体、图标、实时摄像头和物理触摸仍须设备验证。
 - 检查：`tools/sp_tesla_e2e/tile_layout_check.py`（网格、排布、行驶避让、编辑操作、手势、保存格式、ASCII、文字适配）、`offroad_pages_check.py`（本机）；渲染和触摸：`tools/sp_tesla_e2e/big_screen_e2e.py`（默认路径在设备上跑，`--host` 可在 Mac 跑上述用例；设备路径截图磁贴屏、编辑模式、每个设置详情页、插件市场的分类和插件页，检查停车时除 Models 外不画 mici 纹理）。
 
 ## 10. 现有插件
@@ -434,6 +438,17 @@ Tesla 接管例外（用户 2026-10-25 决定）：`safety.h` 的最低频率检
 | `sp_models` | 默认模型：SP 的模型管理器和 modeld 原样运行，只是归到插件下；装一个持有 `role:perception.model` 的插件（如 OP、Jetlink、Chipmunk 模型）并打开即替换 | 无（一直开启） | 无发送 |
 
 其他插件（auto_speed、traffic_light、ambient_light、external_compute、bms 和大屏显示插件）的列表和说明在插件仓库的 `README.md`。它们保留原来的参数名，从旧版本升级的设备要把旧参数值复制到 `/data/xpilot_plugins/.params/`。panda 部分仍在系统仓库：`auto_speed.h`（0x3C2，`0x4000`）、`ambient_light.h`（0x679，`0x2000`）。
+
+### 插件仓库 use 补齐清单（2026-10-25）
+
+只读检查 `onemiless/xpilot-plugins/main@9d713ffc99cfc1a90e281a239047069e9cfde26a`：以下 17 个源码清单均缺少 `use`，本任务不修改插件仓库。推荐值按钩子和现有磁贴的 `show` 推导；其中 op_models 兼有行驶模型角色和 offroad 设置磁贴，必须是 both。
+
+| 建议 use | 插件 |
+|---|---|
+| `onroad` | ambient_light、auto_speed、blindspot_edges、external_compute、overspeed_warning、tesla_mixed_control、tn_long、traffic_light |
+| `both` | bms、car_tile、clock_tile、ip_tile、lead_card、map_tile、op_models、speed_card、speed_limit_card |
+
+商店索引目前含上述 16 个（tn_long 尚未发布），包内清单同样缺失 use。`store_e2e` 应以 E9/E1 报缺失声明、以 E2 报其安装失败导致的未发现；补齐源码后还须重建 dist/index 才能通过。索引未带 use 时市场显示 use not declared，已加载插件按经校验的清单显示。
 
 ## 11. 本机可以跑的检查
 

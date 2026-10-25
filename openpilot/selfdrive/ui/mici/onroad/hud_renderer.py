@@ -10,6 +10,7 @@ from openpilot.system.ui.lib.text_measure import measure_text_cached
 from openpilot.system.ui.widgets import Widget
 from openpilot.common.filter_simple import FirstOrderFilter
 from openpilot.cereal import log
+from openpilot.tesla.ui.plugin_ui import draw_builtin  # xpilot: editable built-in HUD
 
 EventName = log.OnroadEvent.EventName
 
@@ -180,14 +181,14 @@ class HudRenderer(Widget):
   def _render(self, rect: rl.Rectangle) -> None:
     """Render HUD elements to the screen."""
 
-    self._torque_bar.render(rect)
+    draw_builtin("torque_bar", rect, self._torque_bar.render)  # xpilot: saved HUD position/visibility
 
     if self.is_cruise_set:
-      self._draw_set_speed(rect)
+      draw_builtin("set_speed", rect, self._draw_set_speed)  # xpilot: saved HUD position/visibility
 
-    self._draw_model_source(rect)
+    draw_builtin("model_source", rect, self._draw_model_source)  # xpilot: move-only model status
 
-    self._draw_steering_wheel(rect)
+    draw_builtin("steering_wheel", rect, self._draw_steering_wheel)  # xpilot: move-only engagement/critical icon
 
   def _draw_model_source(self, rect: rl.Rectangle) -> None:
     loading = ui_state.chestnut_state == ChestnutState.LOADING

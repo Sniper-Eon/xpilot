@@ -22,7 +22,6 @@ Failure cases listed before implementation:
 - M14 a missing/invalid use is accepted or discovery loses the rejection reason
 - M15 a plugin tile show conflicts with its declared use
 """
-import ast
 import json
 from pathlib import Path
 import sys
@@ -62,17 +61,8 @@ class FakeParams:
 
 
 def tile_show_problems(path: Path) -> list[str]:
-  """Explicit TileSpec.show in source, including plugins not importable on this host."""
-  errors = []
-  for node in ast.walk(ast.parse(path.read_text())):
-    if not isinstance(node, ast.Call) or not (isinstance(node.func, ast.Name) and node.func.id == "TileSpec"
-                                            or isinstance(node.func, ast.Attribute) and node.func.attr == "TileSpec"):
-      continue
-    show = next((kw.value for kw in node.keywords if kw.arg == "show"), None)
-    if not isinstance(show, ast.Constant) or show.value not in ("onroad", "offroad", "always"):
-      tid = ast.literal_eval(node.args[0]) if node.args and isinstance(node.args[0], ast.Constant) else "?"
-      errors.append(f"M13 {path}:{node.lineno} tile {tid}: explicit show required (onroad/offroad/always)")
-  return errors
+  """Shared source check, including plugins not importable on this host."""
+  return ["M13 " + p for p in mf.tile_problems(path)]
 
 
 def main() -> int:
