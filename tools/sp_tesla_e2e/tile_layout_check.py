@@ -39,6 +39,10 @@ Failure cases listed before implementation:
 - T18 tile text does not fit its tile: the font scale is not 1 on a small tile and 2 on bigger ones, a fitted font
       leaves the box width or height while above MIN_FONT, goes over its cap or under MIN_FONT, drops a line that fits,
       or keeps one that does not
+- T19 saved drive view position is lost, or a missing/garbage/out-of-range position does not use the default
+- T20 a view drag drops off screen or between cells; tiles, add cell, edit bar or overlay zones use the old position
+- T21 a fixed tile covered by the moved view overlaps it instead of flowing into a free cell
+- T22 an onroad tap or drag starting outside the view changes layout/pages or reaches a mici widget
 """
 import ast
 import itertools
@@ -177,6 +181,44 @@ def check_show(errors):
     spec = T.TileSpec("x", "X", show=show)
     if T.shows(spec, started) != (show == "always" or (show == "onroad") == started):
       errors.append(f"T7 show={show} started={started}")
+
+
+def check_view_saved(errors):
+  default = T.DRIVE_CELLS[:2]
+  bad = [None, [], 3, "x", {}, {"drive": None}, {"drive": []}]
+  bad += [{"drive": {"view": v}} for v in (None, [], [1], [0, 0, 0], "1,0", {}, [True, 0], [0.5, 0], [-1, 0], [3, 0], [0, 2])]
+  for value in bad:
+    if T.view_position(value) != default:
+      errors.append(f"T19 invalid position {value!r}")
+  for col, row in itertools.product(range(3), range(2)):
+    position = T.view_position(json.loads(json.dumps({"drive": {"view": [col, row]}})))
+    if position != (col, row):
+      errors.append(f"T19 position lost: {(col, row)} -> {position}")
+
+
+def check_view_moved(errors):
+  items = [(str(i), "small", ("small",), None) for i in range(20)]
+  for pos in itertools.product(range(3), range(2)):
+    view = T.view(pos)
+    if not inside(view, (0, 0, *T.SCREEN)) or view[:2] != (T.VIEW[0] + (pos[0] - 1) * T.PITCH, T.VIEW[1] + pos[1] * T.PITCH):
+      errors.append(f"T20 unsnapped/off-screen view {pos}: {view}")
+    placed = T.place(items, True, pos)
+    blocked = {(c, r) for c in range(pos[0], pos[0] + 6) for r in range(pos[1], pos[1] + 3)}
+    if T.blocked(True, pos) != blocked or any(cells(*p) & blocked for p in placed.values()) or len(placed) != 14:
+      errors.append(f"T20 tiles use old view position {pos}")
+    if T.add_cell({}, True, pos) in blocked or any(not inside(r, view) for r in T.bar_buttons(placed, True, pos).values()):
+      errors.append(f"T20 add cell/bar uses old view position {pos}")
+    pinned = [("x", "small", None)]
+    cell = next(iter(blocked))
+    if T.move(pinned, {"x": (7, 0, "small")}, "x", cell, True, pos) != pinned:
+      errors.append(f"T20 tile drop enters moved view {pos}")
+
+
+def check_view_covered(errors):
+  items = [("fixed", "small", ("small",), (0, 0))] + [(str(i), "small", ("small",), None) for i in range(13)]
+  placed = T.place(items, True, (0, 0))
+  if placed.get("fixed") != (7, 0, "small") or len(placed) != 14:
+    errors.append(f"T21 covered fixed tile did not flow: {placed}")
 
 
 def check_spec(errors):
@@ -376,7 +418,7 @@ def check_text(errors):
 def main() -> int:
   errors: list[str] = []
   for check in (check_grid, check_view, check_place, check_show, check_spec, check_layout, check_edit, check_hits, check_bar, check_gesture,
-                check_poll, check_fit, check_text):
+                check_poll, check_fit, check_text, check_view_saved, check_view_moved, check_view_covered):
     try:
       check(errors)
     except Exception as e:

@@ -26,6 +26,11 @@ Failure modes (listed before implementation):
 11. A separate, untouched native OnboardingPage cannot render full screen;
     the real onboarding window is pushed, or any offroad frame draws mici.
 12. IsDriverViewEnabled is not restored to its original value on exit.
+13. Real NetworkUI in NEEDS_AUTH under the host clears three typed keys over later modal frames,
+    or the modal renders the background page/tile screen.
+14. Onroad tiles use the chosen accent, or park/onroad transitions reuse a stale colored texture.
+15. Onroad/drive-edit view drags do not snap, clamp, persist or re-place covered fixed tiles;
+    other onroad touches change state or reach mici widgets.
 
 Run with comma service stopped and native libraries built. No CAN transmission,
 settings actions, store refresh/install, or reboot/reset/uninstall confirmation.
@@ -38,6 +43,230 @@ import tempfile
 import time
 import traceback
 from pathlib import Path
+import sys
+
+
+def host_check(output):
+  """Mac GPU composition: real host, NetworkUI and keyboard; fake services, fixture tiles and camera, no device IO."""
+  import logging
+  import os
+  import types
+  root = Path(__file__).resolve().parents[2]
+  sys.path.insert(0, str(root))
+  output.mkdir(parents=True, exist_ok=True)
+  sandbox = tempfile.TemporaryDirectory()
+  os.environ.update(XPILOT_PLUGINS_DIR=sandbox.name, SCALE='1', SUNNYPILOT_UI='0')
+  cereal = types.ModuleType('openpilot.cereal')
+  cereal.__path__ = [str(root / 'openpilot/cereal')]
+  sys.modules['openpilot.cereal'] = cereal
+  sys.modules['openpilot.cereal.messaging'] = types.SimpleNamespace()
+  sys.modules['openpilot.common.swaglog'] = types.SimpleNamespace(cloudlog=logging.getLogger('host-e2e'))
+  sys.modules['openpilot.common.hardware'] = types.SimpleNamespace(PC=True, HARDWARE=types.SimpleNamespace(get_device_type=lambda: 'pc'))
+  from tools.sp_tesla_e2e.offroad_pages_check import FakeParams
+  sys.modules['openpilot.common.params'] = types.SimpleNamespace(Params=FakeParams)
+  params = FakeParams()
+  state = types.SimpleNamespace(started=False, engaged=False, sm={}, params=params)
+  sys.modules['openpilot.selfdrive.ui.ui_state'] = types.SimpleNamespace(ui_state=state, device=types.SimpleNamespace(awake=True))
+  sys.modules['openpilot.sunnypilot.hardware.profile'] = types.SimpleNamespace(HardwareProfile=types.SimpleNamespace(C3XL='c3xl'), get_hardware_profile=lambda: 'pc')
+  import pyray as rl
+  from openpilot.system.ui.lib.application import gui_app, FontWeight, MouseEvent, MousePos
+  from openpilot.system.ui.widgets import Widget
+  from openpilot.system.ui.widgets.button import Button
+  from openpilot.system.ui.widgets.network import NetworkUI, UIState, Network, SecurityType
+  from openpilot.tesla.ui import tiles
+  from openpilot.tesla.ui.tile import Tile
+
+  class Page(Widget):
+    def __init__(self, *args):
+      super().__init__()
+
+    def _render(self, rect):
+      pass
+
+  for module, name in (('device', 'DevicePage'), ('onboarding', 'OnboardingPage')):
+    sys.modules['openpilot.tesla.ui.pages.' + module] = types.SimpleNamespace(**{name: Page})
+  from openpilot.tesla.ui import screen
+  screen.load = lambda base: [(None, type('DataTile', (Tile,), {'SPEC': tiles.TileSpec(str(i), title, sizes=('small',)),
+                            'draw': lambda self, rect, size, value: self.draw_value(rect, str(42 + int(self.SPEC.id)), 'km/h')})())
+                            for i, title in enumerate(('Speed', 'Lead', 'Battery', 'Range', 'Temperature', 'Clock', 'Limit', 'Power'))]
+  screen.Overlays = lambda *args: types.SimpleNamespace(each=lambda fn: None)
+  rl.set_trace_log_level(rl.TraceLogLevel.LOG_WARNING)
+  rl.init_window(*tiles.SCREEN, 'xpilot host E2E')
+  font = rl.load_font_ex('/System/Library/Fonts/Supplemental/Arial.ttf', 100, None, 0)
+  gui_app._fonts = {weight: font for weight in FontWeight}
+  gui_app._patch_text_functions()
+  rl._orig_begin_scissor_mode = rl.begin_scissor_mode
+  image = rl.gen_image_color(32, 32, rl.WHITE)
+  icon = rl.load_texture_from_image(image)
+  rl.unload_image(image)
+  gui_app.texture = lambda *args, **kwargs: icon
+  host = screen.BigScreenHost()
+  host._layout_params.put(tiles.THEME_PARAM, 'Crimson')
+  host._theme()
+  pinned, hidden = host._layouts['drive']
+  host._layouts['drive'] = ([(tid, size, (0, 3) if tid == '0' else fixed) for tid, size, fixed in pinned], hidden)
+  main = Page()
+  main._onboarding_window = object()
+  gui_app._nav_stack = [main]
+  host.bind_settings(main, None)
+  target = rl.load_render_texture(*tiles.SCREEN)
+  errors, cases, clicks = [], [], []
+  mici = Button('mici', lambda: clicks.append(True))
+
+  def check(ok, message):
+    if not ok:
+      errors.append(message)
+
+  def frame(events=(), name=None):
+    gui_app._mouse_events = list(events)
+    mici.render(rl.Rectangle(0, 0, *tiles.MICI))
+    view = host.viewport()
+    rl.begin_texture_mode(target)
+    rl.clear_background(rl.BLACK)
+    if view is not None:
+      rl.draw_rectangle_rec(view, rl.Color(48, 48, 48, 255))
+      rl.draw_text_ex(font, 'Simulated camera / host only', rl.Vector2(view.x + 40, view.y + 40), 38, 0, rl.WHITE)
+      rl.draw_line_ex(rl.Vector2(view.x + view.width * .3, view.y + view.height), rl.Vector2(view.x + view.width * .48, view.y + view.height * .3), 5, rl.WHITE)
+      rl.draw_line_ex(rl.Vector2(view.x + view.width * .7, view.y + view.height), rl.Vector2(view.x + view.width * .52, view.y + view.height * .3), 5, rl.WHITE)
+    host.render()
+    rl.end_texture_mode()
+    if name:
+      image = rl.load_image_from_texture(target.texture)
+      rl.image_flip_vertical(image)
+      check(rl.export_image(image, str(output / (name + '.png'))), 'export ' + name)
+      rl.unload_image(image)
+
+  def event(point, phase):
+    return MouseEvent(MousePos(*host.to_logical(*point)), 0, phase == 0, phase == 1, phase != 1, time.monotonic())
+
+  def touch(point):
+    frame([event(point, 0)])
+    frame([event(point, 1)])
+
+  def drag(start, end, follow=False):
+    before = host._view
+    frame([event(start, 0)])
+    for i in range(1, 21):
+      frame([event((start[0] + (end[0] - start[0]) * i / 20, start[1] + (end[1] - start[1]) * i / 20), 2)])
+      if i == 10 and follow:
+        check(host._view != before, '15 view did not follow the drag before release')
+    frame([event(end, 1)])
+    frame()
+
+  def center(rect):
+    x, y, w, h = rect
+    return x + w / 2, y + h / 2
+
+  def color():
+    e = host._entries[next(iter(host._placed))]
+    image = rl.load_image_from_texture(e.texture.texture)
+    pixel = rl.get_image_color(image, 3, 3)
+    rgb = (pixel.r, pixel.g, pixel.b)
+    rl.unload_image(image)
+    return rgb
+
+  try:
+    wifi = types.SimpleNamespace(add_callbacks=lambda **kw: None, process_callbacks=lambda: None, set_active=lambda active: None, ipv4_address='')
+    network = NetworkUI(wifi)
+    panel = network._wifi_panel
+    panel._networks = [Network('Host fixture', 100, SecurityType.WPA2, False)]
+    panel._state_network, panel.state = panel._networks[0], UIState.NEEDS_AUTH
+    host._open('network', network)
+    frame()
+    keyboard = panel.keyboard
+    check(gui_app.get_active_widget() is keyboard, '13 NetworkUI did not push keyboard')
+    frame()
+    for key in 'abc':
+      touch(center((keyboard._all_keys[key].rect.x, keyboard._all_keys[key].rect.y,
+                    keyboard._all_keys[key].rect.width, keyboard._all_keys[key].rect.height)))
+    for _ in range(12):
+      frame()
+    check(keyboard.text == 'abc', f'13 modal keyboard cleared typed text: {keyboard.text!r}')
+    check(len(gui_app._nav_stack) == 2, '13 modal was pushed repeatedly')
+    frame(name='wifi-keyboard')
+    cases.append({'id': 13, 'text': keyboard.text, 'later_frames': 12})
+    gui_app.pop_widgets_to(main, instant=True)
+    host._stack = []
+    frame()
+    accent = color()
+    check(accent == tiles.THEMES['Crimson'], f'14 park lost chosen theme: {accent}')
+    state.started = True
+    frame(name='onroad-before')
+    neutral = color()
+    check(neutral[0] == neutral[1] == neutral[2] and max(neutral) <= 64, f'14 colored onroad tile: {neutral}')
+    state.started = False
+    frame()
+    check(color() == accent, f'14 stale park texture: {color()} != {accent}')
+    state.started = True
+    frame()
+    check(color() == neutral, '14 stale onroad texture')
+    cases.append({'id': 14, 'park_rgb': accent, 'onroad_rgb': neutral})
+    before = tuple(host._view)
+    saved = host._layout_params.get(tiles.LAYOUT_PARAM)
+    outside = center(tiles.tile_rect(next(iter(host._placed.values()))))
+    pixel = []
+    for events in ([], [event(outside, 0)]):
+      frame(events)
+      image = rl.load_image_from_texture(target.texture)
+      rl.image_flip_vertical(image)
+      x, y, _, _ = tiles.tile_rect(next(iter(host._placed.values())))
+      c = rl.get_image_color(image, x + 3, y + 3)
+      pixel.append((c.r, c.g, c.b))
+      rl.unload_image(image)
+    frame([event(outside, 1)])
+    check(pixel[0] == pixel[1], f'T22/15 outside touch changed tile appearance: {pixel}')
+    touch(outside)
+    drag(outside, center(before))
+    touch(center(before))
+    check(host._layout_params.get(tiles.LAYOUT_PARAM) == saved and tuple(host._view) == before and not host._stack and not host._edit,
+          'T22/15 outside touch or view tap changed state')
+    check(not clicks, 'T22/15 onroad touch reached mici')
+    start = center(before)
+    drag(start, (start[0] - tiles.PITCH + 47, start[1] + tiles.PITCH + 31), follow=True)
+    wanted = (before[0] - tiles.PITCH, before[1] + tiles.PITCH, *before[2:])
+    check(tuple(host._view) == wanted, f'T20/15 view did not snap: {host._view} != {wanted}')
+    frame(name='onroad-after')
+    raw = host._layout_params.get(tiles.LAYOUT_PARAM)
+    check(raw is not None and raw['drive'].get('view') == [0, 1], f'T19/15 position not saved: {raw}')
+    restarted = screen.BigScreenHost()
+    check(tuple(restarted.viewport().__getattribute__(n) for n in ('x', 'y', 'width', 'height')) == wanted, 'T19/15 restart lost view')
+    for p in host._place('drive').values():
+      x, y, w, h = tiles.tile_rect(p)
+      check(not (x < wanted[0] + wanted[2] and wanted[0] < x + w and y < wanted[1] + wanted[3] and wanted[1] < y + h), 'T21/15 tile overlaps view')
+    zones = host._zones
+    check((zones['view'].x, zones['view'].y, zones['view'].width, zones['view'].height) == wanted, 'T20/15 stale overlay zones')
+    check(host._place('drive')['0'][:2] == (0, 0), 'T21/15 covered fixed tile did not flow')
+    drag(center(host._view), (10000, -10000))
+    expected = (before[0] + tiles.PITCH, before[1], *before[2:])
+    check(tuple(host._view) == expected, f'T20/15 off-screen drop {host._view}')
+    state.started = False
+    host._edit, host._layout = True, 'drive'
+    frame()
+    start = (expected[0] + 100, expected[1] + 100)
+    drag(start, (start[0] - 2 * tiles.PITCH, start[1] + tiles.PITCH))
+    saved_edit = host._layout_params.get(tiles.LAYOUT_PARAM) or {}
+    check(saved_edit.get('drive', {}).get('view') == [0, 1], '15 drive-edit placeholder did not move')
+    frame(name='edit-drive-moved')
+    cases.append({'id': 15, 'before': before, 'after': wanted, 'saved': raw, 'mici_clicks': clicks})
+  except Exception:
+    errors.append(traceback.format_exc())
+  finally:
+    result = {'passed': not errors, 'head': subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip(),
+              'implementation_ref': os.environ.get('XPILOT_E2E_SOURCE_REF', 'working tree'),
+              'scope': host_check.__doc__, 'cases': cases, 'errors': errors}
+    (output / 'result.json').write_text(json.dumps(result, indent=2) + '\n')
+    print(json.dumps(result, indent=2))
+    rl.close_window()
+    sandbox.cleanup()
+  return 1 if errors else 0
+
+
+if '--host' in sys.argv:
+  host_parser = argparse.ArgumentParser()
+  host_parser.add_argument('--host', action='store_true')
+  host_parser.add_argument('--output', type=Path, required=True)
+  host_args = host_parser.parse_args()
+  sys.exit(host_check(host_args.output))
 
 import pyray as rl
 from openpilot.common.params import Params
@@ -179,8 +408,9 @@ def layout_bytes():
 def restore_layout():
   if layout_backup is None:
     return
-  layouts, raw = layout_backup
+  layouts, raw, position = layout_backup
   host._layouts, host._layout = deepcopy(layouts), 'park'
+  host._view_position = position
   host._edit, host._selected, host._drag = False, None, None
   if layout_bytes() != raw:
     if raw is None:
@@ -189,7 +419,7 @@ def restore_layout():
       with tempfile.NamedTemporaryFile(dir=layout_path.parent, delete=False) as saved:
         saved.write(raw)
       Path(saved.name).replace(layout_path)
-  check(layout_bytes() == raw and host._layouts == layouts, 'saved park/drive layouts were not restored exactly')
+  check(layout_bytes() == raw and host._layouts == layouts and host._view_position == position, 'saved park/drive layouts were not restored exactly')
 
 
 def steps():
@@ -284,7 +514,7 @@ def steps():
     tile_screen()
     check(mici_draws == 0, f'BACK from {tid} drew mici')
 
-  layout_backup = (deepcopy(host._layouts), layout_bytes())
+  layout_backup = (deepcopy(host._layouts), layout_bytes(), host._view_position)
   yield from hold_toggles()
   screenshot('edit')
   old_size = host._placed['toggles'][2]
@@ -314,17 +544,18 @@ def steps():
   cases.append({'name': 'edit', 'old_size': old_size, 'new_size': host._placed['toggles'][2], 'empty_cell': empty})
 
   host._layouts['drive'] = tiles.arrange([e.tile.SPEC for e in host._entries.values() if tiles.shows(e.tile.SPEC, True)], None, 'drive')
+  host._view_position = tiles.DRIVE_CELLS[:2]
   yield from touch(center(tiles.bar_buttons(host._placed, host._layout == 'drive')['drive']))
   assert host._edit and host._layout == 'drive', 'Drive bar button did not select the drive layout'
   data = [tid for tid, _, _, _ in host._visible('drive')]  # enabled onroad tiles, built-in, plugin or store
   check(set(host._placed) == set(data), f'drive edit tiles: {list(host._placed)}, expected {data}')
   default_order = [tid for tid, _, _ in host._layouts['drive'][0] if tid in data]
-  free = [cell for cell in tiles.scan(True) if cell not in tiles.blocked(True)]
+  free = [cell for cell in tiles.scan(True) if cell not in tiles.blocked(True, host._view_position)]
   for tid, cell in zip(default_order, free):
     check(tid in host._placed and host._placed[tid][:2] == cell, f'default drive tile {tid}: {host._placed.get(tid)}, expected {cell}')
   for tid, (col, row, size) in host._placed.items():
     cols, rows = tiles.SIZES[size]
-    check(not {(col + c, row + r) for c in range(cols) for r in range(rows)} & tiles.blocked(True), f'drive edit tile {tid} overlaps blocked cells')
+    check(not {(col + c, row + r) for c in range(cols) for r in range(rows)} & tiles.blocked(True, host._view_position), f'drive edit tile {tid} overlaps blocked cells')
   screenshot('edit-drive')
   cases.append({'name': 'edit drive default', 'order': default_order, 'placed': dict(host._placed)})
 
@@ -346,15 +577,16 @@ def steps():
   check(moved in host._placed and host._placed[moved][:2] == drop_cell, f'dragged {moved} not placed at {drop_cell}')
   screenshot('edit-drive-moved')
   cases.append({'name': 'edit drive moved', 'tile': moved, 'fixed': fixed, 'expected': drop_cell, 'moves': 20})
-  yield from touch(center(tiles.bar_buttons(host._placed, host._layout == 'drive')['done']))
+  yield from touch(center(tiles.bar_buttons(host._placed, host._layout == 'drive', host._view_position)['done']))
   check(not host._edit and host._layout == 'park', 'Done did not leave edit mode and restore the park layout')
   tile_screen()
 
   gui_app.pop_widgets_to(main, instant=True)
   ui_state.started = True  # synthetic composition only; never write IsOffroad or send CAN
-  check(rect(host.viewport()) == list(tiles.VIEW), f'onroad viewport {rect(host.viewport())}')
-  lx, ly = host.to_logical(*tiles.VIEW[:2])
-  check(abs(lx) < 0.01 and abs(ly) < 0.01, f'onroad to_logical origin {lx},{ly}')
+  view = tiles.view(host._view_position)
+  check(rect(host.viewport()) == list(view), f'onroad viewport {rect(host.viewport())}')
+  lx, ly = host.to_logical(*view[:2])
+  check(not (0 <= lx <= 536 and 0 <= ly <= 240), f'onroad touch maps inside mici {lx},{ly}')
   forced, drawn = [], []
   for entry in host._overlays._entries:
     overlay = entry[1]
@@ -369,14 +601,14 @@ def steps():
       forced.append(entry)
   check(bool(forced), 'blindspot_edges overlay not loaded (plugin off or import failed)')
   original_render()
-  vx, vy, vw, vh = tiles.VIEW
+  vx, vy, vw, vh = view
   for tid, placed in host._placed.items():
     x, y, w, h = tiles.tile_rect(placed)
     check(not (x < vx + vw and vx < x + w and y < vy + vh and vy < y + h), f'onroad tile {tid} overlaps VIEW')
     col, row, size = placed
     cols, rows = tiles.SIZES[size]
     cells = {(col + c, row + r) for c in range(cols) for r in range(rows)}
-    check(not cells & tiles.blocked(True), f'onroad tile {tid} overlaps blocked cells')
+    check(not cells & tiles.blocked(True, host._view_position), f'onroad tile {tid} overlaps blocked cells')
     check(tid not in SETTINGS and host._entries[tid].tile.SPEC.show != 'offroad', f'onroad settings tile {tid} placed')
   for tid in data:
     check(tid in host._placed, f'onroad data tile {tid} not placed')

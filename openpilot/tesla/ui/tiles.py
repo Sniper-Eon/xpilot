@@ -50,14 +50,24 @@ def tile_rect(placed: tuple[int, int, str]) -> tuple[int, int, int, int]:
   return size_rect(col, row, SIZES[size])
 
 
-def _view() -> tuple[int, int, int, int]:
-  x, y, w, h = size_rect(DRIVE_CELLS[0], DRIVE_CELLS[1], DRIVE_CELLS[2:])
+def view(position=DRIVE_CELLS[:2]) -> tuple[int, int, int, int]:
+  x, y, w, h = size_rect(*position, DRIVE_CELLS[2:])
   scale = min(w / MICI[0], h / MICI[1])
   vw, vh = round(MICI[0] * scale), round(MICI[1] * scale)
   return x + (w - vw) // 2, y + (h - vh) // 2, vw, vh
 
 
-VIEW = _view()  # mici onroad view, 536:240 centered in DRIVE_CELLS
+VIEW = view()  # default mici view, 536:240 centered in DRIVE_CELLS
+
+
+def view_position(saved) -> tuple[int, int]:
+  """Saved drive-view cell; malformed or out-of-grid input uses the centered default."""
+  drive = saved.get("drive") if isinstance(saved, dict) else None
+  pos = drive.get("view") if isinstance(drive, dict) else None
+  if (isinstance(pos, list) and len(pos) == 2 and all(type(v) is int for v in pos)
+      and 0 <= pos[0] <= COLS - DRIVE_CELLS[2] and 0 <= pos[1] <= ROWS - DRIVE_CELLS[3]):
+    return tuple(pos)
+  return DRIVE_CELLS[:2]
 
 
 MIN_FONT = 24  # px; smaller is not readable from the driver's seat
@@ -81,10 +91,11 @@ def fit_lines(widths: list[float], w: float, h: float, cap: float, gap: float = 
   return int(max(MIN_FONT, min(cap, (h + gap) / n - gap, by_width))), n
 
 
-def blocked(started: bool) -> set[tuple[int, int]]:
+def blocked(started: bool, view_pos=DRIVE_CELLS[:2]) -> set[tuple[int, int]]:
   if not started:
     return set()
-  c, r, w, h = DRIVE_CELLS
+  c, r = view_pos
+  w, h = DRIVE_CELLS[2:]
   return {(col, row) for col in range(c, c + w) for row in range(r, r + h)}
 
 
@@ -126,11 +137,11 @@ def _cells(col: int, row: int, size: str) -> set[tuple[int, int]] | None:
   return {(col + i, row + j) for i in range(w) for j in range(h)}
 
 
-def place(items: list[tuple[str, str, tuple[str, ...], tuple[int, int] | None]], started: bool) -> dict[str, tuple[int, int, str]]:
+def place(items: list[tuple[str, str, tuple[str, ...], tuple[int, int] | None]], started: bool, view_pos=DRIVE_CELLS[:2]) -> dict[str, tuple[int, int, str]]:
   """items: (id, saved size, supported sizes, fixed position or None) in list order. Returns id -> (col, row, size) for
   every tile that fits. Fixed tiles first (a position off the grid, on the drive view or on an earlier tile is ignored),
   then the rest in scan order. Onroad a tile tries its saved size, then each smaller supported size, largest first."""
-  taken = set(blocked(started))
+  taken = set(blocked(started, view_pos))
   out = {}
 
   def sizes_for(saved, sizes):
@@ -168,7 +179,7 @@ def hit(placed: dict[str, tuple[int, int, str]], x: float, y: float) -> str | No
 BAR_NAMES = ("park", "drive", "done")
 
 
-def bar_buttons(placed: dict[str, tuple[int, int, str]], started: bool) -> dict[str, tuple[int, int, int, int]]:
+def bar_buttons(placed: dict[str, tuple[int, int, str]], started: bool, view_pos=DRIVE_CELLS[:2]) -> dict[str, tuple[int, int, int, int]]:
   """Edit mode bar: switch to the park / drive layout, leave edit mode. Drive layout: a row at the bottom of the drive view.
   Park layout: stacked in the last free cell (the first one holds "+"); with no second free cell, a row at the bottom
   center over the tiles."""
@@ -183,8 +194,9 @@ def bar_buttons(placed: dict[str, tuple[int, int, str]], started: bool) -> dict[
       bh = (h - 2 * gap) // 3
       return {name: (x, y + i * (bh + gap), w, bh) for i, name in enumerate(BAR_NAMES)}
   w, h = 220, 76
-  x0 = (SCREEN[0] - 3 * w - 2 * gap) // 2
-  y = VIEW[1] + VIEW[3] - h - 24 if started else SCREEN[1] - h - 16
+  vx, vy, vw, vh = view(view_pos)
+  x0 = vx + (vw - 3 * w - 2 * gap) // 2 if started else (SCREEN[0] - 3 * w - 2 * gap) // 2
+  y = vy + vh - h - 24 if started else SCREEN[1] - h - 16
   return {name: (x0 + i * (w + gap), y, w, h) for i, name in enumerate(BAR_NAMES)}
 
 
@@ -195,9 +207,9 @@ def corner_buttons(rect) -> dict[str, tuple[float, float, float]]:
   return {"unpin": (x + w - r - 8, y + r + 8, r), "resize": (x + w - r - 8, y + h - r - 8, r)}
 
 
-def add_cell(placed: dict[str, tuple[int, int, str]], started: bool) -> tuple[int, int] | None:
+def add_cell(placed: dict[str, tuple[int, int, str]], started: bool, view_pos=DRIVE_CELLS[:2]) -> tuple[int, int] | None:
   """First free cell (column-major): edit mode draws the "+" (add tiles) there."""
-  taken = set(blocked(started))
+  taken = set(blocked(started, view_pos))
   for col, row, size in placed.values():
     w, h = SIZES[size]
     taken |= {(col + i, row + j) for i in range(w) for j in range(h)}
@@ -253,14 +265,14 @@ def pin(pinned, hidden, tid: str, sizes: tuple[str, ...]):
   return [e for e in pinned if e[0] != tid] + [(tid, smallest, None)], [i for i in hidden if i != tid]
 
 
-def move(pinned, placed: dict[str, tuple[int, int, str]], tid: str, cell: tuple[int, int], started: bool):
+def move(pinned, placed: dict[str, tuple[int, int, str]], tid: str, cell: tuple[int, int], started: bool, view_pos=DRIVE_CELLS[:2]):
   """Drop tid on cell: its top left is fixed there (pulled back inside the grid); other fixed tiles it overlaps are no
   longer fixed. A drop that would cover the drive view changes nothing. List order stays."""
   size = placed[tid][2] if tid in placed else next(s for i, s, _ in pinned if i == tid)
   w, h = SIZES[size]
   pos = (min(max(cell[0], 0), COLS - w), min(max(cell[1], 0), ROWS - h))
   cells = _cells(*pos, size)
-  if cells & blocked(started):
+  if cells & blocked(started, view_pos):
     return list(pinned)
   out = []
   for i, s, f in pinned:

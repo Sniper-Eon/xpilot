@@ -1,5 +1,5 @@
 """Big-screen host (C3/C3X/C3XL, 2160x1080), UI v4: Windows Phone / Win 8 style tiles (XPILOT.md §9, layout in tiles.py).
-Onroad: the mici view fixed at tiles.VIEW, tiles in the cells around it, then plugin ScreenOverlays; no touches.
+Onroad: drag the mici view; neutral tiles flow around it, then plugin ScreenOverlays. Other touches are ignored.
 Alerts are drawn once, by mici inside the view.
 Offroad: the tile screen (tap opens a tile's page, long press enters edit mode), or a full-screen detail page: back
 button, parent name, title, and a native page (tesla/ui/pages) drawn here in screen pixels. The mici texture is not
@@ -32,7 +32,7 @@ from openpilot.tesla.ui.pages.device import DevicePage
 from openpilot.tesla.ui.pages.onboarding import OnboardingPage
 from openpilot.tesla.ui.plugin_ui import MAX_FAILURES, EnabledPlugins, Overlays, ScreenOverlay, load
 from openpilot.tesla.ui.tile import Tile
-from openpilot.tesla.ui.tiles import LAYOUT_PARAM, LAYOUT_SPEC, SCREEN, THEME_PARAM, THEMES, VIEW
+from openpilot.tesla.ui.tiles import LAYOUT_PARAM, LAYOUT_SPEC, SCREEN, THEME_PARAM, THEMES
 
 DIM = rl.Color(150, 152, 162, 255)
 SHADE = rl.Color(0, 0, 0, 120)      # over unselected tiles in edit mode
@@ -57,11 +57,11 @@ def scaled(s: float):
     rl.begin_scissor_mode = prev
 
 
-def _zones() -> dict:
-  """ScreenOverlay zones: the strips around VIEW and VIEW itself."""
-  x, y, w, h = VIEW
+def _zones(view) -> dict:
+  """ScreenOverlay zones: the strips around the current view and the view itself."""
+  x, y, w, h = view
   return {"left": rl.Rectangle(0, 0, x, SCREEN[1]), "right": rl.Rectangle(x + w, 0, SCREEN[0] - x - w, SCREEN[1]),
-          "top": rl.Rectangle(x, 0, w, y), "bottom": rl.Rectangle(x, y + h, w, SCREEN[1] - y - h), "view": rl.Rectangle(*VIEW)}
+          "top": rl.Rectangle(x, 0, w, y), "bottom": rl.Rectangle(x, y + h, w, SCREEN[1] - y - h), "view": rl.Rectangle(*view)}
 
 
 class _Entry:
@@ -100,11 +100,12 @@ class BigScreenHost:
     self._enabled = EnabledPlugins(self._params)
     services = sorted({svc for e in self._entries.values() for svc in e.spec.services})
     self._sm = messaging.SubMaster(services) if services else None
-    self._zones = _zones()
     try:
       saved = self._layout_params.get(LAYOUT_PARAM)
     except Exception:
       saved = None
+    self._view_position = tiles.view_position(saved)
+    self._view_drag = False
     specs = [e.spec for e in self._entries.values()]
     self._layouts = {mode: tiles.arrange([s for s in specs if tiles.shows(s, mode == "drive")], saved, mode) for mode in ("park", "drive")}
     self._layout = "park"  # the layout the tile screen shows and edit mode edits; onroad always shows "drive"
@@ -132,6 +133,8 @@ class BigScreenHost:
       color = THEMES.get(self._layout_params.get(THEME_PARAM), tiles.ACCENT)
     except Exception:
       color = tiles.ACCENT
+    if self._mode == "onroad":
+      color = (32, 32, 32)
     if color != Tile.COLOR:
       Tile.COLOR = color
       for e in self._entries.values():
@@ -156,16 +159,19 @@ class BigScreenHost:
 
   def _place(self, mode: str) -> dict[str, tuple[int, int, str]]:
     items = self._visible(mode)
-    key = (mode, tuple(items))
+    key = (mode, tuple(items), self._view_position)
     if key != self._placed_key:
-      self._placed_key, self._placed = key, tiles.place(items, mode == "drive")
+      self._placed_key, self._placed = key, tiles.place(items, mode == "drive", self._view_position)
     return self._placed
 
-  def _save(self, pinned, hidden=None) -> None:
+  def _save(self, pinned=None, hidden=None) -> None:
     """Replace the edited layout and write both."""
-    self._layouts[self._layout] = (pinned, self._layouts[self._layout][1] if hidden is None else hidden)
+    if pinned is not None:
+      self._layouts[self._layout] = (pinned, self._layouts[self._layout][1] if hidden is None else hidden)
     try:
-      self._layout_params.put(LAYOUT_PARAM, {mode: tiles.saved(*layout) for mode, layout in self._layouts.items()})
+      saved = {mode: tiles.saved(*layout) for mode, layout in self._layouts.items()}
+      saved["drive"]["view"] = list(self._view_position)
+      self._layout_params.put(LAYOUT_PARAM, saved)
     except Exception:
       cloudlog.exception("tile layout not saved")
 
@@ -230,12 +236,23 @@ class BigScreenHost:
       top.set_visible(lambda: self._host_pass)  # hidden in the mici texture pass, drawn by _draw_offroad
 
   def viewport(self) -> rl.Rectangle | None:
+    onroad = self._mode == "onroad"
+    if onroad != ui_state.started:
+      self._gesture = tiles.Gesture()
+      self._view_drag = False
     if ui_state.started:
-      self._mode, self._view = "onroad", VIEW
+      self._mode = "onroad"
+      self._edit, self._drag, self._selected, self._layout = False, None, None, "park"
+      events = [e._replace(pos=MousePos(*offroad.to_screen(None, e.pos.x, e.pos.y))) for e in gui_app.mouse_events]
+      self._touch(events, self._place("drive"))
+      self._view = self._drive_view()
+      self._zones = _zones(self._view)
     else:
       onboarding = self._main is None or gui_app.widget_in_stack(self._main._onboarding_window)
       top = gui_app.get_active_widget()
       self._mode, self._view = offroad.view_mode(onboarding, top is self._main, self._is_modal(top))
+    if onroad != ui_state.started:
+      self._theme()
     self._refresh_faces()
     return rl.Rectangle(*self._view) if self._view is not None else None
 
@@ -255,13 +272,21 @@ class BigScreenHost:
       self._faced[tid] = self._face(self._entries[tid], p[2], self._now)
 
   def to_logical(self, x: float, y: float) -> tuple[float, float]:
-    return offroad.to_logical(self._view, x, y)
+    return offroad.to_logical(None if ui_state.started else self._view, x, y)
+
+  def _drive_view(self) -> tuple:
+    x, y, w, h = tiles.view(self._view_position)
+    if self._view_drag and self._gesture.start is not None:
+      dx, dy = (p - s for p, s in zip(self._gesture.pos, self._gesture.start[:2]))
+      col, row = self._view_position
+      x += min(max(dx, -col * tiles.PITCH), (tiles.COLS - tiles.DRIVE_CELLS[2] - col) * tiles.PITCH)
+      y += min(max(dy, -row * tiles.PITCH), (tiles.ROWS - tiles.DRIVE_CELLS[3] - row) * tiles.PITCH)
+    return x, y, w, h
 
   # drawing
 
   def render(self) -> None:
     if self._mode == "onroad":
-      self._edit, self._drag, self._selected, self._layout = False, None, None, "park"
       self._draw_tiles(self._place("drive"), self._now)
       self._draw_overlays()
     elif self._mode == "onboarding":
@@ -304,6 +329,8 @@ class BigScreenHost:
   def _draw_tiles(self, placed, now: float) -> None:
     for tid, p in placed.items():
       e = self._entries[tid]
+      if self._view_drag and rl.check_collision_recs(rl.Rectangle(*tiles.tile_rect(p)), rl.Rectangle(*self._drive_view())):
+        continue
       if tid == self._drag or not (self._faced.pop(tid) if tid in self._faced else self._face(e, p[2], now)):  # edits re-place
         continue
       x, y, w, h = tiles.tile_rect(p)
@@ -311,7 +338,7 @@ class BigScreenHost:
       self._blit(e, rl.Rectangle(x - grow, y - grow * h / w, w + 2 * grow, h + 2 * grow * h / w))
       if self._edit and tid != self._selected:
         rl.draw_rectangle(x, y, w, h, SHADE)
-      elif not self._edit and self._gesture.start is not None and tiles.hit({tid: p}, *self._gesture.start[:2]) and not self._gesture.long:
+      elif self._mode != "onroad" and not self._edit and self._gesture.start is not None and tiles.hit({tid: p}, *self._gesture.start[:2]) and not self._gesture.long:
         rl.draw_rectangle(x, y, w, h, PRESSED)
 
   @staticmethod
@@ -341,15 +368,17 @@ class BigScreenHost:
     if top is self._main and self._stack and self._stack[-1][1] is None:
       self._stack.pop()  # left the Models page with the mici back gesture
     modal = self._mode == "modal"
-    if not self._stack and self._mode != "mici":
-      self._show(None)
-      self._draw_start(events if not modal else [])
-    else:
-      self._draw_detail(top, events if not modal else [])
-    self._hook_modal()
     if modal:
+      self._hook_modal()
       with self._native(events):
         top.render(rl.Rectangle(0, 0, *SCREEN))
+      return
+    if not self._stack and self._mode != "mici":
+      self._show(None)
+      self._draw_start(events)
+    else:
+      self._draw_detail(top, events)
+    self._hook_modal()
 
   def _show(self, page) -> None:
     if page is not self._shown:
@@ -363,9 +392,7 @@ class BigScreenHost:
 
   # tile screen and edit mode
 
-  def _draw_start(self, events) -> None:
-    now = self._now
-    placed = self._place(self._layout)
+  def _touch(self, events, placed) -> None:
     for ev in events:
       if ev.slot != 0:
         continue
@@ -377,18 +404,23 @@ class BigScreenHost:
       elif ev.left_down:
         self._on_gesture(self._gesture.start, self._gesture.move(x, y, ev.t), x, y, placed)
     if self._gesture.start is not None:
-      self._on_gesture(self._gesture.start, self._gesture.tick(now), *self._gesture.pos, placed)
+      self._on_gesture(self._gesture.start, self._gesture.tick(time.monotonic()), *self._gesture.pos, placed)
+
+  def _draw_start(self, events) -> None:
+    now = self._now
+    self._touch(events, self._place(self._layout))
     placed = self._place(self._layout)
     drive = self._layout == "drive"
     if drive:
-      rl.draw_rectangle_rec(rl.Rectangle(*VIEW), rl.Color(40, 42, 50, 255))
+      vx, vy, vw, vh = self._drive_view()
+      rl.draw_rectangle_rec(rl.Rectangle(vx, vy, vw, vh), rl.Color(40, 42, 50, 255))
       label = "Driving view"
       width = measure_text_cached(gui_app.font(FontWeight.MEDIUM), label, 48).x
-      rl.draw_text_ex(gui_app.font(FontWeight.MEDIUM), label, rl.Vector2(VIEW[0] + (VIEW[2] - width) / 2, VIEW[1] + VIEW[3] / 2 - 24), 48, 0, DIM)
+      rl.draw_text_ex(gui_app.font(FontWeight.MEDIUM), label, rl.Vector2(vx + (vw - width) / 2, vy + vh / 2 - 24), 48, 0, DIM)
     self._draw_tiles(placed, now)
     if not self._edit:
       return
-    cell = tiles.add_cell(placed, drive)
+    cell = tiles.add_cell(placed, drive, self._view_position)
     if cell is not None:
       x, y, w, h = tiles.cell_rect(*cell)
       rl.draw_rectangle_lines_ex(rl.Rectangle(x, y, w, h), 3, DIM)
@@ -406,7 +438,7 @@ class BigScreenHost:
 
   def _draw_bar(self, placed) -> None:
     medium = gui_app.font(FontWeight.MEDIUM)
-    for name, (x, y, w, h) in tiles.bar_buttons(placed, self._layout == "drive").items():
+    for name, (x, y, w, h) in tiles.bar_buttons(placed, self._layout == "drive", self._view_position).items():
       active = name == self._layout
       rl.draw_rectangle(x, y, w, h, rl.Color(*Tile.COLOR, 255) if active else rl.Color(72, 75, 88, 255))
       label = name.capitalize()
@@ -434,11 +466,25 @@ class BigScreenHost:
     if event is None or start is None:
       return
     sx, sy = start[:2]
-    bar = tiles.bar_buttons(placed, self._layout == "drive")
+    bar = tiles.bar_buttons(placed, self._layout == "drive", self._view_position)
     if self._edit and any(x0 <= sx < x0 + w and y0 <= sy < y0 + h for x0, y0, w, h in bar.values()):
       if event == "tap":
         self._bar_tap(sx, sy, bar)
       return
+    if self._mode == "onroad" or (self._edit and self._layout == "drive"):
+      vx, vy, vw, vh = tiles.view(self._view_position)
+      if vx <= sx < vx + vw and vy <= sy < vy + vh:
+        if event == "drag":
+          self._view_drag = True
+        elif event == "drop":
+          col, row = self._view_position
+          self._view_position = (min(max(col + round((x - sx) / tiles.PITCH), 0), tiles.COLS - tiles.DRIVE_CELLS[2]),
+                                 min(max(row + round((y - sy) / tiles.PITCH), 0), tiles.ROWS - tiles.DRIVE_CELLS[3]))
+          self._view_drag = False
+          self._save()
+        return
+      if self._mode == "onroad":
+        return
     tid = tiles.hit(placed, sx, sy)
     if event == "long" and not self._edit:
       self._edit, self._selected = True, tid
@@ -447,7 +493,7 @@ class BigScreenHost:
     elif event == "drop" and self._drag is not None:
       cell = tiles.cell_at(x, y)
       if cell is not None:
-        self._save(tiles.move(self._layouts[self._layout][0], placed, self._drag, cell, self._layout == "drive"))
+        self._save(tiles.move(self._layouts[self._layout][0], placed, self._drag, cell, self._layout == "drive", self._view_position))
       self._drag = None
     elif event == "tap" and not self._edit:
       if tid is not None:
@@ -478,7 +524,7 @@ class BigScreenHost:
       self._selected = None if tid == self._selected else tid
       return
     drive = self._layout == "drive"
-    if tiles.cell_at(x, y) is not None and tiles.cell_at(x, y) == tiles.add_cell(placed, drive):
+    if tiles.cell_at(x, y) is not None and tiles.cell_at(x, y) == tiles.add_cell(placed, drive, self._view_position):
       ids = tiles.addable(self._visible(self._layout), self._layouts[self._layout][1], placed)
       self._open("add tiles", AddTilesPage([self._entries[i] for i in ids], self._pin))
       return
