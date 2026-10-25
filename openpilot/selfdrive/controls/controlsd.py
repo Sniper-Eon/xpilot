@@ -41,11 +41,13 @@ class Controls(ControlsExt):
 
     self.CI = interfaces[self.CP.carFingerprint](self.CP, self.CP_SP)
 
-    self.sm = messaging.SubMaster(['lateralDelay', 'vehicleParameters', 'modelV2', 'selfdriveState',
+    base_services = ['lateralDelay', 'vehicleParameters', 'modelV2', 'selfdriveState',
                                    'extrinsicsCalibration', 'deviceMotion', 'longitudinalPlan', 'lateralManeuverPlan', 'carState', 'carOutput',
-                                   'driverMonitoringState', 'onroadEvents', 'driverAssistance'] + self.sm_services_ext + plugins.services(),
-                                  poll='selfdriveState', ignore_alive=plugins.services(), ignore_avg_freq=plugins.services(),
-                                  ignore_valid=plugins.services())
+                                   'driverMonitoringState', 'onroadEvents', 'driverAssistance'] + self.sm_services_ext
+    plugin_services = plugins.services(base_services)
+    self.sm = messaging.SubMaster(base_services + plugin_services,
+                                  poll='selfdriveState', ignore_alive=plugin_services, ignore_avg_freq=plugin_services,
+                                  ignore_valid=plugin_services)
     self.pm = messaging.PubMaster(['carControl', 'controlsState'] + self.pm_services_ext)
 
     self.steer_limited_by_safety = False

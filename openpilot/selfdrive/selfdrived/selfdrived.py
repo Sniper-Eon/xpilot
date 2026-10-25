@@ -98,8 +98,15 @@ class SelfdriveD:
     # TODO: de-couple selfdrived with card/conflate on carState without introducing controls mismatches
     self.car_state_sock = messaging.sub_sock('carState', timeout=20)
 
+    base_services = (['deviceState', 'pandaStates', 'peripheralState', 'modelV2', 'extrinsicsCalibration',
+                      'carOutput', 'driverMonitoringState', 'longitudinalPlan', 'deviceMotion', 'lateralDelay',
+                      'managerState', 'vehicleParameters', 'radarState',
+                      'controlsState', 'carControl', 'driverAssistance', 'alertDebug', 'userBookmark',
+                      'lateralManeuverPlan', 'modelDataV2SP', 'longitudinalPlanSP'] +
+                     self.camera_packets + self.sensor_packets + self.gps_packets)
+    plugin_services = plugins.services(base_services)
     ignore = self.sensor_packets + self.gps_packets + ['alertDebug', 'lateralManeuverPlan'] + ['modelDataV2SP', 'longitudinalPlanSP']
-    ignore += plugins.services()  # xpilot plugin inputs never gate engagement
+    ignore += plugin_services  # only additional inputs, never stock health checks
     self.dm_enabled = driver_monitoring_enabled(self.params)
     if not self.dm_enabled:
       # C3XL has no cabin camera and does not run visual driver monitoring.
@@ -110,14 +117,9 @@ class SelfdriveD:
     if REPLAY:
       # no vipc in replay will make them ignored anyways
       ignore += ['narrowRoadCameraState', 'wideRoadCameraState']
-    self.sm = messaging.SubMaster(['deviceState', 'pandaStates', 'peripheralState', 'modelV2', 'extrinsicsCalibration',
-                                   'carOutput', 'driverMonitoringState', 'longitudinalPlan', 'deviceMotion', 'lateralDelay',
-                                   'managerState', 'vehicleParameters', 'radarState',
-                                   'controlsState', 'carControl', 'driverAssistance', 'alertDebug', 'userBookmark',
-                                   'lateralManeuverPlan', 'modelDataV2SP', 'longitudinalPlanSP'] + \
-                                   self.camera_packets + self.sensor_packets + self.gps_packets + plugins.services(),
-                                  ignore_alive=ignore, ignore_avg_freq=ignore,
-                                  ignore_valid=ignore, frequency=int(1/DT_CTRL))
+    self.sm = messaging.SubMaster(base_services + plugin_services,
+                                 ignore_alive=ignore, ignore_avg_freq=ignore,
+                                 ignore_valid=ignore, frequency=int(1/DT_CTRL))
 
     # read params
     self.is_metric = self.params.get_bool("IsMetric")

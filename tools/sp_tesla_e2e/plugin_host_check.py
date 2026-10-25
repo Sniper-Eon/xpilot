@@ -364,7 +364,7 @@ def source_checks(plugins, real) -> list[str]:
   if plugins.holds(FakeParams(), "source:map") or not plugins.holds(FakeParams({"MapKey": True}), "source:map"):
     errors.append("P23 holds(source:map) does not follow the map plugin's switch")
   gate = (ROOT / "openpilot/sunnypilot/system/fork_processes.py").read_text()
-  if 'for name in ("mapd", "mapd_manager", "map_osm")' not in gate or 'plugins.holds(params, "source:map")' not in gate:
+  if 'for name in ("mapd", "mapd_manager")' not in gate or 'plugins.holds(params, "source:map")' not in gate:
     errors.append("P23 fork_processes.py does not gate SP's OSM processes on source:map")
 
   role = "role:perception.model"

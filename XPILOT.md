@@ -407,6 +407,7 @@ typedef struct {
 python3 tools/sp_tesla_e2e/agnos_update_check.py                     # 实际启动/OTA19.9选择和写前保护；分区IO模拟
 python3 tools/sp_tesla_e2e/static_imports.py                         # 有没有断掉的 import
 python3 tools/sp_tesla_e2e/tile_layout_check.py                       # 大屏磁贴：网格、排布、行驶避让、编辑操作、手势、重画判断、ASCII 文字、文字适配磁贴
+python3 tools/sp_tesla_e2e/subscription_recovery_check.py             # 重复订阅、零间隔健康检查、原生输入检查和唯一地图发布者
 python3 tools/sp_tesla_e2e/plugin_host_check.py                       # 插件宿主：出错隔离、总开关、元数据、参数、目标车速、雷达/地图/外接 provider、pluginMsg
 python3 tools/sp_tesla_e2e/manifest_check.py                          # 插件清单、资源声明、冲突裁决、代码结构（5.3）、只放核心插件（M12）
 python3 tools/sp_tesla_e2e/safety_manifest_check.py                   # safety.json 和 registry.h、头文件一致（gen_safety.py --check）

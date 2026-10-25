@@ -143,7 +143,6 @@ procs += [
   # mapd
   NativeProcess("mapd", Paths.mapd_root(), ["bash", "-c", f"{MAPD_PATH} > /dev/null 2>&1"], and_(mapd_ready, map_osm)),
   PythonProcess("mapd_manager", "openpilot.sunnypilot.mapd.mapd_manager", map_osm),
-  PythonProcess("map_osm", "openpilot.sunnypilot.mapd.live_map_data.standalone", and_(only_onroad, map_osm)),
 
   # locationd
   NativeProcess("locationd_llk", "openpilot/sunnypilot/selfdrive/locationd", ["./locationd"], only_onroad),

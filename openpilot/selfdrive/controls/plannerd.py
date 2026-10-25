@@ -24,7 +24,9 @@ def main():
   cloudlog.info("plannerd got CarParamsSP")
 
   gps_location_service = get_gps_location_service(params)
-  plugin_services = plugins.services()  # xpilot plugins: extra inputs for their hooks
+  base_services = ['carControl', 'carState', 'controlsState', 'radarState', 'modelV2', 'selfdriveState',
+                   'liveMapDataSP', 'carStateSP', 'selfdriveStateSP', gps_location_service]
+  plugin_services = plugins.services(base_services)  # xpilot plugins: extra inputs for their hooks
   ignore_services = ["liveMapDataSP", "carStateSP", "selfdriveStateSP", gps_location_service, *plugin_services]
 
   ldw = LaneDepartureWarning()
@@ -33,9 +35,8 @@ def main():
   longitudinal_planner.plugin_long_targets = plugins.long_targets(CP, params)  # xpilot plugin speed targets (may raise)
   longitudinal_planner.plugin_long_planner = plugins.long_planners(CP, CP_SP, params)  # xpilot replaceable planner
   pm = messaging.PubMaster(['longitudinalPlan', 'driverAssistance', 'longitudinalPlanSP'])
-  sm = messaging.SubMaster(['carControl', 'carState', 'controlsState', 'radarState', 'modelV2', 'selfdriveState',
-                            'liveMapDataSP', 'carStateSP', 'selfdriveStateSP', gps_location_service, *plugin_services],
-                           poll='modelV2', ignore_alive=ignore_services, ignore_avg_freq=ignore_services, ignore_valid=ignore_services)
+  sm = messaging.SubMaster(base_services + plugin_services,
+                          poll='modelV2', ignore_alive=ignore_services, ignore_avg_freq=ignore_services, ignore_valid=ignore_services)
 
   while True:
     sm.update()

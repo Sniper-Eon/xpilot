@@ -216,9 +216,9 @@ def holds(params, claim: str) -> bool:
   return any(claim in cls.CLAIMS for cls in active(params))
 
 
-def services() -> list[str]:
+def services(exclude=()) -> list[str]:
   """Extra services plannerd, selfdrived and controlsd subscribe for plugin hooks (ignored for alive/valid checks)."""
-  return sorted({svc for p in PLUGINS for svc in p.SERVICES})
+  return sorted({svc for p in PLUGINS for svc in p.SERVICES} - set(exclude))
 
 
 def send_msg(pm, plugin, kind: str, payload, valid_for_ms: int = 0) -> bool:

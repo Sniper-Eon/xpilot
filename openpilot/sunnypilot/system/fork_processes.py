@@ -25,7 +25,7 @@ def apply_fork_processes(procs: list, only_onroad) -> list:
     _gate(by_name[name], driver_monitoring_enabled)
   _gate(by_name["micd"], lambda params: has_microphone())
   _gate(by_name["soundd"], lambda params: has_audio_output())
-  for name in ("mapd", "mapd_manager", "map_osm"):
+  for name in ("mapd", "mapd_manager"):
     _gate(by_name[name], lambda params: not plugins.holds(params, "source:map"))
   for name in ("models_manager", "modeld", "modeld_tinygrad", "modeld_warmup"):  # SP's model stack = plugin sp_models
     _gate(by_name[name], lambda params: plugins.owner(params, "role:perception.model") in (None, "sp_models"))
