@@ -41,6 +41,7 @@ Failure cases listed before implementation:
 - S36 missing/invalid use installs, damages an old version, or loads without a reason
 - S37 tile/use mismatch installs instead of preserving the old version
 """
+import gzip
 import hashlib
 import http.server
 import io
@@ -104,7 +105,7 @@ def manifest(pid, **over):
 
 def archive(pid, files: dict, raw: list | None = None) -> bytes:
   buf = io.BytesIO()
-  with tarfile.open(fileobj=buf, mode="w:gz") as tar:
+  with gzip.GzipFile(fileobj=buf, mode="wb", mtime=0) as gz, tarfile.open(fileobj=gz, mode="w") as tar:  # same bytes on republish
     for name, data in files.items():
       info = tarfile.TarInfo(f"{pid}/{name}")
       data = data.encode() if isinstance(data, str) else data
