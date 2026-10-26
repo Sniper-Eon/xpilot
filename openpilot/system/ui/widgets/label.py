@@ -8,6 +8,7 @@ from openpilot.system.ui.lib.application import gui_app, FontWeight, DEFAULT_TEX
 from openpilot.system.ui.widgets import Widget
 from openpilot.system.ui.lib.text_measure import measure_text_cached
 from openpilot.system.ui.lib.wrap_text import wrap_text
+from openpilot.system.ui.lib.multilang import tr
 
 ICON_PADDING = 15
 
@@ -274,8 +275,8 @@ class UnifiedLabel(Widget):
 
   @property
   def text(self) -> str:
-    """Get the current text content."""
-    return str(_resolve_value(self._text))
+    """Get the current text content, translated at render time so dynamic labels localize too."""
+    return tr(str(_resolve_value(self._text)))
 
   @property
   def font_size(self) -> int:
