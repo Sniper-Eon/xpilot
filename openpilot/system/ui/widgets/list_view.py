@@ -405,7 +405,7 @@ class ListItem(Widget):
 
   @property
   def description(self):
-    return _resolve_value(self._description, "")
+    return tr(_resolve_value(self._description, ""))
 
   def get_item_height(self, font: rl.Font, max_width: int) -> float:
     if not self.is_visible:

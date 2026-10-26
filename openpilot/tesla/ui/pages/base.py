@@ -4,6 +4,7 @@ import pyray as rl
 
 from openpilot.selfdrive.ui.ui_state import ui_state
 from openpilot.system.ui.lib.application import FontWeight, gui_app
+from openpilot.system.ui.lib.multilang import tr
 from openpilot.system.ui.widgets import DialogResult, Widget
 from openpilot.system.ui.widgets.button import Button
 from openpilot.system.ui.widgets.confirm_dialog import ConfirmDialog, alert_dialog
@@ -28,7 +29,7 @@ class Header(Widget):
 
   def __init__(self, text: str):
     super().__init__()
-    self._text = text.upper()
+    self._text = tr(text).upper()
     self._rect = rl.Rectangle(0, 0, 0, HEADER_H)
 
   def set_parent_rect(self, parent_rect: rl.Rectangle) -> None:

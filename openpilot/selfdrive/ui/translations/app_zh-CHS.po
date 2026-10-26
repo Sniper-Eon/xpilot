@@ -597,3 +597,96 @@ msgstr "特斯拉"
 
 msgid "training guide"
 msgstr "培训指南"
+
+msgid "Access the device remotely using your SSH keys."
+msgstr "使用 SSH 密钥远程访问设备。"
+
+msgid "Alpha longitudinal"
+msgstr "实验性纵向控制"
+
+msgid "Always-on driver monitor"
+msgstr "常开驾驶员监测"
+
+msgid "Auto identifies the car when it starts. Pick a model only if it is not recognized. Applies on the next start."
+msgstr "启动时自动识别车型。仅在无法识别时手动选择，下一次启动生效。"
+
+msgid "Car model"
+msgstr "车型"
+
+msgid "Cruise speed set when cruise is engaged."
+msgstr "开启巡航时设定的车速。"
+
+msgid "Driver Monitoring"
+msgstr "驾驶员监测"
+
+msgid "Enable ADB"
+msgstr "启用 ADB"
+
+msgid "Enable SSH"
+msgstr "启用 SSH"
+
+msgid "Enable sunnypilot"
+msgstr "启用 sunnypilot"
+
+msgid "Enable to use sunnypilot driver assistance. Disable to use your car's stock driver assistance."
+msgstr "开启后使用 sunnypilot 辅助驾驶；关闭后使用车辆原厂辅助驾驶。"
+
+msgid "Failed"
+msgstr "失败"
+
+msgid "Initial cruise speed"
+msgstr "初始巡航速度"
+
+msgid "Joystick debug mode"
+msgstr "摇杆调试模式"
+
+msgid "Lane departure warnings"
+msgstr "车道偏离预警"
+
+msgid "Lateral maneuver mode"
+msgstr "横向测试模式"
+
+msgid "Longitudinal maneuver mode"
+msgstr "纵向测试模式"
+
+msgid "Navigation (alpha)"
+msgstr "导航（实验）"
+
+msgid "OSM Map Data"
+msgstr "OSM 地图数据"
+
+msgid "Record & upload cabin camera"
+msgstr "录制并上传车内摄像头"
+
+msgid "Record & upload mic audio"
+msgstr "录制并上传麦克风音频"
+
+msgid "Record microphone audio while driving. Audio is included in dashcam videos."
+msgstr "行驶时录制麦克风音频，音频会包含在行车记录视频中。"
+
+msgid "UPDATE"
+msgstr "更新"
+
+msgid "Update available: install it from Software"
+msgstr "有可用更新：请到“软件”中安装"
+
+msgid "Use Android Debug Bridge (ADB) over USB or the network."
+msgstr "通过 USB 或网络使用 Android 调试桥（ADB）。"
+
+msgid "Use alpha openpilot longitudinal control instead of stock ACC. This may disable Automatic Emergency Braking (AEB)."
+msgstr "使用实验性 openpilot 纵向控制替代原厂 ACC，这可能会禁用自动紧急制动（AEB）。"
+
+msgid "Use metric units"
+msgstr "使用公制单位"
+
+msgid "Warn when you drift across a detected lane line. Only above 31 mph (50 km/h), with no turn signal."
+msgstr "当车辆越过已识别车道线时发出警告。仅在高于 31 mph（50 km/h）且未打转向灯时生效。"
+
+msgid "When off, the DM processes do not start. Change only while parked; applies on the next drive."
+msgstr "关闭后驾驶员监测进程不会启动。仅在停车时修改，下次行驶生效。"
+
+msgid "failed"
+msgstr "失败"
+
+msgid "openpilot calibrates continuously; resetting is rarely needed. Mount within 4 degrees left/right and 5 up/9 down."
+msgstr "openpilot 会持续校准，通常无需重置。安装时左右误差需在 4 度内、上下 5/9 度内。"
