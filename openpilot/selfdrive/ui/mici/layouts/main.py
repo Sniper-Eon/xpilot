@@ -25,6 +25,7 @@ class MiciMainLayout(Scroller):
 
     self._prev_onroad = False
     self._prev_standstill = False
+    self._prev_parked = False
     self._onroad_time_delay: float | None = None
     self._setup = False
 
@@ -110,19 +111,29 @@ class MiciMainLayout(Scroller):
 
       # onroad: after delay, pop nav stack and scroll to onroad
       # offroad: immediately scroll to home, but don't pop nav stack (can stay in settings)
-      if ui_state.started:
+      if ui_state.started and not ui_state.parked:
         self._onroad_time_delay = rl.get_time()
       else:
         self._scroll_to(self._home_layout)
 
     # FIXME: these two pops can interrupt user interacting in the settings
-    if self._onroad_time_delay is not None and rl.get_time() - self._onroad_time_delay >= ONROAD_DELAY:
+    # A parked car keeps the settings reachable, just like offroad.
+    if self._onroad_time_delay is not None and rl.get_time() - self._onroad_time_delay >= ONROAD_DELAY and not ui_state.parked:
       gui_app.pop_widgets_to(self, lambda: self._scroll_to(self._onroad_layout))
       self._onroad_time_delay = None
 
+    # Park is the only onroad state that may open settings; leaving it returns to the road view.
+    if ui_state.parked != self._prev_parked:
+      self._prev_parked = ui_state.parked
+      if ui_state.started and ui_state.parked:
+        self._onroad_time_delay = None
+        self._scroll_to(self._home_layout)
+      elif ui_state.started:
+        gui_app.pop_widgets_to(self, lambda: self._scroll_to(self._onroad_layout))
+
     # When car leaves standstill, pop nav stack and scroll to onroad
     CS = ui_state.sm["carState"]
-    if not CS.standstill and self._prev_standstill:
+    if not CS.standstill and self._prev_standstill and not ui_state.parked:
       gui_app.pop_widgets_to(self, lambda: self._scroll_to(self._onroad_layout))
     self._prev_standstill = CS.standstill
 
@@ -132,8 +143,8 @@ class MiciMainLayout(Scroller):
       return
 
     if ui_state.started:
-      # Don't pop if at standstill
-      if not ui_state.sm["carState"].standstill:
+      # Don't pop if at standstill or parked (settings stay usable in Park)
+      if not ui_state.sm["carState"].standstill and not ui_state.parked:
         gui_app.pop_widgets_to(self, lambda: self._scroll_to(self._onroad_layout))
     else:
       # Screen turns off on timeout offroad, so pop immediately without animation

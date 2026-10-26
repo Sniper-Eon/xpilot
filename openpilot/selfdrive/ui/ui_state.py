@@ -140,6 +140,11 @@ class UIState(UIStateSP):
   def is_offroad(self) -> bool:
     return not self.started
 
+  @property
+  def parked(self) -> bool:
+    """True when the started car is in Park, so the settings UI can be used without powering off."""
+    return self.started and self.sm["carState"].gearShifter == car.GearShifter.park
+
   def update(self) -> None:
     if self._params_thread is None:
       self._params_thread = threading.Thread(target=self._params_refresh_worker, daemon=True)
