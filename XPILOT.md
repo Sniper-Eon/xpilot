@@ -365,6 +365,37 @@ class MyTile(Tile):
 | `data_dir(plugin) -> pathlib.Path` | 无 | 创建并返回 `INSTALL_DIR/.data/<插件 id>`，插件持久数据统一放这里 |
 
 插件清单可用 `requires.host_api` 列出依赖的函数名。宿主只接受 `HOST_CAPS["host_api"]` 中的名字；还不认识 `host_api` 的旧宿主会把它当作未知 `requires` 键并干净地拒绝该插件。
+### 5.5 系统功能的官方读法
+
+以下合同只开放读取或宿主已经明确门控的操作；插件不得直接操作系统实现细节。
+
+#### 停车通知
+
+插件声明 `msg:host.notify` 后调用 `send_msg(self, "host.notify", {"severity": 0|1, "text": ...}, ttl_ms)`。这是 best-effort 通知，只显示在 offroad 画面；宿主按来源加前缀、去掉文字两端空白并最多显示 80 个字符。`severity` 只有 0 和 1 两级，消息过期、格式错误或读取失败时不显示。
+
+#### 网络状态
+
+只读状态使用 `deviceState.networkType`、`deviceState.networkMetered` 和 `deviceState.networkStrength`。Wi-Fi 扫描结果使用 `openpilot.system.ui.lib.wifi_manager.WifiManager.networks()`；Avahi 发现也只读，两者都不需要 claim。连接、断开、忘记网络等修改只能走第 5.4 节 `host_api`，需声明 `net.wifi`，且只允许停车时执行。
+
+#### 亮度和声音
+
+停车亮度使用 `from openpilot.selfdrive.ui.ui_state import device` 后调用 `device.set_offroad_brightness(value)`；行驶亮度沿用 SP 参数 `OnroadScreenOffBrightness` 和 `OnroadScreenOffTimer`。修改亮度需声明 `display`。宿主不提供音量 API；`soundd` 的环境噪声自动音量和 `QuietMode` 保持现状，声明 `sound` 也不授予直接改音量的接口。
+
+#### 摄像头
+
+稳定读取入口是 `VisionIpcClient("camerad", stream, True)`：`camera:road` 对应 `VisionStreamType.VISION_STREAM_NARROW_ROAD`，`camera:wide` 对应 `VISION_STREAM_WIDE_ROAD`，`camera:driver` 对应 `VISION_STREAM_CABIN`。帧是 `VisionBuf` 的 NV12 Y/UV 缓冲区，消费者必须使用帧自己的 `width`、`height`、`stride`、`uv_offset` 和 `len`，不能假定紧密排列。`camerad` 只在 onroad 或 driver view 运行，因此其他时段没有帧；`camera:<stream>` claim 只是声明用途，不会启动摄像头。`V4LEncoder` 和 `WarpLut` 是内部实现，不是稳定插件 API。
+
+#### 日志
+
+插件可使用 `openpilot.common.swaglog.cloudlog`，事件名或字段必须带插件 id，方便归属和筛选。系统不提供上传接口；`openpilot/system/manager/process_config.py` 没有 `uploader` 或 `athenad` 进程，插件不得把本地日志误当成已上传。
+
+#### 更新和存储
+
+更新状态只读 Params：`UpdateAvailable`、`UpdaterAvailableBranches`、`UpdaterCurrentDescription`、`UpdaterCurrentReleaseNotes`、`UpdaterFetchAvailable`、`UpdaterNewDescription`、`UpdaterNewReleaseNotes`、`UpdaterState`、`UpdaterTargetBranch` 和 `UpdaterLastFetchTime`；不提供检查、下载、切换分支或安装 OTA 的动作。存储余量用 `shutil.disk_usage("/data")`；插件私有目录只通过第 5.4 节 `host_api.data_dir` 获取，不自行选择系统路径。
+
+#### 生命周期
+
+系统没有插件生命周期 hook。需要观察行程边界时读取 `deviceState.started` 和 `deviceState.startedMonoTime`；插件进程由 `processes()` 返回，并使用 `openpilot.system.manager.process_config.only_onroad` 或 `only_offroad` 作为 `ManagerProcess.should_run` 条件。
 
 ## 6. panda 运行时规则（G1，ABI v1）
 
