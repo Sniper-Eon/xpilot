@@ -416,6 +416,18 @@ struct CarControlSP @0xa5cd762cd951a455 {
   leadOne @2 :LeadData;
   leadTwo @3 :LeadData;
   intelligentCruiseButtonManagement @4 :IntelligentCruiseButtonManagement;
+  longOwner @5 :LongOwner;
+  longOwnerRequest @6 :UInt8 = 255; # 0 stock / 1 SP / 255 no request
+  longOwnerAvailable @7 :Bool;
+  longOwnerRefusal @8 :Text;
+  longOwnerLocked @9 :Bool;
+  longActive @10 :Bool;
+  controlMonoTime @11 :UInt64; # paired carControl event; card rejects a mismatched pair
+
+  enum LongOwner {
+    stock @0;
+    sp @1;
+  }
 
   struct Param {
     key @0 :Text;
@@ -485,6 +497,15 @@ struct CarStateSP @0xb86e6369214c01c8 {
   teslaRoadContext @2 :TeslaRoadContext;
   teslaTrafficControl @3 :TeslaTrafficControl;
   teslaBattery @4 :TeslaBattery;
+  teslaLongControl @5 :TeslaLongControl;
+}
+
+struct TeslaLongControl {
+  monoTime @0 :UInt64;
+  accState @1 :UInt8;
+  accelMin @2 :Float32;
+  accelMax @3 :Float32;
+  counter @4 :UInt8;
 }
 
 struct TeslaBattery {

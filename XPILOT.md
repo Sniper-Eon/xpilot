@@ -179,6 +179,7 @@ card 每次启动用 `cloudlog.event("xpilot.drive_snapshot", ...)` 记录本行
 | `external.provider` | 使用 `external_provider` 钩子 | 否，所有 provider 一起运行 |
 | `role:lane_change.policy` | 使用 `lane_change_policy` 钩子 | 是 |
 | `role:lateral.controller` | 替换横向控制器（`lat_controller`） | 是 |
+| `role:long.owner` | 用 `long_owner` 提议 STOCK/SP owner；必须 `requires.hooks=["long_owner"]`，不授予 CAN 或安全权限 | 是 |
 | `role:long.planner` | 替换纵向规划（`long_planner`），可以自带跟车逻辑 | 是 |
 | `role:perception.model` | 整体替换模型（下载、选择、缓存、推理）。宿主 `ROLE_PROCESSES` 保留 `models_manager`、`modeld`、`modeld_tinygrad`、`modeld_warmup` 四个名字，`fork_processes.py` 把原进程对象交给宿主；只有声明该 role 的插件会收到 `role_processes(role, procs)`，可返回全部、部分或不返回，且必须是传入字典里的原对象（按身份校验）。返回的进程只在该插件持有 role 且原 `should_run` 条件成立时运行；无人持有时四个都不运行。默认 `sp_models`（优先级 10000、一直开启）返回全部；替换插件也可保持空选择、用 `processes()` 自带进程，不能借此占用这四个保留名。hook 抛异常或返回外来对象时记录故障、拒绝本次选择，其他插件继续注册。必须按原语义发布 `modelV2`、`drivingModelData`、`cameraOdometry`、`modelDataV2SP`。替换插件优先级要小于 10000；切换只在停车时改开关、下次启动进程时生效 | 是 |
 | `role:engagement.state` | 用 `engagement(selfdrive)` 整体替换接管：普通状态机和 MADS。默认 `sp_engagement`（优先级 10000、一直开启） | 是 |
@@ -223,6 +224,7 @@ Host E2E：`PYTHONPATH=tinygrad_repo python3 tools/sp_tesla_e2e/model_source_e2e
 | `lane_change_policy(params)`（类方法） | modeld 的 DesireHelper | 返回带 `allow(carstate, direction, default) -> bool` 的对象，只替换 SP 的"不用推方向盘就开始变道"这一个判断（`default` 是 SP 原来的结果）。打转向灯、最低车速、盲区和路沿检查仍然强制生效 |
 | `lat_correction(CP, params)`（类方法） | controlsd，横向生效时每个控制周期 | 返回带 `update(sm, v_ego, curvature) -> 曲率或 None` 的对象。多个修正按优先级串联；总改动不超过 0.5 m/s² 横向加速度对应的曲率（低于 5 m/s 按 5 m/s 算），NaN/inf 被忽略；之后 SP 的 `clip_curvature`（ISO 加加速度和加速度限制）照常生效 |
 | `lat_controller(CP, CP_SP, CI, params)`（类方法） | controlsd | 返回和 `LatControl` 接口一致的对象（`update(...) -> (steer, 转角, lac_log)`、`reset()`），替换 SP 的横向控制器。输出不和 SP 比较、不额外限制，只靠车端转角速率限制和 panda 兜底。SP 的控制器一直并行运行；插件出错或输出 NaN/inf 时，本次运行剩下的时间都改用 SP 的输出 |
+| `long_owner(CP, CP_SP, params)`（类方法） | controlsd | 可选独占 `role:long.owner`，返回带 `desired(ctx, CS) -> None / "stock" / "sp"` 的对象。只提议 owner，所有 host veto 和 Panda health 确认仍生效；构造/调用异常、非法返回值记录故障并停用本行程，不自动提升落败插件；None 保持 owner。collector/context/手动脉冲合同见 [host design](docs/design/xpilot-long-owner-host.md) |
 | `long_planner(CP, CP_SP, params)`（类方法） | plannerd，SP 算完之后 | 返回带 `update(sm, sp) -> plan 或 None` 的对象。`sp` 是 SP 的结果（`speeds`、`accels`、`jerks` 各 17 个点，`a_target`、`should_stop`）；返回同样字段的 plan 就替换 SP 的计划，**包括跟车**。`a_target` 限制在 ACCEL_MIN/MAX；长度不对、NaN/inf 或 None 时保留 SP 的计划；出错的规划器被停用。SP 的 MPC 仍然运行，FCW 仍由它决定 |
 | `plan_filter(CP, params)`（类方法） | plannerd | 返回带 `publisher(pm, sm)` 的对象，用来收紧纵向计划；不需要就返回 None |
 | `engagement(selfdrive)`（类方法） | selfdrived，启动时一次 | 返回带 `state_machine`（SP `StateMachine` 接口）和 `mads`（MADS 接口，None 表示关闭 MADS 横向接管）的对象。插件可以保存、读取 `selfdrive`，只通过这两个输出改变接管，由宿主限幅；默认插件返回 `SelfdriveD.__init__` 已建好的 SP 实例，也走相同宿主路径。宿主底线（`openpilot/tesla/core_host.py`，用户 2026-10-23 决定）：底线里的 USER/IMMEDIATE 退出事件一定生效；接管必须有 SP 产生的驾驶员 ENABLE 事件（MADS：LKAS 按钮或屏幕手势，或普通 ENABLE）且没有底线 NO_ENTRY；`active` 必须和 `enabled`、状态一致；软退出最多 SOFT_DISABLE_TIME + 1 秒；`ET.PERMANENT` 一直显示（FCW、原车 AEB）；MADS 开启时按 LKAS 按钮一定退出；遵守 `Mads` 开关 |
@@ -305,6 +307,7 @@ class MyTile(Tile):
 | plannerd | `long_planner(CP, CP_SP, params)` | `role:long.planner` |
 | controlsd | `lat_correction(CP, params)` | `lat.correction` |
 | controlsd | `lat_controller(CP, CP_SP, CI, params)` | `role:lateral.controller` |
+| controlsd | `long_owner(CP, CP_SP, params)` | `role:long.owner`（可选） |
 | modeld | `lane_change_policy(params)` | `role:lane_change.policy` |
 | selfdrived | `alert_source(CP, params)`，返回 `PluginAlert(severity, title, body)` | `alert` |
 | selfdrived | `event_filter(ctx, CS, names, names_sp) -> (drop, drop_sp)` | `event.filter` |
@@ -373,6 +376,63 @@ app 固件专用 CAPS/STATUS/BEGIN/COMMIT/CLEAR 及 EP2 64 字节记录见合同
 检查：`test_xpilot_rules.py`（失败矩阵 R1–R17、真实 C 引擎和 app loader、旧头文件差分）、`test_xpilot_plugins.py`、全部 opendbc safety、cppcheck MISRA、可用时 mutation、F4/H7/body 构建与 RAM/flash 对照。运行 `XPILOT_RULES_ARTIFACT=<路径> PYTHONPATH=opendbc_repo python -m unittest opendbc.safety.tests.test_xpilot_rules` 保存可重复的流摘要。主机检查、固件构建、设备 active commit 和刷写分别报告；本任务无设备访问。
 
 Tesla 接管例外（用户 2026-10-25 决定）：`safety.h` 的最低频率检查遵守 `ignore_frequency_check`，时效、校验和、计数器和质量检查不变；G4（用户 2026-10-26 决定）移除 SP 扩展的全局 `invalidLkasSetting=False`，CarState 保留真实原车 Autosteer 设置。仅开启 `tesla_mixed_control` 时由其 `event.filter` 删除该事件，关闭或未安装插件即恢复 SP 行为。插件 1.1.0 声明 `requires.hooks=["event_filter"]`；旧宿主拒绝未知 claim，必须同一次 offroad 会话先更新系统再安装插件。此任务不实现 AP owner/交接（G3），不改上游 `carstate.py` 或 panda 安全逻辑。
+
+### G8 动态纵向 owner（X-20261026-49C，host + X-48 固件）
+
+线协议和 DRAIN 时序见 [wire contract](docs/design/xpilot-long-owner.md)，主机实现、
+reader audit 和验证限制见 [host contract](docs/design/xpilot-long-owner-host.md)。本分支包含
+X-48 固件，Panda 独占 STOCK/SP 裁决；能力位不是 owner，runtime rules 不能授予 0x2B9。
+仅 health.h hash `0x25f8efcd`（637071309）和 54 字节有效包启用 A5；旧 49 字节固件保持
+CP 选定的 owner 和原 CAN 行为，不发送 A5。见过新 ABI 后丢失 ABI 会锁定切换，不回退旧 SP 路径。
+
+`Plugin.long_owner(CP, CP_SP, params)` 返回 `desired(ctx, CS)` 策略对象；独占 claim 为
+`role:long.owner`，清单须声明 `requires.hooks=["long_owner"]`，HOST_CAPS 同步发布 hook。
+controlsd 启动时只调用一次 `plugins.long_owner_policy(params, CP, CP_SP)` 固定 winner；
+`desired_owner(ctx, CS)` 每周期接线此 callable。返回 None 保持 owner，stock/sp 仅为提议。
+构建/调用错误、坏输出会 fault 并在本行程禁用该策略，不提升 loser。运行时故障锁定至 disengage。
+
+`XpLongOwnerManual` 为核心 BOOL，默认关闭，只在停车设置页修改、下次行程读取。
+手动触发为车辆总线 bus 1 的 `UI_status2`（0x3DF）`UI_activeTouchPoints == 4` 上升沿；
+先观察非四指样本，按住不重触发。3/5 指不触发纵向；MADS 仍严格匹配其配置的指头数，
+配置 3 指时不会被四指触发。雨刷按钮只保留原车功能。手动脉冲优先于插件提议，宿主保持目标
+经过 1 s debounce 和请求确认，提交、拒绝、锁定或 disengage 时清除，绝不直接改 owner 或 CP。
+若另将 MADS 配成 4 指，会共享同一手势；同时使用手动纵向时将 MADS 配为 3 或 5 指。
+
+Host floor：目标确认 1 s，完成/拒绝后 cooldown 2 s；gas/brake/standstill/stockAeb/accFault、
+|aEgo|≥0.35、lead TTC<3 s、OEM 不活跃/过期及对应 accel 两端差>0.20 均拒绝。
+两次连续拒绝、request/ack 不符>0.5 s、健康包/策略故障后锁定切换直到 disengage；拒绝保持
+ack owner，Panda reset 跟随 STOCK。CC_SP 与 CC 同周期配对；longActive/override/cancel、
+planner/LongControl 和 CAN 使用同一 owner，card 拒绝不配对消息。
+
+STOCK 不发 ACC_ON/accel；pending SP 候选帧是交接例外。SP OEM+1 counter lock 在 OEM
+缺失 60 ms 后恢复 40 ms cadence；接管从 aEgo 开始，最长 1 s 的 +0.6/-1.5 m/s³ ramp。
+SP→STOCK pending 时主机继续正常 TX；Panda DRAIN 阻断 SP，等下一 OEM 提交 STOCK，
+50 ms 中止保留 SP。仅 DRAIN 中止允许恢复帧 counter jump；请求总期限 250 ms。
+原车 AEB 优先，STOCK 的 inactive cancel-only 例外和心跳丢失 SILENT 保持 X-48 合同。
+
+大屏/mici 共用 HUD chip，仅 live/valid 且 ABI 可用时显示 STOCK/SP、ACTIVE/IDLE 和最后
+拒绝原因（最多 30 字符）。SP owner 时最多 25 Hz 将 OEM bus-2 0x2B9、SP accel 经既有
+cloudlog/logMessage 写入 rlog，无新 service/upload。缺帧不补造。
+
+`long_owner_check.py` 覆盖 host 回放、451 组 DRAIN 模型、手动脉冲保持与 health ABI；
+`plugin_host_check.py` 覆盖 hook 裁决、故障、四指沿、MADS 3 指隔离和 shadow；真实 libsafety
+G8 检查来自合并的 X-48。确定性 host/模型和固件测试不证明 IPC、物理触摸、总线或实车交接。
+原生 MPC pre-solve seed 与实际求解轨迹分开报告；G3 横向和 X-50 速度策略不在本改动内。
+
+固件：本分支已实现 owner/pending/DRAIN 固件状态机、A5 请求和 54 字节 health；
+Tesla 纵向能力位在 debug/release 均生效。RX/转发、TX/入队、请求、health、模式切换和 tick
+使用嵌套临界区保护，心跳丢失 SILENT 代码保持原样。
+SP→stock 按协调者 DRAIN 决定：收到与最后 SP 同计数器的 OEM 时阻断并暂停 SP TX；
+下一 OEM（SP+1）通过检查后提交 STOCK 并转发。DRAIN 最长 50 ms，失败则清 pending、
+保留 SP owner 并恢复 SP TX；此中止路径的主机恢复帧可能跳计数器。正常 SP owner 期间计数器由主机
+OEM+1 锁定，Panda 只在交接边界强制连续性，不新增正常 SP 帧的连续性检查。请求总期限仍为 250 ms。
+STOCK owner 且无 DRAIN 时，允许沿用 non-long cancel 条件的 0x2B9：
+accState=13、加速度 min/max 均为 inactive（raw 375）、无主机 AEB、原车 AEB 未激活且 checksum 正确；
+原有白名单、relay 和 Autopark 检查仍生效。其余主机纵向帧仍阻断。Cancel 不作为 SP 接管候选，
+也不更新 SP/已转发 OEM 样本；pending SP 时有效 cancel 仍放行，并以 DISENGAGED（4）清除 pending，
+无效 cancel 不改变 pending。
+真实 libsafety 回归保留全部中间 SP 帧，覆盖 25 Hz/100 Hz 相位和抖动下的活性与中止。
+X-50 自动速度策略和 G3 横向均未实现；刷写和实车接合测试须用户另行批准。
 
 ## 7. 雷达接入接口
 
@@ -515,3 +575,10 @@ CI（`.github/workflows/xpilot.yaml`）在每个 PR 上跑以上检查（`upstre
 ```
 
 加完后重启会话。safety 的改动必须先编译并跑测试，再上车。
+
+### G8 host wire consumer (X-20261026-49C)
+
+The exact X-48 54-byte owner-health hash enables A5; legacy 49-byte firmware stays pinned.
+The exclusive long_owner hook, claims and HOST_CAPS ship with controlsd policy/manual integration.
+Runtime floors, paired CC_SP, CAN cadence, reader audit and proof limits are in the
+[host contract](docs/design/xpilot-long-owner-host.md). No device or flash proof is claimed.
