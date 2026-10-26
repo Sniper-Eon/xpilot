@@ -23,6 +23,7 @@ from openpilot.common.swaglog import cloudlog
 from openpilot.selfdrive.ui.ui_state import ui_state
 from openpilot.sunnypilot.hardware.profile import HardwareProfile, get_hardware_profile
 from openpilot.system.ui.lib.application import MousePos, gui_app, FontWeight
+from openpilot.system.ui.lib.multilang import tr
 from openpilot.system.ui.lib.text_measure import measure_text_cached
 from openpilot.system.ui.widgets.list_view import button_item, text_item
 from openpilot.tesla.plugin_params import ParamsView
@@ -231,7 +232,8 @@ class BigScreenHost:
       top.set_visible(lambda: self._host_pass)  # hidden in the mici texture pass, drawn by _draw_offroad
 
   def viewport(self) -> rl.Rectangle | None:
-    if ui_state.started:
+    # Park keeps the tile screen and its pages reachable, so settings no longer need the car powered off.
+    if ui_state.started and not ui_state.parked:
       self._mode, self._view = "onroad", VIEW
     else:
       onboarding = self._main is None or gui_app.widget_in_stack(self._main._onboarding_window)

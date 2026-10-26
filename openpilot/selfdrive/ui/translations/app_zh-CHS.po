@@ -426,3 +426,174 @@ msgstr "使用公制单位"
 
 msgid "verifying"
 msgstr "正在校验"
+
+msgid "Author"
+msgstr "作者"
+
+msgid "Auto"
+msgstr "自动"
+
+msgid "Branch"
+msgstr "分支"
+
+msgid "CANCEL"
+msgstr "取消"
+
+msgid "Car"
+msgstr "车型"
+
+msgid "Category"
+msgstr "分类"
+
+msgid "Claims"
+msgstr "声明"
+
+msgid "Commit"
+msgstr "提交"
+
+msgid "Developer"
+msgstr "开发者"
+
+msgid "Device"
+msgstr "设备"
+
+msgid "Dongle ID"
+msgstr "设备 ID"
+
+msgid "Download the plugin list from github.com/onemiless/xpilot-plugins."
+msgstr "从 github.com/onemiless/xpilot-plugins 下载插件列表。"
+
+msgid "Driver camera preview"
+msgstr "车内摄像头预览"
+
+msgid "Driving view"
+msgstr "行车画面"
+
+msgid "INSTALL"
+msgstr "安装"
+
+msgid "Install third-party plugins (reviewed, not signed). Restart to apply."
+msgstr "安装第三方插件（已审核，未签名）。重启后生效。"
+
+msgid "Network"
+msgstr "网络"
+
+msgid "No alerts"
+msgstr "无警报"
+
+msgid "No tiles to add"
+msgstr "没有可添加的磁贴"
+
+msgid "POWER OFF"
+msgstr "关机"
+
+msgid "PREVIEW"
+msgstr "预览"
+
+msgid "Plugin Store"
+msgstr "插件商店"
+
+msgid "Plugins"
+msgstr "插件"
+
+msgid "Power off"
+msgstr "关机"
+
+msgid "Priority"
+msgstr "优先级"
+
+msgid "REBOOT"
+msgstr "重启"
+
+msgid "RESET"
+msgstr "重置"
+
+msgid "REVIEW"
+msgstr "查看"
+
+msgid "Reboot"
+msgstr "重启"
+
+msgid "Refresh"
+msgstr "刷新"
+
+msgid "Regulatory info"
+msgstr "法规信息"
+
+msgid "Reset calibration"
+msgstr "重置校准"
+
+msgid "Review training guide"
+msgstr "查看培训指南"
+
+msgid "Serial"
+msgstr "序列号"
+
+msgid "Software"
+msgstr "软件"
+
+msgid "Source"
+msgstr "来源"
+
+msgid "Status"
+msgstr "状态"
+
+msgid "Target branch"
+msgstr "目标分支"
+
+msgid "Terms & conditions"
+msgstr "条款与条件"
+
+msgid "Tesla"
+msgstr "特斯拉"
+
+msgid "Toggles"
+msgstr "开关"
+
+msgid "UNINSTALL"
+msgstr "卸载"
+
+msgid "Uninstall sunnypilot"
+msgstr "卸载 sunnypilot"
+
+msgid "VIEW"
+msgstr "查看"
+
+msgid "Version"
+msgstr "版本"
+
+msgid "add"
+msgstr "添加"
+
+msgid "car model"
+msgstr "车型"
+
+msgid "done"
+msgstr "完成"
+
+msgid "driver camera"
+msgstr "车内摄像头"
+
+msgid "edit"
+msgstr "编辑"
+
+msgid "plugins"
+msgstr "插件"
+
+msgid "regulatory"
+msgstr "法规信息"
+
+msgid "screens"
+msgstr "屏幕"
+
+msgid "status"
+msgstr "状态"
+
+msgid "terms"
+msgstr "条款"
+
+msgid "tesla"
+msgstr "特斯拉"
+
+msgid "training guide"
+msgstr "培训指南"

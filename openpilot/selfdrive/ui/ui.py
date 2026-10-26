@@ -5,7 +5,9 @@ import time
 from openpilot.cereal import messaging
 from openpilot.common.hardware import COMMA_HARDWARE
 from openpilot.common.realtime import Priority, config_realtime_process, set_core_affinity
+from openpilot.common.swaglog import cloudlog
 from openpilot.system.ui.lib.application import gui_app
+from openpilot.system.ui.lib.multilang import multilang, tr
 from openpilot.selfdrive.ui.mici.layouts.main import MiciMainLayout
 from openpilot.selfdrive.ui.ui_state import ui_state
 from openpilot.tesla.ui.offroad import install_defaults_later
@@ -22,6 +24,8 @@ def main():
   gui_app.init_window("UI", host=BigScreenHost if is_big_screen() else None)
   MiciMainLayout()
   install_defaults_later(ui_state.is_offroad, ui_state.params)
+  cloudlog.info(f"ui i18n language={multilang.language} entries={len(multilang._translations)} "
+                f"param={ui_state.params.get('LanguageSetting')!r} sample={tr('Device')!r}")
 
   pm = messaging.PubMaster(['uiDebug'])
   for should_render, frame_time, cpu_time in gui_app.render():
