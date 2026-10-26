@@ -10,6 +10,7 @@ from openpilot.common.params import Params
 from openpilot.common.realtime import drop_realtime
 from openpilot.common.swaglog import cloudlog
 from openpilot.system.ui.lib.application import gui_app
+from openpilot.system.ui.lib.multilang import multilang
 from openpilot.common.hardware import HARDWARE, PC
 from openpilot.common.hardware.usb import cable_connected, get_usb_state, is_chestnut_usb_id
 from openpilot.selfdrive.modeld.helpers import chestnut_compiled
@@ -156,6 +157,10 @@ class UIState(UIStateSP):
     self._update_chestnut_state()
     device.update()
     UIStateSP.update(self)
+
+    # The UI imports the catalog before the language param is guaranteed to be readable at boot.
+    if self.sm.frame % 50 == 0:
+      multilang.refresh()
 
   def _params_refresh_worker(self):
     drop_realtime()

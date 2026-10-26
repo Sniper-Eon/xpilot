@@ -184,6 +184,17 @@ class Multilang:
     self._language = language_code
     self.setup()
 
+  def refresh(self) -> bool:
+    """Re-read the language param, e.g. when it was written after the UI imported this module."""
+    if self._params is None:
+      return False
+    lang = str(self._params.get("LanguageSetting")).removeprefix("main_")
+    if lang in self.codes and lang != self._language:
+      self._language = lang
+      self.setup()
+      return True
+    return False
+
   def tr(self, text: str) -> str:
     return self._translations.get(text, text) or text
 
