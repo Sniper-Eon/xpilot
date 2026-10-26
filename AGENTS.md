@@ -1,5 +1,7 @@
 # Working rules
 
+- User requirement (2026-10-26): before development, consult upstream onemiless/xpilot:xpilot `AGENTS.md`, `XPILOT.md` hard rules and relevant sections/API definitions, then compare with this host's actual capabilities. Follow the parent workspace's persistent developer-document requirement. Upstream API changes are references, not authorization to migrate the device or override user-fork routing, Chinese UI, navigation grouping or DS fixes.
+
 - Read `XPILOT.md` first: project scope, plugin interfaces and hard rules for this repository.
 - Push routing (XPILOT.md rule 15): plugin changes (`plugins/<id>/`, their tests, `dist/`, `index.json`) go only to `github.com/Sniper-Eon/xpilot-plugins`. System changes (host, store, UI, core plugins, panda safety, `safety.json`, checks, docs) go only to `github.com/Sniper-Eon/xpilot`. A feature that needs both gets two commits and two PRs; merge the system side first. Do not add plugin directories under `openpilot/tesla/plugins/` here; only the core plugins live there (`manifest_check.py` M12).
 
