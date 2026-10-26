@@ -143,7 +143,7 @@ class UIState(UIStateSP):
   @property
   def parked(self) -> bool:
     """True when the started car is in Park, so the settings UI can be used without powering off."""
-    return self.started and self.sm["carState"].gearShifter == car.GearShifter.park
+    return self.started and self.sm["carState"].gearShifter == car.CarState.GearShifter.park
 
   def update(self) -> None:
     if self._params_thread is None:
