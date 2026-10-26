@@ -5,8 +5,9 @@ the text is cut with "..."; draw_lines drops the last lines that do not fit, so 
 from typing import ClassVar
 
 import pyray as rl
+from openpilot.system.ui.lib.multilang import tr
 
-from openpilot.system.ui.lib.application import FONT_SCALE, FontWeight, gui_app
+from openpilot.system.ui.lib.application import FONT_SCALE, FontWeight, gui_app, font_fallback
 from openpilot.tesla.ui.tiles import ACCENT, MIN_FONT, TileSpec, fit_lines, scale
 
 DIM = rl.Color(255, 255, 255, 170)
@@ -15,16 +16,17 @@ PAD = 16
 
 
 def text_w(weight: FontWeight, text: str, size: int) -> float:
-  return rl.measure_text_ex(gui_app.font(weight), text, size, 0).x
+  return rl.measure_text_ex(font_fallback(gui_app.font(weight)), tr(text), size, 0).x
 
 
 def text(weight: FontWeight, s: str, x: float, y: float, size: int, color=rl.WHITE) -> None:
   # gui_app scales rl.draw_text_ex by FONT_SCALE but not rl.measure_text_ex; undo it so size is real px and text_w is exact
-  rl.draw_text_ex(gui_app.font(weight), s, rl.Vector2(x, y), size / FONT_SCALE, 0, color)
+  rl.draw_text_ex(gui_app.font(weight), tr(s), rl.Vector2(x, y), size / FONT_SCALE, 0, color)
 
 
 def clip(weight: FontWeight, s: str, size: int, w: float) -> str:
   """s, or its longest prefix plus "..." that fits w px."""
+  s = tr(s)
   if text_w(weight, s, size) <= w:
     return s
   while s and text_w(weight, s + "...", size) > w:
@@ -39,6 +41,7 @@ def fit(weight: FontWeight, s: str, size: float, w: float) -> int:
 
 def lines_in(rect: rl.Rectangle, lines: list[str], cap: float, weight=FontWeight.SEMI_BOLD, color=rl.WHITE) -> None:
   """Left-aligned lines from the top of rect, sized and cut to fit it."""
+  lines = [tr(s) for s in lines]
   size, n = fit_lines([text_w(weight, s, 100) / 100 for s in lines], rect.width, rect.height, cap)
   for i, line in enumerate(lines[:n]):
     text(weight, clip(weight, line, size, rect.width), rect.x, rect.y + i * (size + 6), size, color)

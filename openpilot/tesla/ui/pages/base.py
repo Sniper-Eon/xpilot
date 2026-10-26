@@ -1,6 +1,7 @@
 """Base of the native offroad pages (UI v3): a vertical list of tici-style rows (system/ui/widgets/list_view.py) in a
 Scroller, drawn by the host in screen pixels inside offroad.content_rect(). Edits are offroad-only, as on the mici pages."""
 import pyray as rl
+from openpilot.system.ui.lib.multilang import tr
 
 from openpilot.selfdrive.ui.ui_state import ui_state
 from openpilot.system.ui.lib.application import FontWeight, gui_app
@@ -28,7 +29,7 @@ class Header(Widget):
 
   def __init__(self, text: str):
     super().__init__()
-    self._text = text.upper()
+    self._text = text
     self._rect = rl.Rectangle(0, 0, 0, HEADER_H)
 
   def set_parent_rect(self, parent_rect: rl.Rectangle) -> None:
@@ -36,7 +37,7 @@ class Header(Widget):
     self._rect.width = parent_rect.width
 
   def _render(self, rect: rl.Rectangle):
-    rl.draw_text_ex(gui_app.font(FontWeight.MEDIUM), self._text, rl.Vector2(rect.x + 20, rect.y + rect.height - 56), 36, 2, HEADER_COLOR)
+    rl.draw_text_ex(gui_app.font(FontWeight.MEDIUM), tr(self._text).upper(), rl.Vector2(rect.x + 20, rect.y + rect.height - 56), 36, 2, HEADER_COLOR)
 
 
 class ListPage(Widget):

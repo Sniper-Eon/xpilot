@@ -227,7 +227,7 @@ class GuiApplication(GuiApplicationExt):
     self._set_log_callback()
 
     self._fonts: dict[FontWeight, rl.Font] = {}
-    self._fallback_fonts: dict[str, rl.Font] = {}
+    self._fallback_fonts: dict[tuple, rl.Font] = {}
     self._width = width if width is not None else GuiApplication._default_width()
     self._height = height if height is not None else GuiApplication._default_height()
 
@@ -730,18 +730,21 @@ class GuiApplication(GuiApplicationExt):
 
   def fallback_font(self) -> rl.Font:
     language = multilang.language
-    if language not in self._fallback_fonts:
+    cache_key = (language, multilang.extra_glyphs, multilang.font_override)
+    if cache_key not in self._fallback_fonts:
       chars = set(map(chr, range(32, 127))) | set(EXTRA_FONT_CHARS)
       chars.update(TRANSLATIONS_DIR.joinpath(f"app_{language}.po").read_text(encoding="utf-8"))
+      chars.update(multilang.extra_glyphs)
       codepoints = sorted(map(ord, chars))
       codepoint_buffer = rl.ffi.new("int[]", codepoints)
       with as_file(FONT_DIR) as fspath:
-        font = rl.load_font_ex((fspath / NOTO_FONTS[language]).as_posix(), 48,
+        font_path = multilang.font_override or (fspath / NOTO_FONTS[language]).as_posix()
+        font = rl.load_font_ex(font_path, 48,
                                rl.ffi.cast("int *", codepoint_buffer), len(codepoints))
       rl.gen_texture_mipmaps(font.texture)
       rl.set_texture_filter(font.texture, rl.TextureFilter.TEXTURE_FILTER_TRILINEAR)
-      self._fallback_fonts[language] = font
-    return self._fallback_fonts[language]
+      self._fallback_fonts[cache_key] = font
+    return self._fallback_fonts[cache_key]
 
   @property
   def width(self):

@@ -154,6 +154,11 @@ class Multilang:
   def __init__(self):
     self._params = Params() if Params is not None else None
     self._language: str = "en"
+    self._plugin_translator = None
+    self._plugin_language = None
+    self.extra_glyphs = ''
+    self.font_override = None
+    self.generation = 0
     self.languages: dict[str, str] = {}
     self.codes: dict[str, str] = {}
     self._translations: dict[str, str] = {}
@@ -163,10 +168,16 @@ class Multilang:
 
   @property
   def language(self) -> str:
-    return self._language
+    return self._plugin_language or self._language
 
   def requires_font_fallback(self) -> bool:
-    return self._language in FONT_FALLBACK_LANGUAGES
+    return self.language in FONT_FALLBACK_LANGUAGES
+
+  def set_plugin_translator(self, translator=None, language=None, glyphs='', font=None):
+    if (translator, language, glyphs, font) != (self._plugin_translator, self._plugin_language, self.extra_glyphs, self.font_override):
+      self._plugin_translator, self._plugin_language, self.extra_glyphs = translator, language, glyphs
+      self.font_override = font
+      self.generation += 1
 
   def setup(self):
     try:
@@ -183,8 +194,13 @@ class Multilang:
     self._params.put("LanguageSetting", language_code, block=True)
     self._language = language_code
     self.setup()
+    self.generation += 1
 
   def tr(self, text: str) -> str:
+    if self._plugin_translator is not None:
+      translated = self._plugin_translator(text)
+      if translated:
+        return translated
     return self._translations.get(text, text) or text
 
   def trn(self, singular: str, plural: str, n: int) -> str:

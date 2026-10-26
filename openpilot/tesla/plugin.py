@@ -59,6 +59,11 @@ class Plugin:
 
   # ---- manager ----
   @classmethod
+  def ui_translation(cls, params):
+    """UI-only provider: language code, extra glyphs and translate(text) -> text/None. Claims source:ui.translations."""
+    return None
+
+  @classmethod
   def processes(cls) -> list:
     """Extra manager processes (ManagerProcess instances). Import manager code inside, not at module level."""
     return []

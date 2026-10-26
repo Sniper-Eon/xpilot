@@ -288,6 +288,10 @@ def long_targets(CP, params) -> list:
   return _collect(params, "long_target", "long.target", "plannerd", CP, params) if CP.brand == "tesla" else []
 
 
+def ui_translations(params) -> list:
+  return _collect(params, 'ui_translation', 'source:ui.translations', 'ui', params)
+
+
 def apply_long_targets(targets: list, sm, candidates: dict, v_ego: float, a_ego: float, v_cruise: float) -> dict:
   """SP update_targets: add plugin speed targets to SP's {source: (v, a)} candidates, from which SP takes the min.
   Lower targets join as xpilotPlugin. Higher ones may only replace the cruise (driver set speed) candidate while

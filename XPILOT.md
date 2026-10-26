@@ -10,7 +10,7 @@
 - **主体**：横向、纵向、模型都是 SP 原版，Tesla 车端代码是上游原版。
 - **扩展**：xpilot 的功能全部以插件形式接入，不改 SP 主体逻辑。
 - **现状（2026-10-23）**：所有功能都是插件。SP 文件里不再有手写的功能注册：雷达替换走 `radar_interface` 钩子（第 7 节），地图默认用 SP 的 OSM 进程，声明 `source:map` 的插件开启时让位（第 8 节），插件之间的数据走 `pluginMsg`（8d 节）。都经过 `plugin.json` 发现、总开关、资源声明和出错隔离。
-- **已删除**：其他车型、comma 云、sunnylink、旧的大屏 UI、扭矩车用的横向控制、翻译（UI 只用英文）。
+- **已删除**：其他车型、comma 云、sunnylink、旧的大屏 UI、扭矩车用的横向控制。界面已恢复简中基础资源，可通过翻译插件补齐本地化。
 - **硬件**：C3、C3X、C3XL、C4。大屏设备上整屏是磁贴，行驶时 mici 画面固定在中间、磁贴排在四周（见第 9 节）。
 
 ## 系统版本与硬件镜像
@@ -59,7 +59,7 @@ C3/C3XL 保留各自锁定的 mr-one 引导链和写前白名单校验，禁止�
 10. **按插件拆分**：加功能就是在插件仓库加一个带 `plugin.json` 的插件目录。系统仓库的 `openpilot/tesla/plugins/` 只放核心插件，`manifest_check.py` M12 拒绝新目录。插件自动被发现，没有手写的注册表。插件内部按 5.3 拆分文件（入口 ≤150 行、其他 ≤400 行、只有 `ui.py` 画图），检查强制执行。
 11. **只用声明过的资源**：插件只能使用 `plugin.json` 里 `claims` 声明过的资源；宿主会拒绝未声明的 CAN 发送、钩子和进程。
 12. **车端数据只读、只经插件**：插件在 card 里用 `observe_can` 自己解析，再写进 `carStateSP` 里自己的字段（cereal 规则见第 7 条）；UI 和其他进程只读这些消息，不直接读 CAN。
-13. **UI**：文字只用英文和 ASCII（设备字体没有 `‹ › · —` 等字）；磁贴只读消息、不写参数（设置写在详情页）；`hz` 按需要取最低值。
+13. **UI**：源码中的基础标签和技术标识保留英文/ASCII；本地化文字和额外字体由翻译插件提供，经通用 UI 翻译接口显示，测量与渲染必须使用同一字体。不要直接写入设备字体不支持的字符。磁贴只读消息、不写参数（设置写在详情页）；`hz` 按需要取最低值。
 14. **不加新依赖**：只用标准库和仓库里已有的库。商店插件需要编译的部分以预编译二进制发布（见 8c）。
 15. **推送分流**：插件的改动（`plugins/<id>/`、它的测试、`dist/`、`index.json`）只推到 `Sniper-Eon/xpilot-plugins`；系统的改动（宿主、商店、UI、核心插件、panda safety、`safety.json`、检查脚本、文档）只推到 `Sniper-Eon/xpilot`。一个功能两边都要改时分成两个提交、两个 PR，先合系统仓库。两个仓库的默认分支都受保护：走 PR，CI 通过才能合并（管理员可以直接推）。
 
@@ -418,6 +418,7 @@ typedef struct {
 ```
 python3 tools/sp_tesla_e2e/agnos_update_check.py                     # 实际启动/OTA19.9选择和写前保护；分区IO模拟
 python3 tools/sp_tesla_e2e/static_imports.py                         # 有没有断掉的 import
+python3 tools/sp_tesla_e2e/ui_translation_check.py                   # 翻译插件的开关、回退、故障隔离和字库契约
 python3 tools/sp_tesla_e2e/tile_layout_check.py                       # 大屏磁贴：网格、排布、行驶避让、编辑操作、手势、重画判断、ASCII 文字、文字适配磁贴
 python3 tools/sp_tesla_e2e/subscription_recovery_check.py             # 重复订阅、零间隔健康检查、原生输入检查和唯一地图发布者
 python3 tools/sp_tesla_e2e/plugin_host_check.py                       # 插件宿主：出错隔离、总开关、元数据、参数、目标车速、雷达/地图/外接 provider、pluginMsg

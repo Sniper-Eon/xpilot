@@ -8,7 +8,7 @@ from openpilot.system.ui.lib.application import gui_app, FontWeight, DEFAULT_TEX
 from openpilot.system.ui.widgets import Widget
 from openpilot.system.ui.lib.text_measure import measure_text_cached
 from openpilot.system.ui.lib.wrap_text import wrap_text
-from openpilot.system.ui.lib.multilang import tr
+from openpilot.system.ui.lib.multilang import multilang, tr
 
 ICON_PADDING = 15
 
@@ -36,6 +36,7 @@ def gui_label(
   alignment_vertical: int = TextAlignmentVertical.MIDDLE,
   elide_right: bool = True
 ):
+  text = tr(text)
   font = gui_app.font(font_weight)
   text_size = measure_text_cached(font, text, font_size)
   display_text = text
@@ -117,7 +118,7 @@ class Label(Widget):
 
   def _update_text(self, text):
     self._text_size = []
-    text = _resolve_value(text)
+    text = tr(str(_resolve_value(text)))
 
     if self._elide_right:
       display_text = text
@@ -360,12 +361,13 @@ class UnifiedLabel(Widget):
     text = self.text
 
     # Check if cache is still valid
-    if (self._cached_text == text and
+    if (getattr(self, '_locale_generation', -1) == multilang.generation and self._cached_text == text and
         self._cached_width == available_width and
         self._cached_wrapped_lines):
       return
 
     self._cached_text = text
+    self._locale_generation = multilang.generation
     self._cached_width = available_width
 
     # Determine wrapping width
