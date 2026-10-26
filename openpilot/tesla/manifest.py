@@ -61,9 +61,10 @@ CLAIM_PATTERNS = (
   r"alert",                             # alert_source hook (shared, first alert per severity in priority order)
   r"lat\.correction",                   # lat_correction hook (shared, chained, total change capped by the host)
   r"external\.provider",                # external_provider hook (shared, all bridged by externald)
+  r"ui\.glyphs",                        # ui_glyphs hook: extra display characters for the language font (shared)
   r"msg:[a-z][a-z0-9_.]*",              # publish pluginMsg of this kind (shared; source tells publishers apart)
 )
-SHARED_CLAIMS = {"long.target", "plan.filter", "alert", "lat.correction", "external.provider"}
+SHARED_CLAIMS = {"long.target", "plan.filter", "alert", "lat.correction", "external.provider", "ui.glyphs"}
 
 
 def shared(claim: str) -> bool:

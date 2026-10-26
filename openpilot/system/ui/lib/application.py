@@ -300,6 +300,12 @@ class GuiApplication(GuiApplicationExt):
     """host: big-screen host class (openpilot/tesla/ui/screen.py). The mici UI then renders at 536x240 into a
     texture drawn at host.viewport(), and host.render() draws around it in screen pixels."""
     with self._startup_profile_context():
+      if title == "UI":
+        # Optional language-pack plugins (role:ui.language) must be applied before the fonts are loaded.
+        from openpilot.common.params import Params
+        from openpilot.tesla.ui.localization import configure, extra_glyphs
+        configure(multilang, Params())
+        self._plugin_font_chars = extra_glyphs(Params())
       if host is not None:
         self._width, self._height, self._scale = 536, 240, HOST_TEXTURE_SCALE
         self._scaled_width, self._scaled_height = 536 * HOST_TEXTURE_SCALE, 240 * HOST_TEXTURE_SCALE
@@ -732,11 +738,16 @@ class GuiApplication(GuiApplicationExt):
     language = multilang.language
     if language not in self._fallback_fonts:
       chars = set(map(chr, range(32, 127))) | set(EXTRA_FONT_CHARS)
-      chars.update(TRANSLATIONS_DIR.joinpath(f"app_{language}.po").read_text(encoding="utf-8"))
+      po = TRANSLATIONS_DIR.joinpath(f"app_{language}.po")
+      if po.is_file():
+        chars.update(po.read_text(encoding="utf-8"))
+      chars.update("".join(multilang._translations.values()))
+      chars.update(getattr(self, "_plugin_font_chars", ()))
       codepoints = sorted(map(ord, chars))
       codepoint_buffer = rl.ffi.new("int[]", codepoints)
       with as_file(FONT_DIR) as fspath:
-        font = rl.load_font_ex((fspath / NOTO_FONTS[language]).as_posix(), 48,
+        font_path = getattr(multilang, "ui_font_path", None) or fspath / NOTO_FONTS[language]
+        font = rl.load_font_ex(font_path.as_posix(), 48,
                                rl.ffi.cast("int *", codepoint_buffer), len(codepoints))
       rl.gen_texture_mipmaps(font.texture)
       rl.set_texture_filter(font.texture, rl.TextureFilter.TEXTURE_FILTER_TRILINEAR)
