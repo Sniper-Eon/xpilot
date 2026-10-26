@@ -22,6 +22,7 @@ from openpilot.common.swaglog import cloudlog
 from openpilot.selfdrive.ui.ui_state import ui_state
 from openpilot.sunnypilot.hardware.profile import HardwareProfile, get_hardware_profile
 from openpilot.system.ui.lib.application import MousePos, gui_app, FontWeight
+from openpilot.system.ui.lib.multilang import tr
 from openpilot.system.ui.lib.text_measure import measure_text_cached
 from openpilot.system.ui.widgets.list_view import button_item, text_item
 from openpilot.tesla.plugin_params import ParamsView
@@ -230,7 +231,8 @@ class BigScreenHost:
       top.set_visible(lambda: self._host_pass)  # hidden in the mici texture pass, drawn by _draw_offroad
 
   def viewport(self) -> rl.Rectangle | None:
-    if ui_state.started:
+    # Park keeps the tile screen and its pages reachable, so settings no longer need the car powered off.
+    if ui_state.started and not ui_state.parked:
       self._mode, self._view = "onroad", VIEW
     else:
       onboarding = self._main is None or gui_app.widget_in_stack(self._main._onboarding_window)
@@ -382,7 +384,7 @@ class BigScreenHost:
     drive = self._layout == "drive"
     if drive:
       rl.draw_rectangle_rec(rl.Rectangle(*VIEW), rl.Color(40, 42, 50, 255))
-      label = "Driving view"
+      label = tr("Driving view")
       width = measure_text_cached(gui_app.font(FontWeight.MEDIUM), label, 48).x
       rl.draw_text_ex(gui_app.font(FontWeight.MEDIUM), label, rl.Vector2(VIEW[0] + (VIEW[2] - width) / 2, VIEW[1] + VIEW[3] / 2 - 24), 48, 0, DIM)
     self._draw_tiles(placed, now)
@@ -409,7 +411,7 @@ class BigScreenHost:
     for name, (x, y, w, h) in tiles.bar_buttons(placed, self._layout == "drive").items():
       active = name == self._layout
       rl.draw_rectangle(x, y, w, h, rl.Color(*Tile.COLOR, 255) if active else rl.Color(72, 75, 88, 255))
-      label = name.capitalize()
+      label = tr(name.capitalize())
       width = measure_text_cached(medium, label, 40).x
       rl.draw_text_ex(medium, label, rl.Vector2(x + (w - width) / 2, y + (h - 40) / 2), 40, 0, rl.WHITE)
 
@@ -516,6 +518,6 @@ class BigScreenHost:
     rl.draw_line_ex(rl.Vector2(cx - 16, cy), rl.Vector2(cx + 16, cy), 4, color)
     rl.draw_line_ex(rl.Vector2(cx - 16, cy), rl.Vector2(cx - 2, cy - 14), 4, color)
     rl.draw_line_ex(rl.Vector2(cx - 16, cy), rl.Vector2(cx - 2, cy + 14), 4, color)
-    rl.draw_text_ex(gui_app.font(FontWeight.SEMI_BOLD), parent.upper(), rl.Vector2(CONTENT[0], 50), 34, 2, DIM)
-    rl.draw_text_ex(gui_app.font(FontWeight.NORMAL), title.lower(), rl.Vector2(CONTENT[0] - 6, 88), 110, 0, rl.WHITE)
+    rl.draw_text_ex(gui_app.font(FontWeight.SEMI_BOLD), tr(parent).upper(), rl.Vector2(CONTENT[0], 50), 34, 2, DIM)
+    rl.draw_text_ex(gui_app.font(FontWeight.NORMAL), tr(title).lower(), rl.Vector2(CONTENT[0] - 6, 88), 110, 0, rl.WHITE)
     rl.draw_line_ex(rl.Vector2(CONTENT[0], TITLE_H - 2), rl.Vector2(CONTENT[0] + CONTENT[2], TITLE_H - 2), 2, rl.Color(255, 255, 255, 30))

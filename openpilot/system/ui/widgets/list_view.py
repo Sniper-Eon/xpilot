@@ -254,7 +254,7 @@ class MultipleButtonAction(ItemAction):
       rl.draw_rectangle_rounded(button_rect, 1.0, 20, bg_color)
 
       # Draw text
-      text = _resolve_value(_text, "")
+      text = tr(_resolve_value(_text, ""))
       text_size = measure_text_cached(self._font, text, 40)
       text_x = button_x + (self.button_width - text_size.x) / 2
       text_y = button_y + (BUTTON_HEIGHT - text_size.y) / 2
@@ -363,9 +363,9 @@ class ListItem(Widget):
         text_x += ICON_SIZE + ITEM_PADDING
 
       # Draw main text
-      text_size = measure_text_cached(self._font, self.title, ITEM_TEXT_FONT_SIZE)
+      text_size = measure_text_cached(self._font, tr(self.title), ITEM_TEXT_FONT_SIZE)
       item_y = self._rect.y + (ITEM_BASE_HEIGHT - text_size.y) // 2
-      rl.draw_text_ex(self._font, self.title, rl.Vector2(text_x, item_y), ITEM_TEXT_FONT_SIZE, 0, ITEM_TEXT_COLOR)
+      rl.draw_text_ex(self._font, tr(self.title), rl.Vector2(text_x, item_y), ITEM_TEXT_FONT_SIZE, 0, ITEM_TEXT_COLOR)
 
     # Draw description if visible
     if self.description_visible:
