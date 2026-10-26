@@ -221,6 +221,11 @@ def services(exclude=()) -> list[str]:
   return sorted({svc for p in PLUGINS for svc in p.SERVICES} - set(exclude))
 
 
+def event_filters(params) -> list:
+  """selfdrived: shared event policies, frozen at startup in (priority, id) order."""
+  return sorted((c for c in active(params) if "event.filter" in c.CLAIMS), key=lambda c: (c.PRIORITY, c.NAME))
+
+
 def send_msg(pm, plugin, kind: str, payload, valid_for_ms: int = 0) -> bool:
   """Publish one pluginMsg as plugin (class or instance): source = its id, payload = JSON of payload, validForMs
   0 = no expiry. pm must publish "pluginMsg". A kind without a msg:<kind> claim is refused and recorded."""
