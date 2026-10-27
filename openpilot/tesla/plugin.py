@@ -57,6 +57,15 @@ class Plugin:
   def service_params(self, params) -> None:
     """~10 Hz in card's params thread: reload live settings."""
 
+  # ---- plugin processes (claim "source:navigation") ----
+  @classmethod
+  def navigation_ingress(cls):
+    """Fixed UDP 4213 LAN receiver; requires the enabled source:navigation owner."""
+    if 'source:navigation' not in cls.CLAIMS:
+      raise PermissionError('navigation_ingress requires source:navigation')
+    from openpilot.tesla.navigation import NavigationIngress
+    return NavigationIngress(cls.NAME)
+
   # ---- manager ----
   @classmethod
   def processes(cls) -> list:
