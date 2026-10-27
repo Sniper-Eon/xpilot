@@ -35,7 +35,6 @@ class ScreenSaverSP(Widget):
     self._start_time = None
     self._dismiss = False
     self._screensaver_timeout = 300
-    self._hit_last_frame = False
 
   @property
   def is_active(self) -> bool:
@@ -98,18 +97,7 @@ class ScreenSaverSP(Widget):
       self.y = 0
       hit_y = True
 
-    hit = hit_x or hit_y
-    if hit and not self._hit_last_frame:
-      while self._hue_dist((new_hue := rl.get_random_value(0, 360)), self._hue) < 120:
-        pass
-      self._hue = new_hue
-      self.color = rl.color_from_hsv(self._hue, 1, 1)
-    self._hit_last_frame = hit
-
-  @staticmethod
-  def _hue_dist(a, b):
-    d = abs(a - b)
-    return min(d, 360 - d)
+    # The text keeps one fixed color; the bounce no longer picks a new hue.
 
   def _render(self, rect: rl.Rectangle):
     self.set_rect(rect)
