@@ -26,7 +26,7 @@ ambient_light (0x679, bus 1, 7 bytes):
 navassist (0x3E9, bus 1, 8 bytes):
 - Inactive outside SAFETY_TESLA, without the 0x8000 safetyParamSP bit, or without the vehicle bus.
 - TX clones a fresh idle template and only changes request/reason/counter.
-- Active request 1/2 requires controls_allowed; cancel request 3 is accepted without it because it only
+- Active request 1/2 requires primary or enabled MADS lateral authority; cancel request 3 only
   releases the lamp, including before a disengage.
 - Rate/session limits and the safety-mode reset apply to both active and cancel frames.
 """
@@ -407,6 +407,70 @@ class TestTurnSignalPluginSafety(XpilotPluginSafetyBase):
     self.assertTrue(self._rx(common.make_msg(1, 0x3E9, dat=_idle_template(counter=3))))
     self.assertFalse(self._tx(self._frame(counter=1)))
     self.assertTrue(self._tx(self._frame(counter=4)))
+
+  # Failure cases: a valid independent-lateral engagement cannot signal;
+  # disabled MADS or a lost heartbeat grants authority; template/rate limits
+  # disappear when only lateral authority is active.
+  def _prime_lateral_only(self):
+    self._prime()
+    self.safety.set_mads_params(True, False, False)
+    self.safety.set_controls_allowed(False)
+    self.safety.set_controls_allowed_lateral(True)
+    self.safety.set_heartbeat_engaged_mads(True)
+
+  def test_independent_lateral_signal_authority(self):
+    for enabled, lateral, primary in ((False, False, False), (False, True, False),
+                                      (True, False, False), (True, True, False),
+                                      (False, False, True), (True, True, True)):
+      with self.subTest(enabled=enabled, lateral=lateral, primary=primary):
+        self._set_tesla(self.ACTIVE_PARAM_SP)
+        self._prime()
+        self.safety.set_mads_params(enabled, False, False)
+        self.safety.set_controls_allowed(primary)
+        self.safety.set_controls_allowed_lateral(lateral)
+        self.assertEqual(primary or (enabled and lateral), self._tx(self._frame(request=2)))
+
+  def test_brake_held_blocks_new_signal_even_if_mads_keeps_lateral(self):
+    self._prime_lateral_only()
+    packer = common.CANPackerSafety("tesla_model3_party")
+    brake = packer.make_can_msg_safety("ESP_status", 0, {"ESP_driverBrakeApply": 2})
+    self.assertTrue(self._rx(brake))
+    self.assertTrue(self.safety.get_controls_allowed_lateral())
+    self.assertFalse(self._tx(self._frame(request=2)))
+    self.assertTrue(self._tx(self._frame(request=3)))
+
+  def test_lateral_heartbeat_loss_blocks_active_but_allows_release(self):
+    self._prime_lateral_only()
+    self.assertTrue(self._tx(self._frame(request=2)))
+    self.safety.set_heartbeat_engaged_mads(False)
+    for _ in range(3):
+      self.safety.mads_heartbeat_engaged_check()
+    self.assertFalse(self.safety.get_controls_allowed_lateral())
+    self.safety.set_timer(100_100)
+    self.assertFalse(self._tx(self._frame(request=2)))
+    self.assertTrue(self._tx(self._frame(request=3)))
+
+  def test_lateral_only_retains_template_checksum_rate_and_session_limits(self):
+    self._prime_lateral_only()
+    bad = bytearray(_turn_frame(request=2)); bad[7] ^= 1
+    self.assertFalse(self._tx(common.make_msg(1, 0x3E9, dat=bytes(bad))))
+    changed = bytearray(_turn_frame(request=2)); changed[0] ^= 1
+    changed[7] = _body_controls_checksum(changed)
+    self.assertFalse(self._tx(common.make_msg(1, 0x3E9, dat=bytes(changed))))
+    self.assertTrue(self._tx(self._frame(request=2)))
+    self.safety.set_timer(100_099)
+    self.assertFalse(self._tx(self._frame(request=2)))
+    self.safety.set_timer(1_500_101)
+    self.assertFalse(self._tx(self._frame(request=2)))
+    self._set_tesla(self.ACTIVE_PARAM_SP)
+    self._prime_lateral_only()
+    for index in range(200):
+      self.safety.set_timer(100+index*100_000)
+      self.assertTrue(self._rx(self._template()))
+      self.assertTrue(self._tx(self._frame(request=2)), index)
+    self.safety.set_timer(20_000_100)
+    self.assertTrue(self._rx(self._template()))
+    self.assertFalse(self._tx(self._frame(request=2)))
 
   def test_cancel_allowed_without_controls_allowed(self):
     """Cancel is accepted at any time because it only releases the lamp."""

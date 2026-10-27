@@ -5,8 +5,8 @@
 //
 // Validated: 8-byte length, checksum, one of turn request 1/2/3, reason 8 (active) or 4 (cancel), every
 // protected bit equal to the fresh RX template, counter = template counter + 1, >=100 ms between frames,
-// a 200-frame/60 s session cap, and controls_allowed for an active request. Cancel (request 3) does not
-// require controls_allowed: it only releases the lamp, so it is accepted even without a disengage. It never
+// a 200-frame/60 s session cap, and primary or enabled MADS lateral authority for active requests.
+// Cancel (request 3) does not require engagement: it only releases the lamp, so it is accepted even without a disengage. It never
 // relaxes the stock Tesla mode: only this one address is owned, everything else is unchanged.
 
 static bool navassist_template_valid = false;
@@ -70,7 +70,9 @@ static bool navassist_tx(const CANPacket_t *msg) {
   const bool rate_ok = !navassist_last_tx_valid || (safety_get_ts_elapsed(now, navassist_last_tx_ts) >= 100000U);
   const bool new_session = !navassist_last_tx_valid || (safety_get_ts_elapsed(now, navassist_session_ts) >= 60000000U);
   const bool session_ok = new_session || (navassist_session_count < 200U);
-  const bool authority_ok = cancel || controls_allowed;
+  // Match the stock lateral authority domain; a plugin cannot enable MADS or grant engagement.
+  const bool lateral_authority = m_mads_state.system_enabled && controls_allowed_lateral;
+  const bool authority_ok = cancel || (!brake_pressed && (controls_allowed || lateral_authority));
   const bool allowed = navassist_active() && request_ok && reason_ok && checksum_ok && template_counter_ok &&
                        protected_bits && template_fresh && rate_ok && session_ok && authority_ok;
   if (allowed) {

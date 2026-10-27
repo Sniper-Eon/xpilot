@@ -46,7 +46,7 @@ C3/C3XL 保留各自锁定的 mr-one 引导链和写前白名单校验，禁止�
 1. **不改 SP 主体逻辑。** SP 文件里每个钩子点只加一行插件调用（循环、出错隔离等逻辑放在 `openpilot/tesla/` 里）。功能逻辑全部写在 `openpilot/tesla/plugins/<功能名>/`。
 2. **不改上游 Tesla 车端代码。** `opendbc_repo/opendbc/car/tesla/*`、`opendbc_repo/opendbc/sunnypilot/car/tesla/*`、`opendbc/dbc/tesla_model3_*.dbc`、`opendbc/safety/modes/tesla.h` 保持上游原样。需要车端数据，就在插件里用自己的 `CANParser` 读。
 3. **插件不能绕过车端和 panda 的检查。** 纵向：`long_target` 加速只能替换驾驶员设定车速（条件见第 4 节）；`plan_filter` 只能收紧；`role:long.planner` 可以整体替换纵向计划、包括跟车（用户 2026-10-22 决定），但加速度限制、FCW、踩刹车退出、原车 AEB 和 panda 限制不变。横向：`role:lateral.controller` 的输出不额外限制，靠车端转角速率限制和 panda 兜底。外接算力的数据只做建议。
-4. **每个 CAN 发送地址都必须有 panda safety 插件**（`opendbc/safety/plugins/`），在插件里自己校验内容、频率、时效和 `controls_allowed`。没有 safety 插件，panda 会直接拦掉。
+4. **每个 CAN 发送地址都必须有 panda safety 插件**（`opendbc/safety/plugins/`），在插件里自己校验内容、频率、时效和 `controls_allowed`。没有 safety 插件，panda 会直接拦掉。导航打灯插件的接管门与原生横向权限域对齐：主控制许可，或已启用 MADS 的独立横向许可；踩刹车禁止新主动打灯，取消只释放灯。插件不能设置或伪造这些许可，其他内容/频率/时效校验仍全部生效。
 5. **插件出错不能拖垮进程**：输入过期就当周期什么都不发。宿主兜底：插件在任何钩子里抛异常，就被记进 `XpilotPluginFaults`、本次进程内停用，其他插件和 SP 照常运行；plan filter 出错时计划照常发布。UI 磁贴和叠加层连续出错 3 次会停止绘制。
 6. **Params**：插件的 key 写在自己 `plugin.json` 的 `params` 里，然后运行 `python3 openpilot/tesla/plugins/gen_params.py` 生成 `common/plugin_params.inc` 并一起提交；不属于插件的 key 才写进 `params_keys.h`。每个插件有一个 BOOL 总开关 `enable_param`，默认关闭；例外：只做显示、`claims` 为空的 `ui`、`overlays` 类插件（如 `speed_card`）可以默认开启；可替换核心环节的内置默认插件（如 `sp_models`）`enable_param` 为 `null`、一直开启，被替换时按优先级让位。设置项写在 `plugin.json` 的 `settings` 里。
 7. **cereal**：只追加字段，不改已有字段的序号和类型。新消息用 `custom.capnp` 里的 `customReserved*` 槽位。
