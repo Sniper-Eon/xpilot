@@ -57,6 +57,15 @@ class Plugin:
   def service_params(self, params) -> None:
     """~10 Hz in card's params thread: reload live settings."""
 
+  # ---- plugin processes (claim "source:navigation") ----
+  @classmethod
+  def navigation_ingress(cls):
+    """Fixed UDP 4213 LAN receiver; requires the enabled source:navigation owner."""
+    if 'source:navigation' not in cls.CLAIMS:
+      raise PermissionError('navigation_ingress requires source:navigation')
+    from openpilot.tesla.navigation import NavigationIngress
+    return NavigationIngress(cls.NAME)
+
   # ---- manager ----
   @classmethod
   def ui_translation(cls, params):
@@ -122,6 +131,19 @@ class Plugin:
   def plan_filter(cls, CP, params):
     """None, or an object with publisher(pm, sm) returning a pm-like sink that may only tighten the plan."""
     return None
+
+  # ---- UI language pack (claim "role:ui.language", exclusive) ----
+  @classmethod
+  def ui_language(cls) -> dict | None:
+    """UI startup. Return {"code": language code, "font": bundled font path, "translations": {English: text}}.
+    The host validates the pack, applies it for this UI run and loads the bundled font; nothing is written to
+    LanguageSetting, so switching the plugin off restores the user's language on the next UI restart."""
+    return None
+
+  @classmethod
+  def ui_glyphs(cls) -> str:
+    """UI startup (shared claim "ui.glyphs"): extra characters the selected font must cover."""
+    return ""
 
   # ---- selfdrived (claims "role:engagement.state" / "role:safety.fallback", exclusive; openpilot/tesla/core_host.py) ----
   @classmethod

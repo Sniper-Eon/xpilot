@@ -58,12 +58,14 @@ CLAIM_PATTERNS = (
   r"role:[a-z][a-z0-9_.]*",             # own a replaceable stage, e.g. role:lane_change.policy
   r"long\.target",                      # long_target hook (shared, merged by the host)
   r"plan\.filter",                      # plan_filter hook (shared, chained in priority order)
+  r"event\.filter",                     # event_filter hook (shared, allowlisted deletions only)
   r"alert",                             # alert_source hook (shared, first alert per severity in priority order)
   r"lat\.correction",                   # lat_correction hook (shared, chained, total change capped by the host)
   r"external\.provider",                # external_provider hook (shared, all bridged by externald)
+  r"ui\.glyphs",                        # ui_glyphs hook: extra display characters for the language font (shared)
   r"msg:[a-z][a-z0-9_.]*",              # publish pluginMsg of this kind (shared; source tells publishers apart)
 )
-SHARED_CLAIMS = {"long.target", "plan.filter", "alert", "lat.correction", "external.provider"}
+SHARED_CLAIMS = {"long.target", "plan.filter", "event.filter", "alert", "lat.correction", "external.provider", "ui.glyphs"}
 
 
 def shared(claim: str) -> bool:

@@ -9,7 +9,44 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
 
+def font_merge_contract(source):
+  """Failures: absent base catalog crashes; either provider's glyphs/font are
+  lost by a merge; changing a role-owned font reuses the previous font cache.
+  Execute the actual drawing helper with mock GPU calls, no Params/vehicle IO.
+  """
+  import ast
+  from contextlib import nullcontext
+  import tempfile
+  tree=ast.parse(source)
+  cls=next(n for n in tree.body if isinstance(n,ast.ClassDef) and n.name=='GuiApplication')
+  method=next(n for n in cls.body if isinstance(n,ast.FunctionDef) and n.name=='fallback_font')
+  calls=[]
+  def load(path,size,points,count):
+    calls.append((str(path),set(points)))
+    return N(texture=None)
+  locale=N(language='zh-CHS',extra_glyphs='界',font_override='/plugin/bridge.otf',
+           ui_font_path=Path('/plugin/role.ttf'),_translations={'x':'图'})
+  rl=N(Font=object,ffi=N(new=lambda kind,points:points,cast=lambda kind,p:p),
+       load_font_ex=load,gen_texture_mipmaps=lambda t:None,set_texture_filter=lambda *a:None,
+       TextureFilter=N(TEXTURE_FILTER_TRILINEAR=1))
+  with tempfile.TemporaryDirectory() as tmp:
+    ns=dict(rl=rl,multilang=locale,TRANSLATIONS_DIR=Path(tmp),FONT_DIR=Path(tmp),
+            as_file=nullcontext,NOTO_FONTS={'zh-CHS':'base.otf'},EXTRA_FONT_CHARS='')
+    exec(compile(ast.fix_missing_locations(ast.Module(body=[method],type_ignores=[])),'<actual fallback_font>','exec'),ns)
+    host=N(_fallback_fonts={},_plugin_font_chars={'字'})
+    ns['fallback_font'](host)
+    assert calls[-1][0]=='/plugin/bridge.otf'
+    assert set(map(ord,'界图字'))<=calls[-1][1]
+    locale.font_override=None
+    ns['fallback_font'](host)
+    assert calls[-1][0]=='/plugin/role.ttf'
+    locale.ui_font_path=Path('/plugin/changed.ttf')
+    ns['fallback_font'](host)
+    assert calls[-1][0]=='/plugin/changed.ttf'
+
+
 def main():
+  font_merge_contract((ROOT / "openpilot/system/ui/lib/application.py").read_text())
   from openpilot.system.ui.lib.multilang import Multilang
   from openpilot.tesla.ui.localization import TranslationBridge
   clock, enabled, faults = [0.], [True], []

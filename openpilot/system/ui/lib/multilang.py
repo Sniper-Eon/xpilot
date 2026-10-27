@@ -164,6 +164,7 @@ class Multilang:
     self._translations: dict[str, str] = {}
     self._plurals: dict[str, list[str]] = {}
     self._plural_selector = PLURAL_SELECTORS.get('en', lambda n: 0)
+    self.ui_font_path = None
     self._load_languages()
 
   @property
@@ -198,7 +199,8 @@ class Multilang:
 
   def refresh(self) -> bool:
     """Re-read the language param, e.g. when it was written after the UI imported this module."""
-    if self._params is None:
+    if self._params is None or self.ui_font_path is not None:
+      # A language-pack plugin owns the UI language for this run; the param must not override it.
       return False
     lang = str(self._params.get("LanguageSetting")).removeprefix("main_")
     if lang in self.codes and lang != self._language:

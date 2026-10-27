@@ -30,6 +30,7 @@ class Header(Widget):
   def __init__(self, text: str):
     super().__init__()
     self._text = text
+
     self._rect = rl.Rectangle(0, 0, 0, HEADER_H)
 
   def set_parent_rect(self, parent_rect: rl.Rectangle) -> None:

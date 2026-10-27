@@ -14,13 +14,14 @@ With the default owners (sp_engagement, sp_safety_fallback) nothing here runs an
 Hangs inside a hook stop selfdrived; the card gate and the panda heartbeat cover them. In-process plugins are trusted
 code (claims are not a sandbox); panda safety stays the floor against anything else."""
 import time
+from types import SimpleNamespace
 
 from openpilot.cereal import custom, log
 from opendbc.car.structs import car
 from openpilot.selfdrive.selfdrived.events import EVENTS, ET
 from openpilot.selfdrive.selfdrived.state import ACTIVE_STATES, ENABLED_STATES, SOFT_DISABLE_TIME, State
 from openpilot.sunnypilot.mads.state import ACTIVE_STATES as MADS_ACTIVE, ENABLED_STATES as MADS_ENABLED, State as MadsState
-from openpilot.tesla.plugins import FAULTS_PARAM, _collect, owner, record_fault
+from openpilot.tesla.plugins import FAULTS_PARAM, _collect, event_filters, owner, record_fault
 
 ENGAGEMENT, FALLBACK = "role:engagement.state", "role:safety.fallback"
 DEFAULTS = {ENGAGEMENT: "sp_engagement", FALLBACK: "sp_safety_fallback"}
@@ -36,6 +37,8 @@ FLOOR = {EN.pedalPressed, EN.buttonCancel, EN.pcmDisable, EN.fcw, EN.stockAeb, E
 FLOOR_SP = {ENSP.controlsMismatchLateral, ENSP.lkasDisable, ENSP.xpilotPluginFault}
 MADS_EXEMPT = {EN.pcmDisable, EN.buttonCancel, EN.pedalPressed}  # MADS keeps steering through these (mads.py)
 ENABLE_EVENTS = {EN.pcmEnable, EN.buttonEnable}
+# Shared event filters may only drop these names (and never floor or enable events).
+EVENT_FILTER_ALLOWLIST = {int(EN.invalidLkasSetting)}
 
 now = time.monotonic
 
@@ -49,6 +52,8 @@ class _Host:
     self.s, self.names = s, names
     faults = s.params.get(FAULTS_PARAM) or {}
     self.latched = any(n in faults for n in names)
+    self.filter_fault = False
+    self.filters = [c for c in event_filters(s.params) if c.NAME not in faults]
     self.sp_enable = False  # SP's update_events produced a driver ENABLE event this frame
     self.lkas_press = False
     self.enabled_prev = False
@@ -75,6 +80,27 @@ def _fallback(host, orig, plugin):
     floor_sp = [e for e in ev_sp.names if e in FLOOR_SP]
     host.sp_enable = any(e in ENABLE_EVENTS for e in ev.names)
     host.lkas_press = any(be.type == LKAS and be.pressed for be in CS.buttonEvents)
+    if not host.latched:
+      ctx = SimpleNamespace(sm=getattr(s, "sm", None), CP=getattr(s, "CP", None), CP_SP=getattr(s, "CP_SP", None), params=s.params)
+      for cls in list(host.filters):
+        try:
+          drop, drop_sp = cls.event_filter(ctx, CS, ev.names.copy(), ev_sp.names.copy())
+          if not isinstance(drop, list) or not isinstance(drop_sp, list) or drop_sp:
+            raise ValueError("event_filter may only drop OnroadEvent names")
+          allowed = []
+          for e in drop:
+            try:
+              value = int(e)
+            except Exception:
+              raise ValueError("event_filter returned a non-event") from None
+            if value not in EVENT_FILTER_ALLOWLIST or e in FLOOR or e in ENABLE_EVENTS:
+              raise ValueError("event_filter may only drop allowlisted event names")
+            allowed.append(e)
+          ev.names[:] = [e for e in ev.names if e not in allowed]
+        except Exception as e:
+          host.filters.remove(cls)
+          record_fault(cls.NAME, "selfdrived.event_filter", e)
+          host.filter_fault = True
     if plugin is not None and not host.latched:
       try:
         plugin.update(s, CS)
@@ -89,7 +115,7 @@ def _fallback(host, orig, plugin):
     for e in floor_sp:
       if not ev_sp.has(e):
         ev_sp.add(e)
-    if host.latched:
+    if host.latched or host.filter_fault:
       host.mark()
   return update_events
 
