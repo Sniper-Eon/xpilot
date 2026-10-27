@@ -10,14 +10,28 @@ import pyray as rl
 
 from openpilot.selfdrive.ui.mici.layouts.home import MiciHomeLayout
 from openpilot.selfdrive.ui.ui_state import ui_state, ChestnutState
-from openpilot.system.ui.lib.application import FontWeight
+from openpilot.system.ui.lib.application import gui_app
+from openpilot.system.ui.widgets import Widget
 from openpilot.system.ui.widgets.label import UnifiedLabel
+
+
+class _Logo(Widget):
+  """Static dark-gray Xpilot wordmark image used in place of the home text label."""
+
+  def __init__(self):
+    super().__init__()
+    self._texture = gui_app.texture("icons_mici/xpilot_logo.png", 360, None)
+    self.font_size = self._texture.height
+    self.set_rect(rl.Rectangle(0, 0, self._texture.width, self._texture.height))
+
+  def _render(self, _rect):
+    rl.draw_texture(self._texture, int(self._rect.x), int(self._rect.y), rl.WHITE)
 
 
 class MiciHomeLayoutSP(MiciHomeLayout):
   def __init__(self):
     super().__init__()
-    self._openpilot_label = UnifiedLabel("xpilot", font_size=88, font_weight=FontWeight.AUDIOWIDE, max_width=480, wrap_text=False)
+    self._openpilot_label = _Logo()
 
   def _set_chestnut_visibility(self):
     usb_connected = ui_state.usb_connected
