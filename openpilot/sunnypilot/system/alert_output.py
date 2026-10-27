@@ -116,6 +116,9 @@ class Beepd:
         #self.dispatch_beep(self.disengage)
       if new_alert in [AudibleAlert.warningSoft, AudibleAlert.warningImmediate]:
         self.dispatch_beep(self.warning)
+      elif new_alert == AudibleAlert.prompt:
+        # Match the standard sound backend: one short notice, including plugin navigation preparation.
+        self.dispatch_beep(self.engage)
       elif new_alert == AudibleAlert.promptRepeat:
         # 如果在抑制期内则忽略后续的 promptRepeat
         if now >= getattr(self, 'prompt_suppress_until', 0):
