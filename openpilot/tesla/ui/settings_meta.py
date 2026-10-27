@@ -23,3 +23,14 @@ def setting_choices(setting: Setting, metric: bool = True) -> list[tuple[str, in
     minimum, maximum, step = setting.range[:3]
     return [(setting_label(setting, value, metric), value) for value in range(minimum, maximum + 1, step)]
   return list(setting.choices or ())
+
+
+def write_setting(params, key, value, parked):
+  """Native choice values are integers; preserve a declared float's storage type."""
+  if not parked:
+    return False
+  current=params.get(key, return_default=True)
+  if type(current) is float and type(value) is int:
+    value=float(value)
+  params.put(key,value,block=True)
+  return True

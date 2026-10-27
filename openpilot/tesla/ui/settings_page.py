@@ -24,8 +24,8 @@ def _params():
 
 
 def _set_param(key, value) -> None:
-  if ui_state.is_offroad():
-    _params().put(key, value, block=True)
+  from openpilot.tesla.ui.settings_meta import write_setting
+  write_setting(_params(),key,value,ui_state.is_offroad())
 
 
 class SettingsList(NavScroller):

@@ -33,7 +33,8 @@ from openpilot.tesla.ui.pages.base import ListPage
 from openpilot.tesla.ui.pages.device import DevicePage
 from openpilot.tesla.ui.pages.onboarding import OnboardingPage
 from openpilot.tesla.ui.plugin_ui import MAX_FAILURES, EnabledPlugins, Overlays, ScreenOverlay, load
-from openpilot.tesla.ui.tile import Tile
+from openpilot.tesla.ui.tile import Tile, text
+from openpilot.tesla.ui.appearance import park_inverse, park_rect
 from openpilot.tesla.ui.tiles import LAYOUT_PARAM, LAYOUT_SPEC, SCREEN, THEME_PARAM, THEMES, VIEW
 
 DIM = rl.Color(150, 152, 162, 255)
@@ -123,6 +124,8 @@ class BigScreenHost:
     self._back_pressed = False
     self._view: tuple | None = None  # set each frame by viewport(); to_logical runs on the touch thread
     self._now, self._faced = time.monotonic(), {}  # set each frame by viewport(): tile faces drawn before the screen frame
+    self._park_glass = False
+    self._glass_theme = False
     self._mode = "native"
     self._host_pass = False
     self._onboarding = OnboardingPage(self._onboarding_done)
@@ -130,12 +133,16 @@ class BigScreenHost:
 
   def _theme(self) -> None:
     """Apply the tile color chosen on the Toggles page; read when the tile screen shows again."""
+    name = None
     try:
-      color = THEMES.get(self._layout_params.get(THEME_PARAM), tiles.ACCENT)
+      name = self._layout_params.get(THEME_PARAM)
+      color = THEMES.get(name, tiles.ACCENT)
     except Exception:
       color = tiles.ACCENT
-    if color != Tile.COLOR:
-      Tile.COLOR = color
+    self._glass_theme = name == 'Glass'
+    style = 'glass' if self._glass_theme and self._mode != 'onroad' else 'flat'
+    if color != Tile.COLOR or style != Tile.STYLE:
+      Tile.COLOR, Tile.STYLE = color, style
       for e in self._entries.values():
         e.poll.invalidate()
 
@@ -263,6 +270,11 @@ class BigScreenHost:
   # drawing
 
   def render(self) -> None:
+    style = 'glass' if self._glass_theme and self._mode != 'onroad' else 'flat'
+    if style != Tile.STYLE:
+      Tile.STYLE = style
+      for e in self._entries.values():
+        e.poll.invalidate()
     if self._mode == "onroad":
       self._edit, self._drag, self._selected, self._layout = False, None, None, "park"
       self._draw_tiles(self._place("drive"), self._now)
@@ -311,11 +323,14 @@ class BigScreenHost:
         continue
       x, y, w, h = tiles.tile_rect(p)
       grow = 0.03 * w if self._edit and tid == self._selected else 0.0
-      self._blit(e, rl.Rectangle(x - grow, y - grow * h / w, w + 2 * grow, h + 2 * grow * h / w))
+      dest = (x-grow,y-grow*h/w,w+2*grow,h+2*grow*h/w)
+      if self._park_glass:
+        dest = park_rect(dest)
+      self._blit(e, rl.Rectangle(*dest))
       if self._edit and tid != self._selected:
         rl.draw_rectangle(x, y, w, h, SHADE)
       elif not self._edit and self._gesture.start is not None and tiles.hit({tid: p}, *self._gesture.start[:2]) and not self._gesture.long:
-        rl.draw_rectangle(x, y, w, h, PRESSED)
+        rl.draw_rectangle_rec(rl.Rectangle(*(park_rect((x,y,w,h)) if self._park_glass else (x,y,w,h))), PRESSED)
 
   @staticmethod
   def _blit(e: _Entry, dest: rl.Rectangle) -> None:
@@ -367,6 +382,31 @@ class BigScreenHost:
   # tile screen and edit mode
 
   def _draw_start(self, events) -> None:
+    self._park_glass = self._glass_theme and self._layout == 'park' and not self._edit
+    try:
+      if self._park_glass:
+        self._draw_park_header()
+        events = [e._replace(pos=MousePos(*park_inverse(e.pos.x,e.pos.y))) for e in events]
+      self._draw_start_tiles(events)
+      if self._park_glass and self._edit:
+        self._gesture = tiles.Gesture()
+    finally:
+      self._park_glass = False
+
+  @staticmethod
+  def _draw_park_header() -> None:
+    rl.clear_background(rl.Color(7,11,18,255))
+    cyan = rl.Color(87,217,245,255)
+    rl.draw_line_ex(rl.Vector2(164,28),rl.Vector2(212,77),7,cyan)
+    rl.draw_line_ex(rl.Vector2(164,77),rl.Vector2(212,28),7,rl.WHITE)
+    text(FontWeight.BOLD,'X-PILOT',238,24,52)
+    text(FontWeight.MEDIUM,'Parking dashboard',535,44,25,DIM)
+    text(FontWeight.MEDIUM,time.strftime('%H:%M'),1810,26,48)
+    text(FontWeight.MEDIUM,time.strftime('%Y.%m.%d'),1797,77,22,DIM)
+    rl.draw_line_ex(rl.Vector2(170,98),rl.Vector2(1990,98),1,rl.Color(73,117,146,100))
+    text(FontWeight.MEDIUM,'Long press a tile to edit',174,1042,24,DIM)
+
+  def _draw_start_tiles(self, events) -> None:
     now = self._now
     placed = self._place(self._layout)
     for ev in events:

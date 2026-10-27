@@ -110,8 +110,8 @@ def params():
 
 
 def set_param(key: str, value) -> None:
-  if ui_state.is_offroad():
-    params().put(key, value, block=True)
+  from openpilot.tesla.ui.settings_meta import write_setting
+  write_setting(params(), key, value, ui_state.is_offroad())
 
 
 class SettingRow:

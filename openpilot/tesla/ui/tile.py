@@ -53,6 +53,7 @@ class Tile:
   SPEC: ClassVar[TileSpec]
   PAGE: ClassVar[type | None] = None
   MICI: ClassVar[bool] = False
+  STYLE: ClassVar[str] = "flat"
   COLOR: ClassVar[tuple[int, int, int]] = ACCENT  # the chosen tiles.THEMES color, set on Tile by the host
 
   def state(self, sm):
@@ -69,7 +70,12 @@ class Tile:
 
   def face(self, rect: rl.Rectangle, icon: str | None = None) -> None:
     """Square tile in COLOR with the title at the bottom left and an optional centered icon (assets path)."""
-    rl.draw_rectangle_rec(rect, rl.Color(*self.COLOR, 255))
+    if self.STYLE == 'glass':
+      rl.draw_rectangle_rounded(rl.Rectangle(rect.x,rect.y+5,rect.width,rect.height),.075,10,rl.Color(0,0,0,110))
+      rl.draw_rectangle_rounded(rect,.075,10,rl.Color(*self.COLOR,255))
+      rl.draw_line_ex(rl.Vector2(rect.x+24,rect.y+2),rl.Vector2(rect.x+rect.width-24,rect.y+2),2,rl.Color(124,164,195,110))
+    else:
+      rl.draw_rectangle_rec(rect, rl.Color(*self.COLOR, 255))
     if icon is not None:
       side = int(min(rect.width, rect.height) * 0.36)
       tex = gui_app.texture(icon, side, side)
