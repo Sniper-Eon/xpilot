@@ -27,7 +27,7 @@ class ScreenSaverSP(Widget):
     self.y = 100.0
     self.vx = 120.0 if self._is_mici else 300.0
     self.vy = 70.0 if self._is_mici else 200.0
-    self._hue = 150
+    self._hue = 205  # cold Tesla-like blue, fixed for the whole screensaver
     self.color = rl.color_from_hsv(self._hue, 1, 1)
 
     self.text = "xpilot"
