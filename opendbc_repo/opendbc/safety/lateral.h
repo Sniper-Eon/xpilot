@@ -58,6 +58,7 @@ static bool rt_torque_rate_limit_check(int val, int val_last, const int MAX_RT_D
 }
 
 // Safety checks for torque-based steering commands
+// cppcheck-suppress misra-c2012-8.7; shared declaration exported by libsafety test ABI.
 bool steer_torque_cmd_checks(int desired_torque, int steer_req, const TorqueSteeringLimits limits) {
   bool violation = false;
   uint32_t ts = microsecond_timer_get();
@@ -203,6 +204,7 @@ static bool steer_angle_cmd_inactive_check(int desired_angle, int max_angle) {
 }
 
 // Safety checks for angle-based steering commands
+// cppcheck-suppress misra-c2012-8.7; shared declaration exported by libsafety test ABI.
 bool steer_angle_cmd_checks(int desired_angle, bool steer_control_enabled, const AngleSteeringLimits limits) {
   bool violation = false;
 
@@ -244,6 +246,7 @@ bool steer_angle_cmd_checks(int desired_angle, bool steer_control_enabled, const
 }
 
 // Safety checks for curvature-based steering commands
+// cppcheck-suppress misra-c2012-8.7; shared declaration exported by libsafety test ABI.
 bool steer_curvature_cmd_checks(int desired_curvature, int steer_power, bool steer_control_enabled, const CurvatureSteeringLimits limits) {
   // Highway curves are rolled in the direction of the turn, add tolerance to compensate
   static const float MAX_LATERAL_ACCEL = ISO_LATERAL_ACCEL + (EARTH_G * AVERAGE_ROAD_ROLL);  // ~3.6 m/s^2

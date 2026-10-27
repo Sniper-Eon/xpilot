@@ -14,6 +14,7 @@
 // xpilot feature plugins (experimental): each owns one extra TX message and validates it itself
 #include "opendbc/safety/plugins/registry.h"
 
+// cppcheck-suppress misra-c2012-8.7; shared declaration exported by libsafety test ABI.
 uint32_t GET_BYTES_LE(const CANPacket_t *msg, int start, int len) {
   uint32_t ret = 0U;
   for (int i = 0; i < len; i++) {
@@ -24,6 +25,7 @@ uint32_t GET_BYTES_LE(const CANPacket_t *msg, int start, int len) {
 }
 
 // Read up to eight bytes in little-endian order, without alignment assumptions.
+// cppcheck-suppress misra-c2012-8.7; shared declaration exported by libsafety test ABI.
 uint64_t GET_BYTES_64_LE(const CANPacket_t *msg, int start, int len) {
   uint64_t ret = 0U;
   for (int i = 0; i < len; i++) {
@@ -284,6 +286,7 @@ int safety_fwd_hook(int bus_num, int addr) {
 
 // Given a CRC-8 poly, generate a static lookup table to use with a fast CRC-8
 // algorithm. Called at init time for safety modes using CRC-8.
+// cppcheck-suppress misra-c2012-8.7; shared declaration exported by libsafety test ABI.
 void gen_crc_lookup_table_8(uint8_t poly, uint8_t crc_lut[]) {
   for (uint16_t i = 0U; i <= 0xFFU; i++) {
     uint8_t crc = (uint8_t)i;
@@ -298,6 +301,7 @@ void gen_crc_lookup_table_8(uint8_t poly, uint8_t crc_lut[]) {
   }
 }
 
+// cppcheck-suppress misra-c2012-8.7; shared declaration exported by libsafety test ABI.
 void gen_crc_lookup_table_16(uint16_t poly, uint16_t crc_lut[]) {
   for (uint16_t i = 0; i < 256U; i++) {
     uint16_t crc = i << 8U;
@@ -464,6 +468,7 @@ int set_safety_hooks(uint16_t mode, uint16_t param) {
 }
 
 // convert a trimmed integer to signed 32 bit int
+// cppcheck-suppress misra-c2012-8.7; shared declaration exported by libsafety test ABI.
 int to_signed(int d, int bits) {
   int d_signed = d;
   int max_value = (1 << SAFETY_MAX((bits - 1), 0));

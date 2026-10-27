@@ -172,6 +172,7 @@ void can_send(CANPacket_t *to_push, uint8_t bus_number, bool skip_tx_hook) {
 #ifdef STM32F4
   supported_length = GET_LEN(to_push) <= 8U;
 #endif
+  // cppcheck-suppress knownConditionTrueFalse; F4 limits classic CAN to 8 bytes; H7 supports all DLC lengths.
   if (supported_length && (skip_tx_hook || safety_tx_hook(to_push) != 0)) {
     if (bus_number < PANDA_CAN_CNT) {
       // add CAN packet to send queue
