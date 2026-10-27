@@ -39,6 +39,12 @@ DIM = rl.Color(150, 152, 162, 255)
 SHADE = rl.Color(0, 0, 0, 120)      # over unselected tiles in edit mode
 PRESSED = rl.Color(0, 0, 0, 60)
 
+# Offroad standby backdrop: a cold gradient and a faint xpilot wordmark behind the tiles.
+BG_TOP = rl.Color(6, 14, 26, 255)
+BG_BOTTOM = rl.Color(16, 48, 82, 255)
+BG_GLOW = rl.Color(0, 120, 200, 46)
+WORDMARK = rl.Color(120, 200, 255, 40)
+
 
 def is_big_screen() -> bool:
   return HARDWARE.get_device_type() in ("tici", "tizi") or get_hardware_profile() == HardwareProfile.C3XL
@@ -365,8 +371,18 @@ class BigScreenHost:
 
   # tile screen and edit mode
 
+  def _draw_backdrop(self) -> None:
+    """Cold Tesla-like gradient and a faint xpilot wordmark; drawn under the offroad tiles."""
+    w, h = SCREEN
+    rl.draw_rectangle_gradient_v(0, 0, w, h, BG_TOP, BG_BOTTOM)
+    rl.draw_rectangle_gradient_v(0, int(h * 0.55), w, int(h * 0.45), rl.BLANK, BG_GLOW)
+    label, size = "xpilot", 260
+    width = measure_text_cached(gui_app.font(FontWeight.AUDIOWIDE), label, size).x
+    rl.draw_text_ex(gui_app.font(FontWeight.AUDIOWIDE), label, rl.Vector2(w - width - 70, h - size - 40), size, 0, WORDMARK)
+
   def _draw_start(self, events) -> None:
     now = self._now
+    self._draw_backdrop()
     placed = self._place(self._layout)
     for ev in events:
       if ev.slot != 0:
