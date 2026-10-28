@@ -10,14 +10,13 @@ import pyray as rl
 
 from openpilot.selfdrive.ui.mici.layouts.home import MiciHomeLayout
 from openpilot.selfdrive.ui.ui_state import ui_state, ChestnutState
-from openpilot.system.ui.lib.application import FontWeight
-from openpilot.system.ui.widgets.label import UnifiedLabel
+from openpilot.tesla.ui.branding import LogoLabel
 
 
 class MiciHomeLayoutSP(MiciHomeLayout):
   def __init__(self):
     super().__init__()
-    self._openpilot_label = UnifiedLabel("xpilot", font_size=88, font_weight=FontWeight.AUDIOWIDE, max_width=480, wrap_text=False)
+    self._openpilot_label = LogoLabel()
 
   def _set_chestnut_visibility(self):
     usb_connected = ui_state.usb_connected

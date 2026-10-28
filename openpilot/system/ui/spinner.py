@@ -7,6 +7,8 @@ from openpilot.system.ui.lib.application import gui_app
 from openpilot.system.ui.lib.text_measure import measure_text_cached
 from openpilot.system.ui.text import wrap_text
 from openpilot.system.ui.widgets import Widget
+from openpilot.tesla.ui.brand_layout import spinner_layout
+from openpilot.tesla.ui.branding import draw_logo
 
 # Constants
 if gui_app.big_ui():
@@ -35,7 +37,6 @@ def clamp(value, min_value, max_value):
 class Spinner(Widget):
   def __init__(self):
     super().__init__()
-    self._comma_texture = gui_app.texture("../../sunnypilot/selfdrive/assets/images/spinner_sunnypilot.png", TEXTURE_SIZE, TEXTURE_SIZE)
     self._spinner_texture = gui_app.texture("images/spinner_track.png", TEXTURE_SIZE, TEXTURE_SIZE, alpha_premultiply=True)
     self._rotation = 0.0
     self._progress: int | None = None
@@ -47,45 +48,33 @@ class Spinner(Widget):
       self._wrapped_lines = []
     else:
       self._progress = None
-      self._wrapped_lines = wrap_text(text, FONT_SIZE, gui_app.width - MARGIN_H)
+      self._wrapped_lines = wrap_text(text, spinner_layout(gui_app.width, gui_app.height)["font"], gui_app.width * 0.8)
 
   def _render(self, rect: rl.Rectangle):
-    if self._wrapped_lines:
-      # Calculate total height required for spinner and text
-      spacing = WRAPPED_SPACING
-      total_height = TEXTURE_SIZE + spacing + len(self._wrapped_lines) * LINE_HEIGHT
-      center_y = (rect.height - total_height) / 2.0 + TEXTURE_SIZE / 2.0
-    else:
-      # Center spinner vertically
-      spacing = CENTERED_SPACING
-      center_y = rect.height / 2.0
-    y_pos = center_y + TEXTURE_SIZE / 2.0 + spacing
-
-    center = rl.Vector2(rect.width / 2.0, center_y)
-    spinner_origin = rl.Vector2(TEXTURE_SIZE / 2.0, TEXTURE_SIZE / 2.0)
-    comma_position = rl.Vector2(center.x - TEXTURE_SIZE / 2.0, center.y - TEXTURE_SIZE / 2.0)
-
-    delta_time = rl.get_frame_time()
-    self._rotation = (self._rotation + DEGREES_PER_SECOND * delta_time) % 360.0
-
-    # Draw rotating spinner and static comma logo
-    rl.draw_texture_pro(self._spinner_texture, rl.Rectangle(0, 0, TEXTURE_SIZE, TEXTURE_SIZE),
-                        rl.Rectangle(center.x, center.y, TEXTURE_SIZE, TEXTURE_SIZE),
-                        spinner_origin, self._rotation, rl.WHITE)
-    rl.draw_texture_v(self._comma_texture, comma_position, rl.WHITE)
-
-    # Display the progress bar or text based on user input
+    layout = spinner_layout(rect.width, rect.height, len(self._wrapped_lines))
+    draw_logo(rl.Rectangle(rect.x + layout["logo"][0], rect.y + layout["logo"][1], *layout["logo"][2:]))
+    x, y, w, h = layout["spinner"]
+    self._rotation = (self._rotation + DEGREES_PER_SECOND * rl.get_frame_time()) % 360.0
+    rl.draw_texture_pro(
+      self._spinner_texture,
+      rl.Rectangle(0, 0, self._spinner_texture.width, self._spinner_texture.height),
+      rl.Rectangle(rect.x + x + w / 2, rect.y + y + h / 2, w, h),
+      rl.Vector2(w / 2, h / 2),
+      self._rotation,
+      rl.WHITE,
+    )
+    x, y, w, h = layout["status"]
     if self._progress is not None:
-      bar = rl.Rectangle(center.x - PROGRESS_BAR_WIDTH / 2.0, y_pos, PROGRESS_BAR_WIDTH, PROGRESS_BAR_HEIGHT)
+      bar = rl.Rectangle(rect.x + x, rect.y + y, w, h)
       rl.draw_rectangle_rounded(bar, 1, 10, DARKGRAY)
-
       bar.width *= self._progress / 100.0
       rl.draw_rectangle_rounded(bar, 1, 10, rl.WHITE)
     elif self._wrapped_lines:
+      size = layout["font"]
+      step = h / len(self._wrapped_lines)
       for i, line in enumerate(self._wrapped_lines):
-        text_size = measure_text_cached(gui_app.font(), line, FONT_SIZE)
-        rl.draw_text_ex(gui_app.font(), line, rl.Vector2(center.x - text_size.x / 2, y_pos + i * LINE_HEIGHT),
-                        FONT_SIZE, 0.0, rl.WHITE)
+        measured = measure_text_cached(gui_app.font(), line, size)
+        rl.draw_text_ex(gui_app.font(), line, rl.Vector2(rect.x + (rect.width - measured.x) / 2, rect.y + y + i * step), size, 0, rl.WHITE)
 
 
 def _read_stdin():

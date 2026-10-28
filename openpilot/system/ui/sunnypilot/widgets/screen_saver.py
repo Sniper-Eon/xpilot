@@ -4,6 +4,7 @@ Copyright (c) 2021-, Haibin Wen, sunnypilot, and a number of other contributors.
 This file is part of sunnypilot and is licensed under the MIT License.
 See the LICENSE.md file in the root directory for more details.
 """
+
 import os
 import time
 
@@ -11,8 +12,9 @@ import pyray as rl
 
 from openpilot.common.hardware import HARDWARE
 from openpilot.common.params import Params
-from openpilot.system.ui.lib.application import gui_app, FontWeight
-from openpilot.system.ui.lib.text_measure import measure_text_cached
+from openpilot.system.ui.lib.application import gui_app
+from openpilot.tesla.ui.brand_layout import saver_size
+from openpilot.tesla.ui.branding import draw_logo, LOGO_ASPECT
 from openpilot.system.ui.widgets import Widget
 
 
@@ -21,17 +23,12 @@ class ScreenSaverSP(Widget):
     super().__init__()
     self.set_rect(rl.Rectangle(0, 0, gui_app.width, gui_app.height))
     self._params = params or Params()
-    self._is_mici = HARDWARE.get_device_type() == 'mici' or (HARDWARE.get_device_type() == "pc" and os.getenv("BIG") != "1")
+    self._is_mici = HARDWARE.get_device_type() == "mici" or (HARDWARE.get_device_type() == "pc" and os.getenv("BIG") != "1")
 
     self.x = 0.0
     self.y = 100.0
     self.vx = 120.0 if self._is_mici else 300.0
     self.vy = 70.0 if self._is_mici else 200.0
-    self._hue = 205  # cold Tesla-like blue, fixed for the whole screensaver
-    self.color = rl.color_from_hsv(self._hue, 1, 1)
-
-    self.text = "xpilot"
-    self.font_size = 50 if self._is_mici else 200
     self._start_time = None
     self._dismiss = False
     self._screensaver_timeout = 300
@@ -64,10 +61,7 @@ class ScreenSaverSP(Widget):
   def _update_state(self):
     super()._update_state()
 
-    self.font = gui_app.font(FontWeight.AUDIOWIDE)
-    text_size = measure_text_cached(self.font, self.text, self.font_size, 0)
-    self.logo_width = text_size.x
-    self.logo_height = text_size.y
+    self.logo_width, self.logo_height = saver_size(self.rect.width, self.rect.height, self._is_mici, LOGO_ASPECT)
 
     if self._start_time and time.monotonic() - self._start_time > self._screensaver_timeout:
       self._dismiss = True
@@ -97,10 +91,10 @@ class ScreenSaverSP(Widget):
       self.y = 0
       hit_y = True
 
-    # The text keeps one fixed color; the bounce no longer picks a new hue.
+    # Retain motion to avoid a fixed bright logo during standby.
 
   def _render(self, rect: rl.Rectangle):
     self.set_rect(rect)
     rl.clear_background(rl.BLACK)
-    rl.draw_text_ex(self.font, self.text, rl.Vector2(int(self.x), int(self.y)), self.font_size, 0, self.color)
+    draw_logo(rl.Rectangle(rect.x + self.x, rect.y + self.y, self.logo_width, self.logo_height))
     return -1

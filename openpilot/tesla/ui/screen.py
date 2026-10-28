@@ -35,6 +35,7 @@ from openpilot.tesla.ui.pages.onboarding import OnboardingPage
 from openpilot.tesla.ui.plugin_ui import MAX_FAILURES, EnabledPlugins, Overlays, ScreenOverlay, load
 from openpilot.tesla.ui.tile import Tile, text
 from openpilot.tesla.ui.appearance import park_inverse, park_rect
+from openpilot.tesla.ui.branding import draw_logo
 from openpilot.tesla.ui.tiles import LAYOUT_PARAM, LAYOUT_SPEC, SCREEN, THEME_PARAM, THEMES, VIEW
 
 DIM = rl.Color(150, 152, 162, 255)
@@ -396,10 +397,7 @@ class BigScreenHost:
   @staticmethod
   def _draw_park_header() -> None:
     rl.clear_background(rl.Color(7,11,18,255))
-    cyan = rl.Color(87,217,245,255)
-    rl.draw_line_ex(rl.Vector2(164,28),rl.Vector2(212,77),7,cyan)
-    rl.draw_line_ex(rl.Vector2(164,77),rl.Vector2(212,28),7,rl.WHITE)
-    text(FontWeight.BOLD,'X-PILOT',238,24,52)
+    draw_logo(rl.Rectangle(164,22,330,70))
     text(FontWeight.MEDIUM,'Parking dashboard',535,44,25,DIM)
     text(FontWeight.MEDIUM,time.strftime('%H:%M'),1810,26,48)
     text(FontWeight.MEDIUM,time.strftime('%Y.%m.%d'),1797,77,22,DIM)
