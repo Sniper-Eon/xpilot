@@ -1,7 +1,7 @@
 # Upstream source synchronization — 2026-10-28
 
 Source targets: onemiless/xpilot:xpilot
-`38b158fbcc9a3cfad0b12b44d008bb9a32839dae` and onemiless/xpilot-plugins:main
+`1de0b807d1ffde580dd2fd19f49b2f18b329e794` and onemiless/xpilot-plugins:main
 `36f2bfedca506ef86b79701c550820ef1f8a1a06`. User forks remain the only push/store
 and CI peer targets. No device connection, update, restart or flash was performed.
 
@@ -66,3 +66,7 @@ compatibility design and stationary verification before promising parity or
 activating it. Native tests enforce the upstream permission floor rather than
 silently broadening all runtime rules. Physical ACC/SP handoff, the phone CP
 handshake, final device UI and road behavior remain unvalidated.
+
+Latest upstream follow-up #57 is included: parked editable() gates, integer-sized
+dragged view textures, and no owner-switch pause for interruptRateCan2 alone.
+Typed setting validation is preserved at the new editable() call sites.
