@@ -115,10 +115,8 @@ def _validate(staged: Path, entry: IndexEntry) -> None:
   for f in ("__init__.py", f"{module}.py"):
     if not (staged / f).is_file():
       raise ValueError(f"missing {f}")
-  declared = json.loads(SAFETY_JSON.read_text()).get(m.id)
-  tx = {c[7:] for c in m.claims if c.startswith("can.tx:")}
-  if (tx or m.safety) and (m.safety != declared or tx != set(declared["tx"])):
-    raise ValueError("can.tx/safety not declared by this system's panda firmware (safety.json)")
+  if problem := mf.safety_problem(m, json.loads(SAFETY_JSON.read_text())):
+    raise ValueError(problem)
   if problems := mf.layout_problems(staged, module):
     raise ValueError("layout: " + "; ".join(problems))
   taken = mf.compiled_param_keys() | {k for o in mf.load_all(mf.INSTALL_DIR)[0] if o.id != m.id for k in o.params}

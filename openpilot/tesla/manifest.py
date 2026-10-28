@@ -101,6 +101,7 @@ class Manifest:
   params: dict = field(default_factory=dict)
   platform: dict | None = None
   safety: dict | None = None
+  safety_provider: str | None = None  # optional existing firmware policy; no extra TX rights
 
 
 def _setting(d: dict) -> Setting:
@@ -128,6 +129,9 @@ def parse(path: Path) -> Manifest:
   plat = d.get("platform")
   if plat is not None and not (isinstance(plat, dict) and isinstance(plat.get("machine"), str) and isinstance(plat.get("python"), str)):
     raise ValueError(f"bad platform {plat!r}")
+  provider = d.get("safety_provider")
+  if provider is not None and (not isinstance(provider, str) or not re.fullmatch(r"[a-z][a-z0-9_]*", provider) or not d.get("safety")):
+    raise ValueError("bad safety_provider")
   claims = d.get("claims", [])
   if not isinstance(claims, list) or not all(isinstance(c, str) and _CLAIM_RE.fullmatch(c) for c in claims):
     raise ValueError(f"bad claims {claims!r}")
@@ -136,7 +140,7 @@ def parse(path: Path) -> Manifest:
                     category=d["category"], entry=d["entry"], description=str(d.get("description", "")),
                     author=str(d.get("author", "")), priority=int(d.get("priority", 100)), enable_param=d.get("enable_param"),
                     claims=tuple(claims), settings=tuple(_setting(s) for s in d.get("settings", [])), params=dict(d.get("params", {})),
-                    platform=plat, safety=d.get("safety"))
+                    platform=plat, safety=d.get("safety"), safety_provider=provider)
   except (KeyError, TypeError, ValueError) as e:
     raise ValueError(f"bad field: {e!r}") from None
 
@@ -213,3 +217,18 @@ def layout_problems(d: Path, entry_module: str = "plugin") -> list[str]:
     if rel.name != "ui.py" and re.search(r"^\s*(import|from)\s+pyray\b", src, re.M):
       out.append(f"{rel}: imports pyray outside ui.py")
   return out
+
+
+def safety_problem(manifest: Manifest, registry: dict) -> str | None:
+  """A shared sender may use only the exact host-declared firmware policy.
+
+  Exclusive CAN ownership is still resolved by the host. This is a reference to
+  existing checks, not a second firmware slot or an extension of allowed frames.
+  """
+  tx = {c[7:] for c in manifest.claims if c.startswith('can.tx:')}
+  if not tx and not manifest.safety:
+    return None
+  policy = registry.get(manifest.safety_provider or manifest.id)
+  if policy is None or manifest.safety != policy or tx != set(policy.get('tx', [])):
+    return 'can.tx/safety not declared by this system or differs from the referenced firmware policy'
+  return None

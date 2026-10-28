@@ -450,3 +450,7 @@ CI（`.github/workflows/xpilot.yaml`）在每个 PR 上跑以上检查（`upstre
 ## Personal fork development
 
 This checkout is the user fork. Upstream reference repositories are onemiless/xpilot and onemiless/xpilot-plugins; do not push user work upstream without a separate request. New system work stays on xpilot, plugins on the paired main branch. Migration status and actual device activation are separate.
+
+## User fork: shared firmware policy references
+
+A store plugin may declare `safety_provider` naming an existing system safety.json policy, together with its exact `safety` object and exact CAN TX claims. The store rejects unknown policies, changed headers/bits/TX or added addresses. This adds no firmware slot or permissions; each frame still passes the referenced existing Panda checks. Exclusive can.tx claims ensure only one enabled owner. Hosts without this support refuse a new id absent from their own safety registry, so update the host before attempting installation; never silently migrate firmware. This seam permits independently switched navigation implementations to share the same hardware-enforced turn-signal transport.
