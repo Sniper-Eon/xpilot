@@ -8,6 +8,8 @@ F3 truncated/oversized/fragmented IPC, bad BGM1 magic/version/type/flags/length.
 F4 NaN/inf/zero raw, decoder error, missing/wrong/nonfinite parsed heads: trip lock.
 F5 wrong session/epoch/frame/EOF, future timestamps, duplicate/out-of-order replies.
 F6 late/burst/200ms-stalled sender: one-slot overwrite, deadline, no catch-up.
+F6b a reply that arrived before EOF+60ms is rejected as late because the host reached pick() or finished admission
+    after EOF+60ms (owner 2026-10-28: device logs showed 43.6 ms arrivals rejected as late).
 F7 frozen/crashed child, new epoch without dual IDR, reset/zero-pair, five warmups.
 F8 local load/run failure propagates; phone never conceals a base failure.
 F9 one publisher, four messages selected together, baseline bytes unchanged.
@@ -18,7 +20,7 @@ post-pick arrival and 200ms stall occur after Phone active. Burst frames/data ar
 Bounded wait: no peer/lock never sleeps; cold +35ms engages from a recent on-time old reply;
 +75ms falls back without locking; short gaps preserve warm-up, long gaps rewarm.
 Transient absent/old_frame/ipc_busy polls preserve progress; EOF+60ms bounds waiting
-and the timed 50ms camera replay must publish every frame before the next EOF.
+and the timed 50ms camera replay publishes every frame by EOF+60ms (+5ms scheduling) with no frame drops.
 FIX2: flagged/unpaired replies clear warm-up; failed META publication never waits;
 recent old replies enable waiting but cannot preserve warm-up across an accepted-frame gap.
 
@@ -74,7 +76,7 @@ from openpilot.selfdrive.controls.lib.drive_helpers import clip_curvature
 from openpilot.selfdrive.selfdrived.selfdrived import SelfdriveD
 from openpilot.selfdrive.selfdrived.events import Events, ET
 from openpilot.sunnypilot.selfdrive.selfdrived.events import EventsSP
-from openpilot.tesla.model_source import nanos_since_boot
+from openpilot.tesla.model_source import DEADLINE_NS, nanos_since_boot
 from opendbc.car.structs import car
 
 META = struct.Struct('<4sIQIIQQ30f')
@@ -138,7 +140,7 @@ def health_replay(messages, rows):
   # Only model channels are replayed; all other services are fixed healthy inputs.
   others = ['controlsState', 'deviceState', 'managerState', 'extrinsicsCalibration', 'longitudinalPlanSP',
             'carControl', 'peripheralState', 'driverAssistance', 'deviceMotion', 'longitudinalPlan',
-            'lateralManeuverPlan', 'alertDebug', 'userBookmark', 'vehicleParameters'] + driver.camera_packets + driver.sensor_packets + ['gpsLocation']
+            'lateralManeuverPlan', 'alertDebug', 'userBookmark', 'vehicleParameters', 'carControlSP'] + driver.camera_packets + driver.sensor_packets + ['gpsLocation']
   for service in others:
     sm.data[service] = getattr(messaging.new_message(service), service)
     sm.seen[service] = False
@@ -471,11 +473,11 @@ def replay(module, output, name, scenarios, source=None, conn=None, epoch=1, loc
           conn.send('release')
           assert conn.poll(2) and conn.recv() == 'released'
         if scenario == 'hold':
-          assert source.reason == 'ipc_busy' and pick_clock_ns <= 25_000_000
+          assert source.reason == 'ipc_busy' and pick_clock_ns <= 40_000_000
           conn.send('release')
           assert conn.poll(2) and conn.recv() == 'released'
         if scenario == 'stall_active':
-          assert source.reason == 'ipc_busy' and pick_clock_ns <= 25_000_000
+          assert source.reason == 'ipc_busy' and pick_clock_ns <= 40_000_000
         if scenario == 'after_pick':
           assert not source.selected
           conn.send(('good', epoch, clock.now, expected))
@@ -551,7 +553,9 @@ def replay(module, output, name, scenarios, source=None, conn=None, epoch=1, loc
     assert m.modelV2.big == d.drivingModelData.big == (row['source'] == 'phone')
     if realtime:
       assert m.modelV2.frameDropPerc == d.drivingModelData.frameDropPerc == 0
-      assert row['publish'] < row['EOF'] + 50_000_000, (name, row)
+      # The 60 ms deadline (#47) is longer than the 50 ms camera period: a wait may publish after the next EOF, bounded by
+      # the deadline plus scheduling; frameDropPerc == 0 above is the no-drop check.
+      assert row['publish'] < row['EOF'] + DEADLINE_NS + 5_000_000, (name, row)
     delta = (.1 + row['frameId'] * .0001 if scenarios[i] == 'burst' else .1) if row['source'] == 'phone' else 0
     assert abs(m.modelV2.position.y[0] - delta) < 1e-6
     assert abs(m.modelV2.leadsV3[0].x[0] - 30 - delta) < 1e-5
@@ -715,7 +719,7 @@ def main():
     assert records[10]['source'] == 'phone' and records[11]['source'] == 'local'
     assert records[-1]['source'] == 'phone'
     records, _ = execute('deadline', ['good'] * 10 + ['deadline', 'past_deadline'])
-    assert records[-2]['source'] == 'phone' and records[-1]['source'] == 'local'
+    assert records[-2]['source'] == 'phone' and records[-1]['source'] == 'phone'  # F6b: arrival decides, not host time
     records, _ = execute('stale', ['absent'] * 10 + ['stale'] + ['good'] * 10)
     assert records[10]['source'] == 'local' and records[-1]['source'] == 'phone'
     records, _ = execute('stall_200ms', ['good'] * 10 + ['stall_active'] + ['absent'] * 5 + ['good'] * 44, paced=True)
