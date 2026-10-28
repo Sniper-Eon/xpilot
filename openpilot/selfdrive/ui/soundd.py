@@ -95,6 +95,8 @@ class Soundd(QuietMode):
     self._nav_chime_now = False
     self._param_frame = 0
 
+    self.spl_filter_weighted = FirstOrderFilter(0, 2.5, FILTER_DT, initialized=False)
+
   def _read_only_nav_chime(self) -> bool:
     try:
       return ONLY_NAV_CHIME_PARAM.read_text().strip() == '1'
@@ -105,8 +107,6 @@ class Soundd(QuietMode):
     if self.only_nav_chime:
       return current_alert == AudibleAlert.prompt and self._nav_chime_now
     return super().should_play_sound(current_alert)
-
-    self.spl_filter_weighted = FirstOrderFilter(0, 2.5, FILTER_DT, initialized=False)
 
   def load_sounds(self):
     self.loaded_sounds: dict[int, np.ndarray] = {}
