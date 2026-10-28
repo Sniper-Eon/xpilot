@@ -70,3 +70,7 @@ handshake, final device UI and road behavior remain unvalidated.
 Latest upstream follow-up #57 is included: parked editable() gates, integer-sized
 dragged view textures, and no owner-switch pause for interruptRateCan2 alone.
 Typed setting validation is preserved at the new editable() call sites.
+
+The first Linux host CI exposed missing opendbc checkout/import paths in the
+workflow for the retained Chinese translation check. The workflow now initializes
+that declared submodule and supplies its import path; no vehicle logic changed.
