@@ -3,7 +3,7 @@
 (openpilot/tesla/ui/offroad.py) and the static shape of openpilot/tesla/ui/pages/ and the settings tiles. Drawing is not checked here (tools/sp_tesla_e2e/big_screen_e2e.py on the device).
 
 Failure cases listed before implementation:
-- O1 a settings tile (ui/slots/settings.py, plugins/sp_models/ui.py) has no PAGE, its PAGE is not imported from a pages/<name>.py whose class defines
+- O1 a settings tile (ui/slots/settings.py, ui/slots/models.py) has no PAGE, its PAGE is not imported from a pages/<name>.py whose class defines
      show_event, a tile still sets MICI (no settings tile opens a mici layout), or the Store sub-page has no such module
 - O2 a page reads or writes a param key (string literal in get/get_bool/put/put_bool/remove) the compiled Params does not know
 - O3 the Plugins rows miss a PLUGINS entry or one of its settings, or a plugin that failed to load is not listed first
@@ -24,6 +24,15 @@ Failure cases listed before implementation:
      view leaves the content rect
 - O11 a tesla UI module uses a pyray type in a | union annotation without from __future__ import annotations
      (pyray types are functions on the device: TypeError at import, UI exits)
+- O14 non-printable/non-ASCII or overlong text/secret input is accepted; valid empty/space/boundary input is lost
+- O15 secret label leaks content/length, empty secret lacks Not set, or new paths contain logging/fault output
+- O16 either settings page omits the text editor or its offroad entry/commit gates (GPU case 28 exercises both)
+- O17 existing BOOL/range/choices row kinds or labels change
+- O18 the core XpLongOwnerManual key or settings row is still present (moved to tesla_dynamic_acc, owner 2026-10-28)
+- O20 a numeric (range) setting has no -/+ stepper on either settings page, a step leaves [min, max] or the step grid,
+     or an off-grid/unknown stored value does not snap back into range
+- O19 plugin notifications lose their source, severity clamp or 80-character limit, malformed input leaks through,
+     a reader error breaks alerts, or the mici alert list does not include them
 """
 import ast
 import json
@@ -75,7 +84,7 @@ PARAM_CALLS = {"get", "get_bool", "put", "put_bool", "remove"}
 def check_tiles(errors: list) -> None:
   pages = {f"openpilot.tesla.ui.pages.{m}" for m in PAGE_MODULES.values()}
   tiles = []
-  for f in ("tesla/ui/slots/settings.py", "tesla/plugins/sp_models/ui.py"):  # the Models tile belongs to sp_models
+  for f in ("tesla/ui/slots/settings.py", "tesla/ui/slots/models.py"):
     tree = ast.parse((PKG / f).read_text())
     imported = {a.asname or a.name: n.module for n in tree.body if isinstance(n, ast.ImportFrom) for a in n.names}
     tiles += [(n, imported) for n in tree.body if isinstance(n, ast.ClassDef) and any(isinstance(b, ast.Assign) and b.targets[0].id == "SPEC" for b in n.body
@@ -130,13 +139,13 @@ def check_plugins(errors: list) -> None:
   for p in PLUGINS:
     for s in p.SETTINGS:
       kind = offroad.setting_kind(s)
-      if kind not in ("toggle", "buttons", "cycle") or (kind == "toggle") != (s.range is None and s.choices is None):
+      if kind not in ("text", "secret", "toggle", "buttons", "cycle", "stepper") or (kind == "toggle") != (s.type is None and s.range is None and s.choices is None):
         errors.append(f"O3 setting {s.key} kind {kind}")
   if offroad.next_choice([("a", 1), ("b", 2)], 2) != 1 or offroad.next_choice([("a", 1), ("b", 2)], 9) != 1:
     errors.append("O3 next_choice does not wrap or recover from an unknown value")
 
   def fake(name, claims, param):
-    return type(name, (), {"NAME": name, "PRIORITY": 0, "CLAIMS": claims, "ENABLE_PARAM": param})
+    return type(name, (), {"NAME": name, "PRIORITY": 0, "CLAIMS": claims, "ENABLE_PARAM": param, "MANIFEST": PLUGINS[0].MANIFEST})
   a, b, c, d = fake("a", ["x.claim"], "ExtAOn"), fake("b", ["x.claim"], "ExtBOn"), fake("c", ["y.claim"], "ExtCOn"), fake("d", ["x.claim"], None)
   saved = offroad.PLUGINS
   offroad.PLUGINS = (a, b, c, d)
@@ -158,13 +167,13 @@ def check_store(errors: list) -> None:
                                                                           "0" * 64, None, installable)
   saved = store.installed_versions, store.install, store.uninstall
   store.installed_versions = lambda: {"same": "1.0.0", "old": "0.9.0", "gone": "1.0.0"}
-  store.install = lambda e: calls.append(("install", e.id))
+  store.install = lambda e, **kw: calls.append(("install", e.id, kw.get("activate", False)))
   store.uninstall = lambda pid: calls.append(("uninstall", pid))
   try:
     offroad_now = [True]
     jobs = offroad.StoreJobs(lambda: offroad_now[0])
     jobs.entries = [entry("new"), entry("same"), entry("old"), entry("api", installable=False), entry("gone", installable=False)]
-    want = {"new": ("INSTALL", "v1.0.0", True), "same": ("REMOVE", "v1.0.0 installed", True), "old": ("UPDATE", "v0.9.0 -> v1.0.0", True),
+    want = {"new": ("INSTALL & ENABLE", "v1.0.0", True), "same": ("REMOVE", "v1.0.0 Installed", True), "old": ("UPDATE", "v0.9.0 -> v1.0.0", True),
             "api": ("N/A", f"needs api {mf.API_VERSION}", False), "gone": ("REMOVE", "v1.0.0 installed", True)}
     for e in jobs.entries:
       got = (jobs.action(e), jobs.row_value(e), jobs.can_act(e.id))
@@ -185,7 +194,7 @@ def check_store(errors: list) -> None:
     jobs.run(lambda: jobs.act("same"), wait=True)
     jobs.run(lambda: jobs.act("old"), wait=True)
     jobs.run(lambda: jobs.act("api"), wait=True)
-    if calls != [("install", "new"), ("uninstall", "same"), ("install", "old")]:
+    if calls != [("install", "new", True), ("uninstall", "same"), ("install", "old", False)]:
       errors.append(f"O5 store actions: {calls}")
     jobs.entries = []
     if jobs.action(None, "old") != "REMOVE" or jobs.action(None, "nope") != "N/A" or not jobs.can_act("old"):
@@ -255,6 +264,28 @@ def check_alerts(errors: list) -> None:
   if offroad.offroad_alerts(FakeParams()):
     errors.append("O8 alerts shown with no alert param set")
 
+  class FakeReader:
+    def fresh(self, kind):
+      assert kind == "host.notify"
+      return {"weather": {"severity": 9, "text": "  " + "x" * 90 + "  "},
+              "not-a-dict": "bad", "not-text": {"text": 3}, "not-severity": {"text": "bad", "severity": "1"}}
+
+  original = getattr(offroad, "_plugin_msgs", None)
+  try:
+    offroad._plugin_msgs = FakeReader()
+    notifications = offroad.offroad_alerts(FakeParams())
+    if notifications != [(1, "weather: " + "x" * 80)]:
+      errors.append(f"O19 plugin notifications: {notifications}")
+    offroad._plugin_msgs = type("BrokenReader", (), {"fresh": lambda self, kind: (_ for _ in ()).throw(OSError("broken"))})()
+    if offroad.offroad_alerts(FakeParams()):
+      errors.append("O19 reader error leaked into offroad alerts")
+  finally:
+    offroad._plugin_msgs = original
+
+  mici = (PKG / "selfdrive/ui/mici/layouts/offroad_alerts.py").read_text()
+  if "plugin_notifications()" not in mici:
+    errors.append("O19 mici alert list misses plugin notifications")
+
 
 def check_sources(errors: list) -> None:
   screen = (PKG / "tesla/ui/screen.py").read_text()
@@ -276,9 +307,76 @@ def check_sources(errors: list) -> None:
       errors.append(f"O11 {path.relative_to(ROOT)}: rl type in a | union without from __future__ import annotations")
 
 
+def check_text_settings(errors: list) -> None:
+  from openpilot.tesla.ui.settings_meta import setting_label
+  from types import SimpleNamespace
+  for kind in ("text", "secret"):
+    setting = SimpleNamespace(key="Value", label="Value", type=kind, max_len=64, range=None, choices=None)
+    if offroad.setting_kind(setting) != kind:
+      errors.append("O16 text/secret row falls through to toggle")
+    if kind == "secret":
+      if [setting_label(setting, v) for v in (None, "", "a", "longer-value")] != ["Not set", "Not set", "******", "******"]:
+        errors.append("O15 secret label reveals value/length or empty label wrong")
+    elif setting_label(setting, None) != "Not set" or setting_label(setting, "hello") != "hello":
+      errors.append("O14 text label wrong")
+    try:
+      real = mf.Setting("Value", "Value", type=kind, max_len=64)
+    except TypeError:
+      errors.append("O14 missing input validation")
+      continue
+    for value in ("\x00", "\n", "\t", "\x1f", "\x7f", "é", "a" * 65):
+      if not real.input_error(value):
+        errors.append("O14 invalid input accepted")
+    for value in ("", " ", " !~", "a" * 64):
+      if real.input_error(value):
+        errors.append("O14 valid input refused")
+  paths = ["tesla/ui/setting_keyboard.py", "tesla/ui/settings_page.py", "tesla/ui/pages/base.py", "tesla/ui/settings_meta.py"]
+  tree = ast.parse((PKG / "tesla/manifest.py").read_text())
+  setting_source = "\n".join(ast.get_source_segment((PKG / "tesla/manifest.py").read_text(), n) for n in tree.body
+                             if isinstance(n, (ast.ClassDef, ast.FunctionDef)) and n.name in ("Setting", "_setting"))
+  if re.search(r"\b(cloudlog|print|logging|record_fault)\b", setting_source):
+    errors.append("O15 logging/fault output in manifest Setting")
+  for name in paths:
+    path = PKG / name
+    if not path.exists():
+      errors.append("O16 shared keyboard missing")
+      continue
+    if re.search(r"\b(cloudlog|print|logging|record_fault)\b", path.read_text()):
+      errors.append("O15 logging/fault output in setting paths: " + name)
+  for name in ("tesla/ui/settings_page.py", "tesla/ui/pages/base.py"):
+    if "edit_text_setting(" not in (PKG / name).read_text():
+      errors.append("O16 settings page missing shared editor: " + name)
+  for setting, kind, label, value in ((mf.Setting("b", "Bool"), "toggle", "True", True),
+      (mf.Setting("r", "Range", (0, 10, 1, "%", 1)), "stepper", "5%", 5),
+      (mf.Setting("c", "Choice", choices=(("A", 1), ("B", 2))), "buttons", "B", 2)):
+    if offroad.setting_kind(setting) != kind or setting_label(setting, value) != label:
+      errors.append("O17 legacy row changed")
+
+
+def check_stepper(errors: list) -> None:
+  r = mf.Setting("r", "Range", (20, 140, 5, "km/h", 1))
+  if offroad.setting_kind(r) != "stepper" or offroad.setting_kind(mf.Setting("s", "Small", (0, 2, 1, "%", 1))) != "stepper":
+    errors.append("O20 range setting is not a stepper")
+  cases = ((70, 1, 75), (70, -1, 65), (140, 1, 140), (20, -1, 20), (72, 1, 75), (72, -1, 70), (None, 1, 20), (999, -1, 140))
+  for value, delta, want in cases:
+    if offroad.step_value(r, value, delta) != want:
+      errors.append(f"O20 step_value({value}, {delta}) != {want}")
+  for name in ("tesla/ui/settings_page.py", "tesla/ui/pages/base.py"):
+    if "step_value(" not in (PKG / name).read_text():
+      errors.append("O20 no -/+ stepper in " + name)
+
+
+def check_long_owner(errors):
+  """O18: the manual long-owner toggle moved to tesla_dynamic_acc (owner 2026-10-28); no core key or settings row remains."""
+  from openpilot.tesla.ui.settings_meta import VEHICLE_SETTINGS
+  assert all(s.key != 'XpLongOwnerManual' for s in VEHICLE_SETTINGS), 'O18 core manual row'
+  assert 'XpLongOwnerManual' not in (ROOT / 'openpilot/common/params_keys.h').read_text(), 'O18 core manual key'
+
+
 def main() -> int:
   errors: list[str] = []
-  for check in (check_tiles, check_pages, check_plugins, check_store, check_market, check_models, check_view, check_alerts, check_sources):
+  for check in (check_tiles, check_pages, check_plugins, check_store, check_market, check_models, check_view, check_alerts,
+                check_sources, check_text_settings, check_stepper, check_long_owner):
     try:
       check(errors)
     except Exception as e:

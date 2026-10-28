@@ -18,6 +18,17 @@ Failure cases listed before implementation:
      outside ui.py passes; or a built-in plugin breaks the rules
 - M12 a new plugin directory appears under openpilot/tesla/plugins/ (only the SP core plugins stay built in;
       everything else goes to the plugin repository, github.com/onemiless/xpilot-plugins)
+- M13 a built-in or store TileSpec omits an explicit valid show; the repository scan misses it (store_e2e included)
+- M14 a missing/invalid use is accepted or discovery loses the rejection reason
+- M15 a plugin tile show conflicts with its declared use
+- M16 requires accepts malformed fields, unknown hooks/messages/native ABI, or an unavailable rule ABI
+- M17 HOST_CAPS hooks drift from Plugin methods plus optional event_filter, or requires breaks API 1 plugins
+- M18 ABI 1 is not advertised after the runtime engine lands
+- M19 unknown/null/non-string setting type, or text/secret mixed with range/choices, loads anyway
+- M20 max_len zero, >256, bool, non-integer, or used without text/secret is accepted
+- M21 text/secret on an undeclared or non-STRING param is accepted
+- M22 text/secret default/cap length or existing BOOL/range/choices metadata changes
+- M23 long.owner without requires.hooks=long_owner loads, its exclusive claim is shared, or an old host accepts it
 """
 import json
 from pathlib import Path
@@ -43,7 +54,7 @@ CORE_PLUGINS = {"sp_engagement", "sp_models", "sp_safety_fallback"}
 
 def write(root: Path, d: str, **over) -> None:
   m = {"id": d, "name": d, "version": "1.0.0", "api": mf.API_VERSION, "category": "body_comfort", "entry": "plugin:X",
-       "enable_param": f"{d}On", "claims": [], "priority": 100}
+       "use": "both", "enable_param": f"{d}On", "claims": [], "priority": 100}
   m.update(over)
   (root / d).mkdir()
   (root / d / "plugin.json").write_text(json.dumps(m))
@@ -57,8 +68,116 @@ class FakeParams:
     return bool(self.values.get(key, False))
 
 
-def main() -> int:
+def tile_show_problems(path: Path) -> list[str]:
+  """Shared source check, including plugins not importable on this host."""
+  return ["M13 " + p for p in mf.tile_problems(path)]
+
+
+def capability_checks() -> list[str]:
+  from dataclasses import replace
   errors = []
+  if not hasattr(mf, "compatible"):
+    return ["M16 missing compatible", "M17 missing HOST_CAPS"]
+  hooks = {name for name, value in vars(Plugin).items() if callable(value) or isinstance(value, classmethod)}
+  if set(mf.HOST_CAPS["hooks"]) != hooks | {"event_filter"} or mf.RULE_ABI != 1 or mf.HOST_CAPS["rule_abi"] != 1:
+    errors.append("M18 hook inventory or missing rule ABI 1")
+  m = mf.load_all()[0][0]
+  for requires, ok, reason in (({}, True, ""), ({"hooks": ["setup"]}, True, ""),
+      ({"hooks": ["teleport"]}, False, "teleport"), ({"msg": ["demo.hint"]}, True, ""),
+      ({"rule_abi": 2}, False, "rule_abi"), ({"native": mf.host_platform()}, True, ""),
+      ({"native": {"machine": "sparc", "python": "cpython-27"}}, False, "native"),
+      ([], False, "requires"), (None, False, "requires"), ({"hooks": "setup"}, False, "hooks"),
+      ({"hooks": [1]}, False, "hooks"), ({"msg": ["bad kind"]}, False, "msg"),
+      ({"msg": "demo.hint"}, False, "msg"), ({"rule_abi": True}, False, "rule_abi"),
+      ({"rule_abi": "1"}, False, "rule_abi"), ({"native": {}}, False, "native"),
+      ({"native": []}, False, "native"), ({"unknown": 1}, False, "requires")):
+    result, why = mf.compatible(replace(m, requires=requires), mf.HOST_CAPS)
+    if result != ok or reason not in why:
+      errors.append(f"M16 requires={requires!r}: {result}, {why!r}")
+  caps = {**mf.HOST_CAPS, "msg": ["known.hint"], "rule_abi": 1}
+  if mf.compatible(replace(m, requires={"msg": ["demo.hint"]}), caps)[0] or not mf.compatible(replace(m, requires={"rule_abi": 1}), caps)[0]:
+    errors.append("M16 advertised message/rule capabilities ignored")
+  if m.api != 1 or not mf.compatible(m, mf.HOST_CAPS)[0]:
+    errors.append("M17 legacy manifest without requires refused")
+  return errors
+
+
+def text_setting_checks() -> list[str]:
+  errors = []
+  with tempfile.TemporaryDirectory() as tmp:
+    root = Path(tmp)
+    cases = []
+    for kind in ("number", None, 1, [], {}):
+      cases.append(("M19", {"type": kind}, {"type": "STRING"}))
+    for kind in ("text", "secret"):
+      for extra in ({"range": [0, 2, 1, "", 1]}, {"choices": [["A", 1]]}):
+        cases.append(("M19", {"type": kind, **extra}, {"type": "STRING"}))
+      for length in (0, 257, -1, True, 1.5, "64", None):
+        cases.append(("M20", {"type": kind, "max_len": length}, {"type": "STRING"}))
+      for spec in (None, {"type": "BOOL"}, {"type": "INT"}, {"type": "JSON"}):
+        cases.append(("M21", {"type": kind}, spec))
+    cases.append(("M20", {"max_len": 64}, {"type": "BOOL"}))
+    for i, (case, fields, spec) in enumerate(cases):
+      name = f"bad_{i}"
+      write(root, name, settings=[{"key": "Value", "label": "Value", **fields}], params={"Value": spec} if spec else {})
+      try:
+        mf.parse(root / name / "plugin.json")
+        errors.append(f"{case} invalid setting accepted (fixture {i})")
+      except ValueError:
+        pass
+    for kind in ("text", "secret"):
+      for length in (None, 1, 256):
+        name = f"valid_{kind}_{length}"
+        fields = {"type": kind, **({"max_len": length} if length is not None else {})}
+        write(root, name, settings=[{"key": "Value", "label": "Value", **fields}], params={"Value": {"type": "STRING"}})
+        setting = mf.parse(root / name / "plugin.json").settings[0]
+        if getattr(setting, "type", None) != kind or getattr(setting, "max_len", None) != (64 if length is None else length):
+          errors.append("M22 text/secret metadata lost")
+    write(root, "legacy", settings=[{"key": "Bool", "label": "Bool"},
+          {"key": "Range", "label": "Range", "range": [0, 10, 1, "%", 1]},
+          {"key": "Choice", "label": "Choice", "choices": [["A", 1], ["B", 2]]}])
+    legacy = mf.parse(root / "legacy/plugin.json").settings
+    if legacy != (mf.Setting("Bool", "Bool"), mf.Setting("Range", "Range", (0, 10, 1, "%", 1)),
+                  mf.Setting("Choice", "Choice", choices=(("A", 1), ("B", 2)))):
+      errors.append("M22 legacy metadata changed")
+  return errors
+
+
+def long_owner_checks():
+  with tempfile.TemporaryDirectory() as tmp:
+    root = Path(tmp)
+    for i, requires in enumerate(({}, {'hooks': []}, {'hooks': ['long_owner']})):
+      name = f'owner_{i}'
+      write(root, name, claims=['role:long.owner'], requires=requires)
+      try:
+        m = mf.parse(root / name / 'plugin.json')
+        assert i == 2, 'M23 missing hook requirement'
+      except ValueError:
+        assert i != 2, 'M23 valid owner refused'
+    old = {**mf.HOST_CAPS, 'hooks': tuple(h for h in mf.HOST_CAPS['hooks'] if h != 'long_owner')}
+    assert mf.compatible(m, mf.HOST_CAPS)[0] and not mf.compatible(m, old)[0], 'M23 capability gate'
+    assert not mf.shared('role:long.owner'), 'M23 shared owner'
+    assert mf.resolve([('b', 100, m.claims), ('a', 100, m.claims)], {'a', 'b'}) == ({'a'}, {'b': 'a'}), 'M23 exclusive'
+  return []
+
+
+def main() -> int:
+  errors = capability_checks() + text_setting_checks() + long_owner_checks()
+  from openpilot.tesla.ui.tiles import TileSpec
+  try:
+    TileSpec("missing", "Missing")
+    errors.append("M13 runtime TileSpec accepted missing show")
+  except TypeError:
+    pass
+  for path in sorted((ROOT / "openpilot/tesla/ui/slots").rglob("*.py")) + sorted(mf.PLUGINS_DIR.glob("*/ui.py")):
+    errors += tile_show_problems(path)
+  with tempfile.TemporaryDirectory() as tmp:
+    path = Path(tmp) / "ui.py"
+    for declaration, count in (('TileSpec("x", "X")', 1), ('TileSpec("x", "X", show="never")', 1),
+                               ('TileSpec("x", "X", show="onroad")', 0)):
+      path.write_text(declaration)
+      if len(tile_show_problems(path)) != count:
+        errors.append(f"M13 declaration check: {declaration}")
   with tempfile.TemporaryDirectory() as tmp:
     root = Path(tmp)
     write(root, "good_b", priority=50)
@@ -84,6 +203,28 @@ def main() -> int:
       errors.append("M9 unknown claim kind accepted")
     if ids != ["early", "good_a", "good_b"]:
       errors.append(f"M2 order {ids}")
+
+  with tempfile.TemporaryDirectory() as tmp:
+    root = Path(tmp)
+    for i, use in enumerate((None, "", "never", [], {}, True, 1)):
+      write(root, f"bad_use_{i}", use=use)
+    write(root, "missing_use")
+    path = root / "missing_use" / "plugin.json"
+    data = json.loads(path.read_text())
+    del data["use"]
+    path.write_text(json.dumps(data))
+    for use in ("onroad", "offroad", "both"):
+      write(root, use, use=use)
+    found, rejected = mf.load_all(root)
+    if {m.id for m in found} != {"onroad", "offroad", "both"} or len(rejected) != 8 or any("use" not in e for e in rejected.values()):
+      errors.append(f"M14 invalid use accepted/missing reason: {found}, {rejected}")
+    path = root / "ui.py"
+    for use in ("onroad", "offroad", "both"):
+      for show in ("onroad", "offroad", "always"):
+        path.write_text(f'TileSpec("x", "X", show={show!r})')
+        expected = use != "both" and show != use
+        if not hasattr(mf, "tile_problems") or bool(mf.tile_problems(path, use)) != expected:
+          errors.append(f"M15 tile show={show} use={use}")
 
   X = "can.tx:0x3C2:1"
   items = [("b", 10, (X, "long.target")), ("a", 10, (X,)), ("c", 5, (X,)), ("d", 1, ("long.target", "plan.filter"))]
@@ -169,6 +310,8 @@ def main() -> int:
     errors.append(f"M8 {len(found)} manifests but {len(builtin)} built-in plugin classes")
 
   for m in found:
+    if (path := mf.PLUGINS_DIR / m.id / "ui.py").exists() and hasattr(mf, "tile_problems"):
+      errors += [f"M15 {m.id}: {p}" for p in mf.tile_problems(path, m.use)]
     errors += [f"M11 {m.id}/{p}" for p in mf.layout_problems(mf.PLUGINS_DIR / m.id, m.entry.split(":")[0])]
   extra = {d.name for d in mf.PLUGINS_DIR.iterdir() if d.is_dir() and d.name != "__pycache__"} - CORE_PLUGINS
   if extra:

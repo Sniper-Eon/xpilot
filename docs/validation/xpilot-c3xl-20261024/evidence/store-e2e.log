@@ -1,0 +1,17 @@
+kj/filesystem-disk-unix.c++:1734: warning: PWD environment variable doesn't match current directory; pwd = /data/openpilot
+Traceback (most recent call last):
+  File "/data/xpilot-agnos19.9-20261025/candidate/tools/sp_tesla_e2e/store_e2e.py", line 132, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/data/xpilot-agnos19.9-20261025/candidate/tools/sp_tesla_e2e/store_e2e.py", line 82, in main
+    if not e.installable or (r := store.install(e)) is not None:
+                                  ^^^^^^^^^^^^^^^^
+  File "/data/xpilot-agnos19.9-20261025/candidate/openpilot/tesla/store.py", line 131, in install
+    if Params().get_bool("IsOnroad"):
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/xpilot-agnos19.9-20261025/candidate/openpilot/common/params.py", line 167, in get_bool
+    return bool(params_get_bool(self.p, self.check_key(key), block))
+                                        ^^^^^^^^^^^^^^^^^^^
+  File "/data/xpilot-agnos19.9-20261025/candidate/openpilot/common/params.py", line 134, in check_key
+    raise UnknownKeyName(key)
+openpilot.common.params.UnknownKeyName: b'IsOnroad'

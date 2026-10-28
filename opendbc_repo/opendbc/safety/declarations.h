@@ -37,6 +37,11 @@
 #define SAFETY_BYD 35U
 #define SAFETY_MG 38U
 
+#define XPILOT_RULES_ABI 1U
+#define XPILOT_RULES_MAX 8U
+#define XPILOT_RULES_BYTES 4096U
+#define XPILOT_RULES_MAGIC 0x31525058U
+
 #define GET_BIT(msg, b) ((bool)!!(((msg)->data[((b) / 8U)] >> ((b) % 8U)) & 0x1U))
 #define GET_FLAG(value, mask) (((value) & (mask)) == (mask))
 
@@ -343,6 +348,7 @@ extern uint16_t current_safety_param_sp;
 extern safety_config current_safety_config;
 
 int safety_fwd_hook(int bus_num, int addr);
+int safety_rx_fwd_hook(const CANPacket_t *msg, bool *valid, bool tx_available);
 int set_safety_hooks(uint16_t mode, uint16_t param);
 
 extern const safety_hooks body_hooks;

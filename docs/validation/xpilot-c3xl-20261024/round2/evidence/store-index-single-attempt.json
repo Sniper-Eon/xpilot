@@ -1,0 +1,10 @@
+{
+  "url": "https://raw.githubusercontent.com/onemiless/xpilot-plugins/main/index.json",
+  "attempts": 1,
+  "explicit_retries": 0,
+  "timeout_seconds": 25,
+  "command_rc": 124,
+  "error": "timeout exit 124 after 25 seconds; fetch_index did not return before the deadline",
+  "classification": "ENV",
+  "capture": "outer timeout result; inner fetch_index JSON was not produced"
+}

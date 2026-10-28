@@ -7,7 +7,7 @@ See the LICENSE.md file in the root directory for more details.
 import pyray as rl
 
 from openpilot.selfdrive.ui.mici.onroad.hud_renderer import HudRenderer
-from openpilot.tesla.ui.plugin_ui import HudOverlay, Overlays
+from openpilot.tesla.ui.plugin_ui import HudOverlay, Overlays, draw_builtin  # xpilot: editable built-in HUD
 from openpilot.selfdrive.ui.sunnypilot.onroad.blind_spot_indicators import BlindSpotIndicators
 from openpilot.selfdrive.ui.ui_state import ui_state
 
@@ -31,8 +31,8 @@ class HudRendererSP(HudRenderer):
 
   def _render(self, rect: rl.Rectangle) -> None:
     super()._render(rect)
-    self.blind_spot_indicators.render(rect)
-    self.plugin_overlays.each(lambda w: w.render(rect))
+    draw_builtin("blind_spot_indicators", rect, self.blind_spot_indicators.render)  # xpilot: move-only safety indication
+    self.plugin_overlays.render_hud(rect)
 
   def _has_blind_spot_detected(self) -> bool:
 

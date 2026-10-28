@@ -11,22 +11,31 @@
 - Fault isolation: a plugin that raises in any hook is logged, recorded in Params XpilotPluginFaults (shown on the
   Plugins page) and dropped for the rest of the process; the other plugins and SP carry on.
 """
+import hashlib
 import importlib
 import importlib.util
 import json
 import os
 import socket
 import math
+import os
+import socket
 import sys
 import time
 import types
 
+from openpilot.cereal.services import SERVICE_LIST
 from openpilot.common.swaglog import cloudlog
-from openpilot.tesla import manifest as mf
+from openpilot.tesla import manifest as mf, panda_rules
 from openpilot.tesla.plugin import Plugin
 from openpilot.tesla.plugin_params import ParamsView
 
 FAULTS_PARAM = "XpilotPluginFaults"
+REQUIRED_ROLES = ("role:perception.model", "role:engagement.state", "role:safety.fallback")
+ROLE_PROCESSES = {"role:perception.model": ("models_manager", "modeld", "modeld_tinygrad", "modeld_warmup")}
+
+
+STOCK_AP = "role:stock.ap"  # exclusive: the holder runs the car on its stock AP (panda TeslaSafetyFlagsSP.STOCK_AP)
 
 
 def _import_installed(m, module: str):
@@ -57,9 +66,6 @@ def _discover() -> tuple[tuple, dict[str, str], dict[str, dict]]:
     if clash:
       errors[m.id] = f"installed plugin clashes with an existing id or param: {clash}"
       continue
-    if not mf.platform_ok(m.platform):
-      errors[m.id] = f"built for {m.platform}, this device is {mf.host_platform()}"
-      continue
     manifests.append(m)
     specs.update(m.params)
   order = list(mf.CATEGORIES)
@@ -67,19 +73,32 @@ def _discover() -> tuple[tuple, dict[str, str], dict[str, dict]]:
   installed_ids = {m.id for m in installed}
   classes = []
   for m in manifests:
+    ok, reason = mf.compatible(m, mf.HOST_CAPS)
+    if not ok:
+      errors[m.id] = reason
+      continue
     module, name = m.entry.split(":")
     try:
+      root = (mf.INSTALL_DIR if m.id in installed_ids and m not in builtin else mf.PLUGINS_DIR) / m.id
+      digest = hashlib.sha256()
+      for path in sorted(root.rglob("*")):
+        if path.is_file() and "__pycache__" not in path.parts and path.suffix != ".pyc":
+          data = path.read_bytes()
+          digest.update(path.relative_to(root).as_posix().encode() + b"\0" + len(data).to_bytes(8, "big") + data)
       mod = _import_installed(m, module) if m.id in installed_ids and m not in builtin else \
             importlib.import_module(f"{__name__}.{m.id}.{module}")
       cls = getattr(mod, name)
       if not (isinstance(cls, type) and issubclass(cls, Plugin)):
         raise TypeError(f"{m.entry} is not a Plugin subclass")
+      if unknown := set(cls.SERVICES) - SERVICE_LIST.keys():
+        raise ValueError(f"unknown SERVICES: {sorted(unknown)}")
     except Exception as e:
       cloudlog.exception(f"xpilot plugin {m.id} failed to import")
       errors[m.id] = f"import: {e!r}"[:200]
       continue
     cls.NAME, cls.TITLE, cls.DESCRIPTION, cls.CATEGORY = m.id, m.name, m.description, m.category
     cls.PRIORITY, cls.ENABLE_PARAM, cls.CLAIMS, cls.SETTINGS, cls.MANIFEST = m.priority, m.enable_param, m.claims, m.settings, m
+    cls.SHA256 = digest.hexdigest()
     classes.append(cls)
   return tuple(classes), errors, specs
 
@@ -113,11 +132,23 @@ def resolve(params) -> tuple[set[str], dict[str, str]]:
   return mf.resolve([(c.NAME, c.PRIORITY, c.CLAIMS) for c in PLUGINS], {c.NAME for c in PLUGINS if is_enabled(c, params)})
 
 
+def log_snapshot(params) -> None:
+  """card start: freeze the enabled winners and the compiled rule table identity for this drive."""
+  from openpilot.common.version import get_build_metadata
+  snapshot = {"system_commit": get_build_metadata().openpilot.git_commit,
+              "plugins": [{"id": p.NAME, "version": p.MANIFEST.version, "sha256": p.SHA256} for p in active(params)]}
+  if "XpilotPandaRules" in mf.compiled_param_keys() and (rules := params.get("XpilotPandaRules")) is not None:
+    snapshot["rule_table_crc32"] = int.from_bytes(rules[-4:], "little")
+  cloudlog.event("xpilot.drive_snapshot", **snapshot)
+
+
 def record_fault(name: str, where: str, exc: Exception) -> None:
   cloudlog.exception(f"xpilot plugin {name} failed in {where}, disabled")
   try:
     from openpilot.common.params import Params
     params = Params()
+    if where not in ("card.__init__", "card.setup", "card.rules") and any(p.NAME == name and p.MANIFEST.rules for p in PLUGINS):
+      params.put_bool("XpilotPandaRulesFault", True, block=True)
     faults = params.get(FAULTS_PARAM) or {}
     faults[name] = f"{where}: {exc!r}"[:200]
     params.put(FAULTS_PARAM, faults)
@@ -130,6 +161,7 @@ class CarPlugins:
 
   def __init__(self, CP, params):
     self.plugins = []
+    self.params = params
     self._gate = None
     if CP.brand != "tesla":
       return
@@ -154,6 +186,20 @@ class CarPlugins:
 
   def setup(self, CP_SP) -> None:
     self._each("setup", CP_SP)
+    if any(STOCK_AP in p.CLAIMS for p in self.plugins):  # EAP mode: panda forwards the stock AP, SP sends no controls
+      from opendbc.sunnypilot.car.tesla.values import TeslaSafetyFlagsSP
+      CP_SP.safetyParam |= TeslaSafetyFlagsSP.STOCK_AP
+    rules = []
+    for p in list(self.plugins):
+      try:
+        own = p.MANIFEST.rules
+        panda_rules.encode_rules(rules + own)
+      except ValueError as e:
+        self.plugins.remove(p)
+        record_fault(p.NAME, "card.rules", e)
+        continue
+      rules += own
+    self.params.put("XpilotPandaRules", panda_rules.param(panda_rules.encode_rules(rules)), block=True)
 
   def _sends(self, hook: str, *args) -> list:
     """Like _each, but every CanData must match one of the plugin's can.tx claims, else the plugin is dropped."""
@@ -194,23 +240,64 @@ def install_core(selfdrive) -> None:
   install(selfdrive)
 
 
-def processes() -> list:
-  """manager: each plugin process runs only while its plugin is active, and only if the plugin claims it."""
+def event_filters(params) -> list:
+  """selfdrived: shared event policies, frozen at startup in (priority, id) order."""
+  return sorted((c for c in active(params) if "event.filter" in c.CLAIMS), key=lambda c: (c.PRIORITY, c.NAME))
+
+
+def processes(core: set[str] | None = None, role_procs: dict | None = None) -> list:
+  """manager: claimed extra processes and SP role processes selected by their current owner."""
   procs = []
+  names = set(core or ()) | {n for ns in ROLE_PROCESSES.values() for n in ns}
+  for role, role_names in ROLE_PROCESSES.items():
+    given = {n: role_procs[n] for n in role_names if n in (role_procs or {})}
+    allowed = {n: set() for n in given}
+    for cls in PLUGINS:
+      if role not in cls.CLAIMS:
+        continue
+      try:
+        selected = list(cls.role_processes(role, dict(given)))
+        if any(not any(p is proc for proc in given.values()) for p in selected):
+          raise PermissionError(f"foreign process for {role}")
+      except Exception as e:
+        record_fault(cls.NAME, "manager.role_processes", e)
+        continue
+      for n, proc in given.items():
+        if any(p is proc for p in selected):
+          allowed[n].add(cls.NAME)
+    for n, proc in given.items():
+      should_run = proc.should_run
+      proc.should_run = lambda started, params, CP, run=should_run, r=role, owners=allowed[n]: owner(params, r) in owners and run(started, params, CP)
+      procs.append(proc)
   for cls in PLUGINS:
-    for proc in cls.processes():
+    try:
+      extra = cls.processes()
+    except Exception as e:
+      record_fault(cls.NAME, "manager.processes", e)
+      continue
+    for proc in extra:
+      if proc.name in names:
+        cloudlog.error(f"xpilot plugin {cls.NAME}: process {proc.name} already registered, not started")
+        continue
       if f"process:{proc.name}" not in cls.CLAIMS:
         cloudlog.error(f"xpilot plugin {cls.NAME}: process {proc.name} not claimed, not started")
         continue
       should_run = proc.should_run
       proc.should_run = lambda started, params, CP, run=should_run, name=cls.NAME: name in resolve(params)[0] and run(started, params, CP)
       procs.append(proc)
+      names.add(proc.name)
   return procs
 
 
 def owner(params, claim: str) -> str | None:
   """Name of the active plugin holding this claim, or None."""
   return next((cls.NAME for cls in active(params) if claim in cls.CLAIMS), None)
+
+
+def missing_roles(params) -> list[str]:
+  """Required roles with no active owner, in required order."""
+  claims = {claim for cls in active(params) for claim in cls.CLAIMS}
+  return [role for role in REQUIRED_ROLES if role not in claims]
 
 
 def holds(params, claim: str) -> bool:
@@ -220,12 +307,12 @@ def holds(params, claim: str) -> bool:
 
 def services(exclude=()) -> list[str]:
   """Extra services plannerd, selfdrived and controlsd subscribe for plugin hooks (ignored for alive/valid checks)."""
-  return sorted({svc for p in PLUGINS for svc in p.SERVICES} - set(exclude))
-
-
-def event_filters(params) -> list:
-  """selfdrived: shared event policies, frozen at startup in (priority, id) order."""
-  return sorted((c for c in active(params) if "event.filter" in c.CLAIMS), key=lambda c: (c.PRIORITY, c.NAME))
+  try:
+    from openpilot.common.params import Params
+    enabled = active(Params())
+  except Exception:
+    enabled = PLUGINS
+  return sorted({svc for p in enabled for svc in p.SERVICES} - set(exclude))
 
 
 _msg_socket = None
@@ -282,12 +369,14 @@ class PluginMsgs:
     return self.fresh(kind).get(source)
 
 
-def _collect(params, hook: str, claim: str, where: str, *args) -> list:
+def _collect(params, hook: str, claim: str, where: str, *args, skip=()) -> list:
   """Hook objects of the active plugins that return one; tagged with plugin_name. A plugin returning one without
   the claim, or raising, is recorded and skipped."""
   out, wrapped = [], view(params)
   args = tuple(wrapped if a is params else a for a in args)
   for cls in active(params):
+    if cls.NAME in skip:
+      continue
     try:
       if (obj := getattr(cls, hook)(*args)) is not None:
         if claim not in cls.CLAIMS:
@@ -308,6 +397,24 @@ def _call(objs: list, obj, method: str, where: str, *args):
       objs.remove(obj)
     record_fault(getattr(obj, "plugin_name", "?"), f"{where}.{method}", e)
     return False, None
+
+
+def long_owner_policy(params, CP, CP_SP):
+  """controlsd: a drive-frozen desired(ctx, CS) callable, including shadow observation."""
+  if CP.brand != "tesla":
+    return None
+  from openpilot.tesla.long_owner import LongOwnerPolicy
+  faults = view(params).get(FAULTS_PARAM) or {}
+  # A controlsd restart must not revive a faulted hook during the same drive.
+  policies = _collect(params, "long_owner", "role:long.owner", "controlsd", CP, CP_SP, params, skip=faults)
+  for obj in list(policies):
+    try:
+      if not callable(obj.desired):
+        raise TypeError("long_owner needs desired(ctx, CS)")
+    except Exception as e:
+      policies.remove(obj)
+      record_fault(obj.plugin_name, "controlsd.long_owner", e)
+  return LongOwnerPolicy(policies)
 
 
 def long_targets(CP, params) -> list:
@@ -537,8 +644,3 @@ def radar_interface(CP, CP_SP, params, sp_radar):
     return sp_radar
   found = _collect(params, "radar_interface", "source:radar", "card", CP, CP_SP, params)
   return _GuardedRadar(found[0], sp_radar) if found else sp_radar
-
-
-# ---- externald: providers ----
-def external_providers(params) -> list:
-  return _collect(params, "external_provider", "external.provider", "externald", params)

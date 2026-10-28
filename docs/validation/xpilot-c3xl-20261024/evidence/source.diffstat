@@ -1,0 +1,23 @@
+ .github/workflows/xpilot.yaml                      |  22 +-
+ XPILOT.md                                          |  60 +++-
+ openpilot/sunnypilot/system/fork_processes.py      |   9 +-
+ openpilot/tesla/core_host.py                       | 100 ++++---
+ openpilot/tesla/manifest.py                        |  31 +-
+ openpilot/tesla/plugin.py                          |  21 +-
+ openpilot/tesla/plugins/__init__.py                |  56 +++-
+ openpilot/tesla/plugins/gen_safety.py              |  19 +-
+ openpilot/tesla/plugins/sp_engagement/plugin.json  |   2 +-
+ openpilot/tesla/plugins/sp_engagement/plugin.py    |   9 +-
+ openpilot/tesla/plugins/sp_models/plugin.json      |   2 +-
+ openpilot/tesla/plugins/sp_models/plugin.py        |   7 +-
+ .../tesla/plugins/sp_safety_fallback/plugin.json   |   2 +-
+ .../tesla/plugins/sp_safety_fallback/plugin.py     |  10 +-
+ openpilot/tesla/store.py                           |  36 ++-
+ openpilot/tesla/ui/offroad.py                      |  27 +-
+ openpilot/tesla/ui/pages/plugins.py                |   6 +-
+ openpilot/tesla/ui/plugins_page.py                 |   6 +-
+ tools/sp_tesla_e2e/phase4_check.py                 | 233 +++++++++++++--
+ tools/sp_tesla_e2e/plugin_host_check.py            | 323 +++++++++++++++++++--
+ tools/sp_tesla_e2e/safety_manifest_check.py        |  44 ++-
+ tools/sp_tesla_e2e/store_check.py                  | 154 +++++++++-
+ 22 files changed, 1003 insertions(+), 176 deletions(-)

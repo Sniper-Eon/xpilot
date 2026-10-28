@@ -39,6 +39,10 @@ def convert_to_capnp(struct: structs.CarParamsSP | structs.CarStateSP) -> capnp.
   struct_dict = asdictref(struct)
 
   if isinstance(struct, structs.CarParamsSP):
+    if type(struct.safetyParam) is not int or not -0x8000 <= struct.safetyParam <= 0xFFFF:
+      raise ValueError(f"CarParamsSP.safetyParam must preserve signed/unsigned 16-bit values in -0x8000..0xFFFF, got {struct.safetyParam}")
+    bits = struct.safetyParam & 0xFFFF
+    struct_dict['safetyParam'] = bits if bits < 0x8000 else bits - 0x10000
     struct_capnp = custom.CarParamsSP.new_message(**struct_dict)
   elif isinstance(struct, structs.CarStateSP):
     struct_capnp = custom.CarStateSP.new_message(**struct_dict)

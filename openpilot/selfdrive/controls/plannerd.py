@@ -24,7 +24,7 @@ def main():
   cloudlog.info("plannerd got CarParamsSP")
 
   gps_location_service = get_gps_location_service(params)
-  base_services = ['carControl', 'carState', 'controlsState', 'radarState', 'modelV2', 'selfdriveState',
+  base_services = ['carControl', 'carControlSP', 'carState', 'controlsState', 'radarState', 'modelV2', 'selfdriveState',
                    'liveMapDataSP', 'carStateSP', 'selfdriveStateSP', gps_location_service]
   plugin_services = plugins.services(base_services)  # xpilot plugins: extra inputs for their hooks
   ignore_services = ["liveMapDataSP", "carStateSP", "selfdriveStateSP", gps_location_service, *plugin_services]

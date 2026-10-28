@@ -1,0 +1,21 @@
+kj/filesystem-disk-unix.c++:1734: warning: PWD environment variable doesn't match current directory; pwd = /data/openpilot
+{
+ "installed": [
+  "ambient_light",
+  "auto_speed",
+  "blindspot_edges",
+  "bms",
+  "car_tile",
+  "clock_tile",
+  "external_compute",
+  "ip_tile",
+  "lead_card",
+  "map_tile",
+  "op_models",
+  "overspeed_warning",
+  "speed_card",
+  "speed_limit_card",
+  "traffic_light"
+ ],
+ "errors": []
+}

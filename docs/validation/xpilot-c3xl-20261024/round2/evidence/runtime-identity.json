@@ -1,0 +1,12 @@
+{
+  "utc": "2026-10-24T20:34:42Z",
+  "active_path": "/data/xpilot-agnos19.9-20261025/candidate",
+  "head": "4292551111be2d7afa7cf9aa158841fb712e740b",
+  "branch": "xpilot",
+  "param_git_commit": "4292551111be2d7afa7cf9aa158841fb712e740b",
+  "service": "active",
+  "defaults_marker_present": false,
+  "activation_init_present": false,
+  "finalized_consistent_present": false,
+  "updater_target_branch": "xpilot"
+}

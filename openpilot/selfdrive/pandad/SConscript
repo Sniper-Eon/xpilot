@@ -1,10 +1,23 @@
 Import('env', 'arch', 'common', 'messaging')
+import hashlib
 
-if arch != "Darwin":
-  libs = [common, messaging, 'pthread', 'usb-1.0']
-  panda = env.Library('panda', ['panda.cc', 'usb.cc', 'spi.cc'])
+health = File('#panda/board/health.h').get_contents()
+# Only the jointly shipped owner health layout grants the A5 API.
+long_health = int.from_bytes(hashlib.sha256(health.replace(b'\r', b'')).digest()[:4], 'little') if b'tesla_long_owner_pkt' in health else 0
+env = env.Clone()
+env.Append(CPPDEFINES=[('XPILOT_LONG_HEALTH_VERSION', str(long_health) + 'U')])
 
-  env.Program('pandad', ['main.cc', 'pandad.cc', 'panda_safety.cc'], LIBS=[panda] + libs)
+if arch == 'Darwin':
+  env = env.Clone(FRAMEWORKS=['CoreFoundation', 'IOKit', 'Security'])
 
-  if GetOption('extras'):
-    env.Program('tests/test_pandad_canprotocol', ['tests/test_pandad_canprotocol.cc'], LIBS=[panda] + libs)
+libs = [common, messaging, 'pthread', 'usb-1.0', 'z']
+panda = env.Library('panda', ['panda.cc', 'usb.cc'] + ([] if arch == 'Darwin' else ['spi.cc']))
+
+env.Program('pandad', ['main.cc', 'pandad.cc', 'panda_safety.cc'], LIBS=[panda] + libs)
+
+if GetOption('extras'):
+  env.Program('tests/test_pandad_canprotocol', ['tests/test_pandad_canprotocol.cc'], LIBS=[panda] + libs)
+  env.Program('tests/test_panda_rules', ['tests/test_panda_rules.cc', 'panda_safety.cc'], LIBS=[panda] + libs)
+
+if GetOption('extras'):
+  env.Program('tests/test_long_owner', ['tests/test_long_owner.cc'], LIBS=[panda] + libs)

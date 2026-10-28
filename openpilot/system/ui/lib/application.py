@@ -19,7 +19,7 @@ from typing import NamedTuple
 from importlib.resources import as_file, files
 from openpilot.common.swaglog import cloudlog
 from openpilot.common.hardware import HARDWARE, PC
-from openpilot.system.ui.lib.multilang import FONT_FALLBACK_LANGUAGES, TRANSLATIONS_DIR, multilang
+from openpilot.system.ui.lib.multilang import FONT_FALLBACK_LANGUAGES, multilang
 from openpilot.common.realtime import Ratekeeper
 
 from openpilot.system.ui.sunnypilot.lib.application import GuiApplicationExt
@@ -101,7 +101,7 @@ NOTO_FONTS = {
   "ja": "NotoSansCJKjp-Regular.otf",
   "ko": "NotoSansCJKkr-Regular.otf",
   "th": "NotoSansThai-Regular.ttf",
-  "zh-CHS": "NotoSansCJKsc-Regular.otf",
+  "zh-CHS": "unifont.otf",
   "zh-CHT": "NotoSansCJKtc-Regular.otf",
 }
 
@@ -770,7 +770,7 @@ class GuiApplication(GuiApplicationExt):
     for language, code in multilang.languages.items():
       unifont_chars.update(language)
       if code not in FONT_FALLBACK_LANGUAGES:
-        base_chars.update(TRANSLATIONS_DIR.joinpath(f"app_{code}.po").read_text(encoding="utf-8"))
+        base_chars.update(multilang.translation_path(code).read_text(encoding="utf-8"))
 
     for font_weight_file in FontWeight:
       with as_file(FONT_DIR) as fspath:

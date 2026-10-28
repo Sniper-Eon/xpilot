@@ -1,0 +1,6 @@
+xpilot
+65bb09e3d5d306487d005f15cef799e31cf37fa2
+/data/xpilot-agnos19.9-20261025/candidate
+c3xl
+active
+plugin_repository_files 146

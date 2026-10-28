@@ -5,6 +5,10 @@ on:
   push:
     branches: [xpilot]
   workflow_dispatch:
+    inputs:
+      plugins_ref:
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -15,14 +19,15 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
-      PYTHONPATH: ${{ github.workspace }}/msgq_repo:${{ github.workspace }}/opendbc_repo
+      SCALE: "1"
+      PYTHONPATH: ${{ github.workspace }}/msgq_repo
     steps:
     - uses: actions/checkout@v4
     - run: git submodule update --init --depth 1 msgq_repo
     - uses: actions/setup-python@v5
       with:
         python-version: '3.12'
-    - run: pip install pyzmq numpy pycapnp pytest pytest-subtests cffi zstandard setproctitle cython scons setuptools requests cryptography
+    - run: pip install pyzmq numpy pycapnp pytest zstandard setproctitle cython scons setuptools requests
     - name: Build msgq
       working-directory: msgq_repo
       run: scons -j4 msgq/ipc_pyx.so
@@ -30,28 +35,42 @@ jobs:
       with:
         repository: Sniper-Eon/xpilot-plugins
         path: xpilot-plugins
+        ref: ${{ inputs.plugins_ref }}
+    - name: Record commits
+      run: |
+        mkdir -p /tmp/xpilot-ci
+        echo "xpilot = $GITHUB_SHA" > /tmp/xpilot-ci/commits.txt
+        echo "xpilot-plugins = $(git -C xpilot-plugins rev-parse HEAD)" >> /tmp/xpilot-ci/commits.txt
     - name: Generated files are current
       run: |
         python3 openpilot/tesla/plugins/gen_params.py --check
-        python3 openpilot/tesla/plugins/gen_safety.py --check
     - name: Auto-merge classifier
       run: python3 tools/ci/pr_risk.py --check
     - name: XPILOT.md section 11 host checks
       run: |
         set -e
         for check in static_imports tile_layout_check plugin_host_check manifest_check safety_manifest_check \
-                     phase2_check phase3_check phase4_check store_check offroad_pages_check agnos_update_check lane_context_check subscription_recovery_check ui_translation_check branding_check plugin_msg_e2e; do
+                     phase2_check phase3_check phase4_check store_check offroad_pages_check agnos_update_check lane_context_check subscription_recovery_check ui_translation_check branding_check; do
           echo "::group::$check"
-          python3 tools/sp_tesla_e2e/$check.py > /tmp/$check.json
+          python3 tools/sp_tesla_e2e/$check.py > /tmp/xpilot-ci/$check.json
           echo "::endgroup::"
         done
-    - name: Plugin repository end to end
-      run: python3 tools/sp_tesla_e2e/store_e2e.py --repo xpilot-plugins
+    - name: Plugin message broker end to end (Linux credentials)
+      run: python3 tools/sp_tesla_e2e/plugin_msg_e2e.py
+    - name: Store activation transaction end to end
+      run: python3 tools/sp_tesla_e2e/store_activation_e2e.py --output /tmp/xpilot-ci/store-activation
     - name: Paired fork routing
       run: python3 tools/sp_tesla_e2e/fork_pair_check.py --repo xpilot-plugins
-    - name: Native safety tests
-      working-directory: opendbc_repo
-      run: PYTHONPATH=. python3 -m pytest -q opendbc/safety/tests/test_xpilot_plugins.py
+    - name: Plugin repository end to end
+      run: |
+        set -o pipefail
+        python3 tools/sp_tesla_e2e/store_e2e.py --repo xpilot-plugins 2>&1 | tee /tmp/xpilot-ci/store_e2e.txt
+    - uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: xpilot-checks-${{ github.run_id }}
+        path: /tmp/xpilot-ci
+        retention-days: 30
     - name: Tell the owner xpilot is broken
       if: failure() && github.event_name != 'pull_request'
       env:

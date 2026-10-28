@@ -1,0 +1,20 @@
+{
+  "snapshot": "initial",
+  "byte_equal": true,
+  "restored": [
+    "/data/params/d/BootCount",
+    "/data/params/d/CurrentBootlog",
+    "/data/params/d/GitBranch",
+    "/data/params/d/LastUpdateException",
+    "/data/params/d/Offroad_TiciSupport",
+    "/data/params/d/UpdateFailedCount",
+    "/data/params/d/UpdaterAvailableBranches",
+    "/data/params/d/UpdaterCurrentDescription",
+    "/data/params/d/UpdaterFetchAvailable",
+    "/data/params/d/UpdaterNewDescription",
+    "/data/params/d/UpdaterNewReleaseNotes",
+    "/data/params/d/UpdaterTargetBranch",
+    "/data/params/d/UptimeOffroad"
+  ],
+  "files": 156
+}

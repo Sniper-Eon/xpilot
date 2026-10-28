@@ -1,0 +1,68 @@
+{
+  "head": "4292551111be2d7afa7cf9aa158841fb712e740b",
+  "service": "active",
+  "all_params_restored_before_start": true,
+  "original_count": 156,
+  "current_count": 156,
+  "final_deltas": {
+    "/data/params/d/BootCount": {
+      "before_sha256": "5316ca1c5ddca8e6ceccfce58f3b8540e540ee22f6180fb89492904051b3d531",
+      "after_sha256": "a46e37632fa6ca51a13fe39a567b3c23b28c2f47d8af6be9bd63e030e214ba38"
+    },
+    "/data/params/d/CurrentBootlog": {
+      "before_sha256": "cde9c928753c30355ddce3045726c854bdd01a3dca307606f4443255a6a7feed",
+      "after_sha256": "76c4e46edd896ea4540ff616b0f57b6240053f523c89b95defd1653c1c6e26cc"
+    },
+    "/data/params/d/GitCommit": {
+      "before_sha256": "81567c2f89bcd1f5bd9cbc5457515a9b31b85ee8ba334d6fa2c22ff214a5bb1f",
+      "after_sha256": "91aebe5f5f69fe1ed4e154ead824bac76d7b4f2bd01405ac9fc9e54846f90e78"
+    },
+    "/data/params/d/GitCommitDate": {
+      "before_sha256": "2be88a79efa9631a671ef76889366caf109f4ef0cce09f32daa150e220da273a",
+      "after_sha256": "21812e38f3b342ead80956ebc586ddff6930743575c7e98cc61851a3817eea05"
+    },
+    "/data/params/d/LastUpdateTime": {
+      "before_sha256": "970e247b44e7955a2bde010116030c4744c092d71bed429587cf2158db4bd2d3",
+      "after_sha256": "5df93ca081190191d88c228e539068f6a888608a197d2329a2a67a7bd4ce2085"
+    },
+    "/data/params/d/ModelManager_LastSyncTime": {
+      "before_sha256": "681d9bb3fdce9a4d1f2979e1643663c7aac4f080ee7e70195d82154074ed59fd",
+      "after_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+    },
+    "/data/params/d/UpdateAvailable": {
+      "before_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+      "after_sha256": "6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b"
+    },
+    "/data/params/d/UpdaterAvailableBranches": {
+      "before_sha256": "63ced9dda39b5c2f95e676e1ecb7257bbc4a01e1e6f334ad88a71d9d4b7522dc",
+      "after_sha256": "0a2b25fba3cebf6ef6422b01e3310696f1059b0992a54f563454abce57916e08"
+    },
+    "/data/params/d/UpdaterCurrentDescription": {
+      "before_sha256": "2f6c7d1c65b04d03459f27ea33802a6378539039eb40c3b275c3a85f823ec8ce",
+      "after_sha256": "0f124d4727343fbaf2f9c9c973daaced0eceb70f977eb606382faaad7de5be8e"
+    },
+    "/data/params/d/UpdaterLastFetchTime": {
+      "before_sha256": "4282d03281afb72bf871bdb87199adcc4b4dddf2ab703263a34f75b8ebf72331",
+      "after_sha256": "e258720bf01f126061ecbb81b014fde120df851ec1a2a1ff0b5481659edee2a7"
+    },
+    "/data/params/d/UptimeOffroad": {
+      "before_sha256": "6231a70a0cc75dde1d5d0957bd5ebccb2cd34dad18261129c732315ed6940509",
+      "after_sha256": "822976c070ed7ff068e6a8cc753eab5aba3d129651a964fdc137fa84fe427915"
+    }
+  },
+  "persistent_deltas": [
+    "/data/params/d/BootCount",
+    "/data/params/d/CurrentBootlog",
+    "/data/params/d/GitCommit",
+    "/data/params/d/GitCommitDate",
+    "/data/params/d/LastUpdateTime",
+    "/data/params/d/UpdaterAvailableBranches",
+    "/data/params/d/UpdaterLastFetchTime",
+    "/data/params/d/UptimeOffroad"
+  ],
+  "store_unchanged": true,
+  "defaults_marker_restored": true,
+  "store_files": 7,
+  "dirty_unchanged": true,
+  "dirty_status": "?? prebuilt\n"
+}

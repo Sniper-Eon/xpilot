@@ -573,6 +573,12 @@ struct PandaState @0xa7649e2575e4591e {
 
   nmiReset @40 :Bool;
   hardfaultReset @41 :Bool;
+  longOwnerAvailable @42 :Bool;
+  longOwner @43 :UInt8;
+  longOwnerPending @44 :UInt8 = 255;
+  longOwnerPendingAgeMs @45 :UInt16;
+  longOwnerRefusal @46 :UInt8;
+  healthVersion @47 :UInt32;
 
   enum FaultStatus {
     none @0;
@@ -2649,8 +2655,8 @@ struct Event {
     liveMapDataSP @115 :Custom.LiveMapDataSP;
     modelDataV2SP @116 :Custom.ModelDataV2SP;
     trafficRadarState @136 :Custom.TrafficRadarState;
-    externalIn @137 :Custom.ExternalData;
-    externalOut @138 :Custom.ExternalData;
+    deprecatedExternalIn @137 :Custom.ExternalData;
+    deprecatedExternalOut @138 :Custom.ExternalData;
     pluginMsg @139 :Custom.ExternalData;  # xpilot plugin -> plugin messages (source = plugin id, kind needs a msg:<kind> claim)
     customReserved14 @140 :Custom.CustomReserved14;
     customReserved15 @141 :Custom.CustomReserved15;

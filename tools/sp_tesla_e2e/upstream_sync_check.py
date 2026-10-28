@@ -25,6 +25,9 @@ def main():
   else:
    d=json.loads(path.read_text());key=d.get('enable_param')
    if not key or d.get('params',{}).get(key,{}).get('type')!='BOOL':errors.append(name+': missing independent master')
+ for name in ['cp_nav','navassist','nav_lane_change']:
+  d=json.loads((args.plugins_repo/'plugins'/name/'plugin.json').read_text())
+  if 'source:turnsignals' not in d.get('claims',[]):errors.append(name+': competing physical navigation signals not exclusive')
  for path in (args.plugins_repo/'plugins').glob('*/plugin.json'):
   if 'safety' in json.loads(path.read_text()):errors.append(path.parent.name+': legacy firmware manifest remains')
  print(json.dumps({'source_only':True,'errors':errors},indent=2));return bool(errors)

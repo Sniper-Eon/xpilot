@@ -28,27 +28,55 @@ Failure cases listed before implementation:
 - P22 a radar plugin that raises takes card down or keeps being called; the port's radar must take over
 - P23 an active source:map plugin leaves SP's OSM map processes running (two liveMapDataSP publishers),
        or a disabled one stops them
-- P24 externald bridges a provider from a disabled plugin or one without the external.provider claim,
-       or a raising provider hook takes the others down
-- P26 SP's model stack (sp_models) is not the default owner of role:perception.model, keeps running next to an
-       enabled replacement (two modelV2 publishers), stays off when the replacement is switched off, stops when no
-       plugin owns the role (no model at all), or fork_processes.py does not gate all four SP model processes
+- P24 retired external-compute hooks/claim/services remain, or deprecated cereal ordinals/types change
+- P26 SP's four model processes lose their own conditions, run beside op_modeld, fail to resume after switching
+       back, or an arbitrary role owner cannot select all, some or none of the supplied process objects
 - P27 send_msg publishes a kind the plugin has no msg:<kind> claim for, or does not record it as a fault
 - P27 a declared kind is not delivered, its source is not the plugin id, or kind/payload/validForMs are lost
 - P27 PluginMsgs.fresh returns other kinds or expired messages, or drops validForMs 0 (no expiry)
+- P28 a plugin whose processes() raises takes manager registration down or its fault is not recorded
+- P29 a plugin process replaces an official process (including alert_output) or an earlier plugin's process
+- P30 a plugin with an unknown SERVICES name is loaded (SubMaster would crash)
+- P31 a disabled or conflicting plugin's SERVICES are subscribed, or unavailable Params breaks host checks
+- P32 a missing broker raises, blocks, or records transport failures as plugin faults
+- P33 SP's model processes run while nobody owns role:perception.model
+- P34 role_processes is called without the role claim, or accepts a foreign object (even with a supplied name)
+- P35 a raising role_processes hook takes registration down, loses healthy processes, or is not recorded
+- P36 processes() can register a reserved SP model process name after it leaves the official process list
+- P37 missing_roles omits an unowned required role, or counts a disabled or conflicting claimant as its owner
+- P38 removing every sp_* provider does not produce one offroad alert per missing required role
+- P39 switching off the only enabled required-role claimant writes params or fails to show the refusal in either UI
+- P40 switching off a replacement is refused while another enabled claimant remains
+- P41 switching on a conflict silently disables the only enabled claimant of another required role
 
 Run from the repo root with the openpilot python env. Native-only modules (Params) are stubbed if missing.
+- P42 enabling an incompatible plugin writes switches, disables peers, or clears faults
+- P43 staged update uses running capabilities, omits incompatibilities/alerts, or blocks activation
+- P44 drive start omits system/plugin hashes or rule CRC, includes inactive plugins, or logs repeatedly
+- P45 duplicate TX address across winners drops and faults only the second plugin
+- P46 aggregate rule/count overflow drops and faults only the offending plugin
+- P47 no rules or a disabled plugin explicitly replaces a stale table with an empty table
+- P48 a critical rule-owner fault raises the rules feature fault for pandad revocation
+- P50 an active role:stock.ap holder does not set TeslaSafetyFlagsSP.STOCK_AP in CP_SP.safetyParam, the bit is set
+     without a holder, or other bits change
+- P49 long.owner constructor/desired raises, returns a bad value, runs again after fault or restart, or loses exclusivity
+- P50b MADS screen button fires on a finger count other than the configured one (the four-finger long-owner toggle moved to
+      tesla_dynamic_acc, owner 2026-10-28)
+- P51 shadow logs non-SP/old ABI/stale/wrong bus/malformed CAN or exceeds 25 Hz; OEM endpoints/counter or SP accel are lost
 """
 import ast
 import json
 from pathlib import Path
 import re
+import runpy
 import sys
+import tempfile
 import types
 import tempfile
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
+ARTIFACTS = Path(tempfile.mkdtemp(prefix="xp-host-"))
 sys.path[:0] = [str(ROOT), str(ROOT / "opendbc_repo")]
 try:
   import openpilot.common.params  # noqa: F401
@@ -60,6 +88,8 @@ except Exception:
 
 from openpilot.tesla import plugins  # noqa: E402
 from openpilot.tesla.plugin import Plugin  # noqa: E402
+
+RECORD_FAULT = plugins.record_fault
 
 KEY_RE = r'\{"(\w+)", \{[^,]+, (\w+)'
 CORE_KEYS = dict(re.findall(KEY_RE, (ROOT / "openpilot/common/params_keys.h").read_text()))
@@ -118,6 +148,8 @@ def make(name, fail_in=None, enable=None):
 
     @classmethod
     def processes(cls):
+      if fail_in == "processes":
+        raise RuntimeError("processes")
       return [types.SimpleNamespace(name=f"{name}d", should_run=lambda started, params, CP: started)]
 
     @classmethod
@@ -258,9 +290,359 @@ def main() -> int:
   errors += long_target_checks(plugins_mod)
   errors += source_checks(plugins_mod, real)
   errors += msg_checks(plugins_mod)
+  errors += registration_checks(plugins_mod)
+  errors += service_checks(plugins_mod)
+  errors += required_role_checks(plugins_mod, real)
+  errors += capability_checks(plugins_mod, real)
+  errors += rule_checks(plugins_mod)
+  errors += long_owner_checks(plugins_mod)
 
-  print(json.dumps({"plugins": [c.NAME for c in real], "errors": errors}, indent=1))
+  print(json.dumps({"plugins": [c.NAME for c in real], "artifacts": str(ARTIFACTS), "errors": errors}, indent=1))
   return 1 if errors else 0
+
+
+def long_owner_checks(plugins):
+  from openpilot.tesla import long_owner
+  role, faults, trace = "role:long.owner", [], []
+  params = FakeParams()
+  ctx = types.SimpleNamespace(available=True, owner="stock", enabled=True, sp_accel=.24)
+  cs = types.SimpleNamespace()
+  batch = []
+  def drain(sock):
+    out = list(batch)
+    batch.clear()
+    return out
+  def can(address, data, bus, ms):
+    batch.append(types.SimpleNamespace(logMonoTime=ms * 1_000_000,
+      can=[types.SimpleNamespace(address=address, dat=data, src=bus)]))
+  class Params(FakeParams):
+    def put(self, key, value, block=False):
+      self.values[key] = value
+    put_bool = put
+  def fault(name, where, exc):
+    faults.append((name, where))
+    params.values.setdefault(plugins.FAULTS_PARAM, {})[name] = where
+  def plugin(name, value, priority=100, claims=(role,)):
+    def desired(self, context, state):
+      trace.append(name)
+      if isinstance(value, Exception):
+        raise value
+      return value
+    return type(name, (Plugin,), {'NAME': name, 'CLAIMS': claims, 'PRIORITY': priority,
+      'long_owner': classmethod(lambda cls, *args: types.SimpleNamespace(desired=lambda c, s: desired(None, c, s)))})
+  messaging = types.SimpleNamespace(sub_sock=lambda *a, **kw: object(), drain_sock=drain)
+  with patch.object(long_owner, 'messaging', messaging), patch.object(plugins, 'record_fault', side_effect=fault), \
+       patch.object(long_owner.time, 'monotonic_ns', return_value=100_000_000):
+    for value in ('stock', 'sp', None, 1, True, [], 'SP', RuntimeError('desired')):
+      params = Params()
+      faults.clear()
+      trace.clear()
+      with patch.object(plugins, 'PLUGINS', (plugin('policy', value), plugin('loser', 'sp', 200))):
+        policy = plugins.long_owner_policy(params, CP, None)
+        expected = value if value in ('stock', 'sp', None) else None
+        assert policy(ctx, cs) == expected, ('P49', value)
+        assert policy(ctx, cs) == expected, ('P49 repeat', value)
+        bad = isinstance(value, Exception) or value not in ('stock', 'sp', None)
+        assert trace == ['policy'] * (1 if bad else 2), ('P49 trace', trace)
+        assert bool(faults) == bad, ('P49 fault', value, faults)
+        if bad:
+          assert plugins.long_owner_policy(params, CP, None)(ctx, cs) is None, 'P49 restart'
+          assert trace == ['policy'], 'P49 restart called faulted hook'
+    for classes in ((), (plugin('unclaimed', 'sp', claims=()),),
+                    (type('raising', (Plugin,), {'NAME': 'raising', 'CLAIMS': (role,),
+                      'long_owner': classmethod(lambda cls, *a: 1/0)}),)):
+      params = Params()
+      with patch.object(plugins, 'PLUGINS', classes):
+        assert plugins.long_owner_policy(params, CP, None)(ctx, cs) is None, 'P49 collection'
+    with patch.object(plugins, 'PLUGINS', ()):
+      params = Params()
+      ctx.available, ctx.enabled, ctx.owner = True, True, 'stock'
+      policy = plugins.long_owner_policy(params, CP, None)
+      from opendbc.car import Bus, structs
+      from opendbc.sunnypilot.car.tesla.carstate_ext import CarStateExt
+      from opendbc.sunnypilot.car.tesla.values import TeslaFlagsSP
+      ext = CarStateExt(CP, structs.CarParamsSP(flags=TeslaFlagsSP.HAS_VEHICLE_BUS | TeslaFlagsSP.MADS_SCREEN_BUTTON_3_FINGER))
+      ext.can_define = types.SimpleNamespace(dv={'DI_state': {'DI_speedUnits': {0: 'KPH'}},
+                                                'DAS_status': {'DAS_fusedSpeedLimit': {0: 'NONE'}}})
+      parsers = {Bus.adas: types.SimpleNamespace(vl={'UI_status2': {'UI_activeTouchPoints': 0}}),
+                 Bus.party: types.SimpleNamespace(vl={'DI_state': {'DI_speedUnits': 0}}),
+                 Bus.ap_party: types.SimpleNamespace(vl={'DAS_status': {'DAS_fusedSpeedLimit': 0}})}
+      for value in (0, 4, 0, 3):
+        parsers[Bus.adas].vl['UI_status2']['UI_activeTouchPoints'] = value
+        state, state_sp = structs.CarState(), structs.CarStateSP()
+        ext.update(state, state_sp, parsers)
+        assert any(e.pressed and e.type == structs.CarState.ButtonEvent.Type.lkas for e in state.buttonEvents) == (value == 3), 'P50b MADS exact count'
+
+      logs = []
+      with patch.object(long_owner.cloudlog, 'event', side_effect=lambda name, **kw: logs.append((name, kw))), \
+           patch.object(long_owner.time, 'monotonic_ns', return_value=1_000_000_000):
+        raw = (4 << 12) | (381 << 35) | (385 << 44) | (7 << 53)
+        for owner, available, bus, data in (('stock', True, 2, raw.to_bytes(8, 'little')),
+            ('sp', False, 2, raw.to_bytes(8, 'little')), ('sp', True, 0, raw.to_bytes(8, 'little')),
+            ('sp', True, 2, b'bad')):
+          ctx.owner, ctx.available = owner, available
+          can(0x2B9, data, bus, 1000)
+          policy(ctx, cs)
+        assert not logs, ('P51 gates', logs)
+        for ms in range(1000, 2000, 10):
+          ctx.owner, ctx.available = 'sp', True
+          can(0x2B9, raw.to_bytes(8, 'little'), 2, ms)
+          with patch.object(long_owner.time, 'monotonic_ns', return_value=ms * 1_000_000):
+            policy(ctx, cs)
+        assert len(logs) == 25, ('P51 cadence', len(logs))
+        name, row = logs[0]
+        assert name == 'xpilot.long_owner_shadow' and row['accState'] == 4 and row['counter'] == 7, 'P51 fields'
+        assert abs(row['accelMin'] - .24) < 1e-8 and abs(row['accelMax'] - .4) < 1e-8 and row['spAccel'] == .24, 'P51 accel'
+        can(0x2B9, raw.to_bytes(8, 'little'), 2, 0)
+        policy(ctx, cs)
+        assert len(logs) == 25, 'P51 stale'
+      (ARTIFACTS / 'long-owner.json').write_text(json.dumps({'shadow': logs}, indent=2))
+    assert plugins.long_owner_policy(params, types.SimpleNamespace(brand='toyota'), None) is None, 'P49 non Tesla'
+  return []
+
+
+def rule_checks(plugins):
+  from dataclasses import replace
+  from openpilot.tesla import panda_rules
+  from tools.sp_tesla_e2e.panda_rules_check import sample_rule
+  class Params(FakeParams):
+    def put(self, key, value, block=False):
+      self.values[key] = value
+    put_bool = put
+  template = plugins.mf.load_all()[0][0]
+  def plugin(name, addresses, enable=None):
+    return type(name, (Plugin,), dict(NAME=name, ENABLE_PARAM=enable, CLAIMS=(),
+      MANIFEST=replace(template, id=name, rules=[sample_rule(a) for a in addresses])))
+  first, second = plugin('first', [0x600]), plugin('second', [0x600])
+  for code, classes, count, fault in [('P45', (first, second), 1, 'second'),
+      ('P46', (plugin('first', range(0x600, 0x608)), plugin('second', [0x608])), 8, 'second'),
+      ('P47', (), 0, None), ('P47-disabled', (plugin('off', [0x600], 'Off'),), 0, None)]:
+    params = Params({'XpilotPandaRules': b'stale'})
+    faults = []
+    with patch.object(plugins, 'PLUGINS', classes), patch.object(plugins, 'record_fault', side_effect=lambda n, w, e: faults.append(n)):
+      host = plugins.CarPlugins(CP, params)
+      host.setup(types.SimpleNamespace())
+    expected = panda_rules.param(panda_rules.table(tuple(panda_rules.encode_rule(sample_rule(0x600+i)) for i in range(count))))
+    assert params.get('XpilotPandaRules') == expected, code
+    assert faults == ([fault] if fault else []), code
+    assert fault not in [p.NAME for p in host.plugins], code
+  with patch.object(plugins, 'PLUGINS', (first,)), patch('openpilot.common.params.Params', return_value=params):
+    RECORD_FAULT('first', 'card.control_sends', RuntimeError('critical'))
+  assert params.get_bool('XpilotPandaRulesFault'), 'P48'
+  (ARTIFACTS / 'compiled-rules.bin').write_bytes(expected)
+  eap = type('eap', (Plugin,), dict(NAME='eap', ENABLE_PARAM=None, CLAIMS=(plugins.STOCK_AP,), MANIFEST=replace(template, id='eap', rules=[])))
+  for classes, want in (((eap,), 0x11), ((first,), 0x01)):
+    with patch.object(plugins, 'PLUGINS', classes):
+      CP_SP = types.SimpleNamespace(safetyParam=0x01)
+      plugins.CarPlugins(CP, Params({})).setup(CP_SP)
+    assert CP_SP.safetyParam == want, f'P50 safetyParam {CP_SP.safetyParam:#x} != {want:#x}'
+  return []
+
+
+def capability_checks(plugins, real) -> list[str]:
+  from dataclasses import replace
+  from openpilot.tesla import manifest as mf
+  from openpilot.tesla.plugin_params import ParamsView
+  from openpilot.tesla.ui import offroad
+  errors = []
+  class Params(FakeParams):
+    def put(self, key, value, block=False):
+      self.values[key] = value
+    put_bool = put
+
+  m = replace(real[0].MANIFEST, requires={"hooks": ["teleport"]}) if hasattr(real[0].MANIFEST, "requires") else real[0].MANIFEST
+  incoming = type("Incoming", (Plugin,), {"NAME": "incoming", "ENABLE_PARAM": "IncomingOn", "MANIFEST": m,
+                                          "CLAIMS": ("source:demo",)})
+  peer = type("Peer", (Plugin,), {"NAME": "peer", "ENABLE_PARAM": "PeerOn", "CLAIMS": incoming.CLAIMS})
+  p = Params({"PeerOn": True, plugins.FAULTS_PARAM: {"incoming": "old fault"}})
+  before = dict(p.values)
+  with patch.object(offroad, "PLUGINS", (incoming, peer)):
+    error = offroad.switch_plugin(incoming, True, p)
+  if not error or "teleport" not in error or p.values != before:
+    errors.append(f"P42 incompatible enable: {error!r}, params={p.values}")
+  if not hasattr(mf, "check_staged") or not hasattr(plugins, "log_snapshot"):
+    return errors + ["P43 missing staged precheck", "P44 missing drive snapshot"]
+
+  with tempfile.TemporaryDirectory() as tmp, patch.object(mf, "INSTALL_DIR", Path(tmp) / "installed"):
+    stage = Path(tmp) / "staged"
+    path = stage / "openpilot/tesla/manifest.py"
+    path.parent.mkdir(parents=True)
+    # The staged host drops setup; the running host still provides it.
+    (path.parent / 'panda_rules.py').write_text((ROOT / 'openpilot/tesla/panda_rules.py').read_text())
+    path.write_text((ROOT / "openpilot/tesla/manifest.py").read_text() + '\nHOST_CAPS["hooks"] = []\n')
+    installed = mf.INSTALL_DIR / "needs_setup"
+    installed.mkdir(parents=True)
+    data = {"id": installed.name, "api": 1, "category": "tools", "use": "both", "entry": "plugin:P",
+            "version": "1.2.3", "requires": {"hooks": ["setup"]}}
+    (installed / "plugin.json").write_text(json.dumps(data))
+    mf.check_staged(stage, p)
+    warnings = ParamsView(p, mf.UPDATE_SPECS).get(mf.UPDATE_COMPAT_PARAM)
+    (ARTIFACTS / "staged-incompatibilities.json").write_text(json.dumps(warnings, indent=2))
+    if "setup" not in warnings.get("needs_setup", ""):
+      errors.append(f"P43 staged capabilities ignored: {warnings}")
+    with patch.object(plugins, "PLUGINS", real):
+      if not any("needs_setup" in text and "setup" in text for _, text in offroad.offroad_alerts(p)):
+        errors.append("P43 staged warning not shown offroad")
+    # Execute the real finalizer with only filesystem/update plumbing replaced.
+    tree = ast.parse((ROOT / "openpilot/system/updated/updated.py").read_text())
+    fn = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "finalize_update")
+    events = []
+    env = {"os": types.SimpleNamespace(path=types.SimpleNamespace(exists=lambda p: False)),
+           "shutil": types.SimpleNamespace(copytree=lambda *a, **k: None), "OVERLAY_MERGED": "merged", "FINALIZED": str(stage),
+           "cloudlog": types.SimpleNamespace(info=lambda *a: None), "run": lambda *a: None,
+           "set_consistent_flag": lambda value: events.append(value)}
+    with patch.object(mf, "check_staged", side_effect=lambda *a: events.append("precheck")):
+      exec(compile(ast.Module(body=[fn], type_ignores=[]), "updated.py", "exec"), env)
+      env["finalize_update"]()
+    if events != [False, "precheck", True]:
+      errors.append(f"P43 update activation ordering/blocked: {events}")
+    path.write_text((ROOT / "openpilot/tesla/manifest.py").read_text())
+    mf.check_staged(stage, p)
+    if ParamsView(p, mf.UPDATE_SPECS).get(mf.UPDATE_COMPAT_PARAM):
+      errors.append("P43 resolved warning not cleared")
+    path.unlink()
+    mf.check_staged(stage, p)
+    if not ParamsView(p, mf.UPDATE_SPECS).get(mf.UPDATE_COMPAT_PARAM):
+      errors.append("P43 failed precheck silently ignored")
+
+    events = []
+    tree = ast.parse((ROOT / "openpilot/selfdrive/car/card.py").read_text())
+    init = next(n for c in tree.body if isinstance(c, ast.ClassDef) and c.name == "Car"
+                for n in c.body if isinstance(n, ast.FunctionDef) and n.name == "__init__")
+    snapshot_calls = [n for n in ast.walk(init) if isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id == "log_snapshot"]
+    if len(snapshot_calls) != 1:
+      errors.append("P44 card does not log once per drive initialization")
+    active_plugin = real[0]
+    off = type("Off", (Plugin,), {"NAME": "off", "ENABLE_PARAM": "OffKey"})
+    loser = type("Loser", (Plugin,), {"NAME": "loser", "PRIORITY": 20000, "CLAIMS": active_plugin.CLAIMS})
+    p.put("XpilotPandaRules", b"table" + (12345).to_bytes(4, "little"))
+    with patch.object(plugins, "PLUGINS", (active_plugin, off, loser)), \
+         patch.object(plugins.cloudlog, "event", side_effect=lambda name, **kw: events.append((name, kw))), \
+         patch.object(mf, "compiled_param_keys", return_value={"XpilotPandaRules"}):
+      if snapshot_calls:
+        exec(compile(ast.Expression(snapshot_calls[0]), "card.py", "eval"), {"log_snapshot": plugins.log_snapshot,
+             "self": types.SimpleNamespace(params=p)})
+    if len(events) != 1 or events[0][0] != "xpilot.drive_snapshot":
+      errors.append(f"P44 missing drive event: {events}")
+    else:
+      snapshot = events[0][1]
+      (ARTIFACTS / "drive-snapshot.json").write_text(json.dumps(snapshot, indent=2))
+      expected = [{"id": active_plugin.NAME, "version": active_plugin.MANIFEST.version, "sha256": active_plugin.SHA256}]
+      if snapshot.get("plugins") != expected or len(snapshot.get("system_commit", "")) != 40 or snapshot.get("rule_table_crc32") != 12345:
+        errors.append(f"P44 incomplete snapshot: {snapshot}")
+    (installed / "__init__.py").write_text("")
+    code = installed / "plugin.py"
+    code.write_text("from openpilot.tesla.plugin import Plugin\nclass P(Plugin):\n  pass\n")
+    def digest():
+      return next(c.SHA256 for c in plugins._discover()[0] if c.NAME == installed.name)
+    first = digest()
+    cache = installed / "__pycache__"
+    cache.mkdir(exist_ok=True)
+    (cache / "ignored.pyc").write_bytes(b"cache")
+    if digest() != first:
+      errors.append("P44 content hash depends on import cache")
+    code.write_text(code.read_text() + "\nCHANGED = 1\n")
+    if digest() == first or len(first) != 64:
+      errors.append("P44 content hash misses source changes")
+  return errors
+
+
+def required_role_checks(plugins, real) -> list[str]:
+  from openpilot.tesla.ui import offroad
+  errors = []
+  roles = ("role:perception.model", "role:engagement.state", "role:safety.fallback")
+  if getattr(plugins, "REQUIRED_ROLES", None) != roles:
+    errors.append("P37 REQUIRED_ROLES differs from the three required roles")
+
+  class Params(FakeParams):
+    def __init__(self, values=None):
+      super().__init__(values)
+      self.writes = []
+
+    def put(self, key, value, block=False):
+      self.writes.append((key, value))
+      self.values[key] = value
+
+    put_bool = put
+
+  remaining = tuple(p for p in real if not p.NAME.startswith("sp_"))
+  with patch.object(plugins, "PLUGINS", remaining):
+    try:
+      if plugins.missing_roles(Params()) != list(roles):
+        errors.append("P37 missing roles not listed in required order")
+    except AttributeError as e:
+      errors.append(f"P37 {e}")
+    alerts = offroad.offroad_alerts(Params())
+    if len(alerts) != 3 or {text for _, text in alerts} != {f"No {r} plugin: driving assistance unavailable" for r in roles}:
+      errors.append(f"P38 missing-role alerts: {alerts}")
+  with patch.object(plugins, "PLUGINS", real):
+    if offroad.offroad_alerts(Params()):
+      errors.append("P38 alerts remain with all built-in providers present")
+
+  for role in roles:
+    replacement = type("Required", (Plugin,), {"NAME": "required", "ENABLE_PARAM": "RequiredOn", "CLAIMS": (role,)})
+    fallback = next(p for p in real if role in p.CLAIMS)
+    p = Params({"RequiredOn": True, plugins.FAULTS_PARAM: {"required": "fault"}})
+    with patch.object(plugins, "PLUGINS", (replacement,)), patch.object(offroad, "PLUGINS", (replacement,)):
+      error = offroad.switch_plugin(replacement, False, p)
+      if error != f"required role {role}" or p.writes:
+        errors.append(f"P39 only enabled claimant {role}: error={error!r}, writes={p.writes}")
+      errors += switch_ui_checks(replacement, p, offroad)
+    for other in (fallback, type("Other", (replacement,), {"NAME": "other", "ENABLE_PARAM": "OtherOn"})):
+      p = Params({"RequiredOn": True, "OtherOn": True})
+      with patch.object(plugins, "PLUGINS", (replacement, other)), patch.object(offroad, "PLUGINS", (replacement, other)):
+        if offroad.switch_plugin(replacement, False, p) or p.get_bool("RequiredOn"):
+          errors.append(f"P40 replacement {role} cannot be switched off with an enabled fallback")
+    disabled = type("Disabled", (replacement,), {"NAME": "disabled", "ENABLE_PARAM": "DisabledOn"})
+    blocker = type("Blocker", (Plugin,), {"NAME": "blocker", "PRIORITY": -1, "CLAIMS": ("source:demo",)})
+    loser = type("Loser", (replacement,), {"CLAIMS": (role, "source:demo")})
+    with patch.object(plugins, "PLUGINS", (disabled, loser, blocker)):
+      try:
+        if role not in plugins.missing_roles(Params({"RequiredOn": True})):
+          errors.append(f"P37 disabled/conflicting claimant supplies {role}")
+      except AttributeError:
+        pass  # P37 already reports the missing API above.
+    p = Params({"RequiredOn": True})
+    with patch.object(plugins, "PLUGINS", (replacement, disabled)), patch.object(offroad, "PLUGINS", (replacement, disabled)):
+      if offroad.switch_plugin(replacement, False, p) != f"required role {role}" or p.writes:
+        errors.append(f"P39 disabled fallback permits switching off {role}")
+
+  combined = type("Combined", (Plugin,), {"NAME": "combined", "ENABLE_PARAM": "CombinedOn", "CLAIMS": roles[:2]})
+  incoming = type("Incoming", (Plugin,), {"NAME": "incoming", "ENABLE_PARAM": "IncomingOn", "CLAIMS": roles[:1],
+                                          "MANIFEST": real[0].MANIFEST})
+  p = Params({"CombinedOn": True})
+  with patch.object(offroad, "PLUGINS", (combined, incoming)):
+    if offroad.switch_plugin(incoming, True, p) != f"required role {roles[1]}" or p.writes:
+      errors.append(f"P41 conflict switch drops another required role: {p.writes}")
+  return errors
+
+
+def switch_ui_checks(plugin, p, offroad) -> list[str]:
+  """Run both UI callbacks and refresh methods without raylib or a device."""
+  errors = []
+  for path, name, methods, callback in (("pages/plugins.py", "Switches", ("switch", "refresh"), "switch"),
+                                       ("plugins_page.py", "CategoryPage", ("_switch", "show_event"), "_switch")):
+    tree = ast.parse((ROOT / "openpilot/tesla/ui" / path).read_text())
+    cls = next(n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == name)
+    cls.bases = [ast.Name(id="Base", ctx=ast.Load())]
+    cls.body = [n for n in cls.body if isinstance(n, ast.FunctionDef) and n.name in methods]
+    tree.body = [cls]
+    state, statuses = [], []
+    toggle = types.SimpleNamespace(set_state=state.append, set_checked=state.append, set_value=statuses.append)
+    status = {"": ""}
+    env = {"Base": type("Base", (), {"show_event": lambda self: None}),
+           "ui_state": types.SimpleNamespace(is_offroad=lambda: True, params=p), "params": lambda: p,
+           **{n: getattr(plugins, n) for n in ("view", "is_enabled", "resolve", "FAULTS_PARAM")},
+           "switch_plugin": offroad.switch_plugin, "plugin_status": offroad.plugin_status}
+    exec(compile(ast.fix_missing_locations(tree), path, "exec"), env)
+    ui = env[name]()
+    ui.items, ui.rows, ui.errors = [(plugin, types.SimpleNamespace(action_item=toggle), status)], [(plugin, toggle)], {}
+    ui.jobs = types.SimpleNamespace(busy=False)
+    getattr(ui, callback)(plugin, False)
+    shown = status[""] if name == "Switches" else statuses[-1]
+    if state[-1] is not True or shown != f"required role {plugin.CLAIMS[0]}":
+      errors.append(f"P39 {path}: state={state}, status={shown!r}")
+  return errors
 
 
 def long_target_checks(plugins) -> list[str]:
@@ -369,36 +751,17 @@ def source_checks(plugins, real) -> list[str]:
   if 'for name in ("mapd", "mapd_manager")' not in gate or 'plugins.holds(params, "source:map")' not in gate:
     errors.append("P23 fork_processes.py does not gate SP's OSM processes on source:map")
 
-  role = "role:perception.model"
-  sp = type("sp_models", (Plugin,), {"NAME": "sp_models", "ENABLE_PARAM": None, "CLAIMS": (role,), "PRIORITY": 10000})
-  rep = type("op_models", (Plugin,), {"NAME": "op_models", "ENABLE_PARAM": "OpKey", "CLAIMS": (role,), "PRIORITY": 100})
-  plugins.PLUGINS = (sp, rep)
-  got = [plugins.owner(FakeParams(), role), plugins.owner(FakeParams({"OpKey": True}), role)]
-  plugins.PLUGINS = ()
-  got.append(plugins.owner(FakeParams(), role))
-  if got != ["sp_models", "op_models", None]:
-    errors.append(f"P26 role:perception.model owner (default, replaced, none) = {got}")
-  models = [c for c in real if role in c.CLAIMS]
-  sp_real = next((c for c in models if c.NAME == "sp_models"), None)
-  if sp_real is None or sp_real.ENABLE_PARAM is not None or any(c.PRIORITY >= sp_real.PRIORITY for c in models if c is not sp_real):
-    errors.append(f"P26 sp_models must be the always-on, lowest-priority owner of {role}: {[(c.NAME, c.PRIORITY) for c in models]}")
-  if 'for name in ("models_manager", "modeld", "modeld_tinygrad", "modeld_warmup")' not in gate or \
-     'plugins.owner(params, "role:perception.model") in (None, "sp_models")' not in gate:
-    errors.append("P26 fork_processes.py does not gate SP's model processes on role:perception.model")
-
-  faults.clear()
-  good, unclaimed, off = types.SimpleNamespace(), types.SimpleNamespace(), types.SimpleNamespace()
-  plugins.PLUGINS = (plugin("good", ("external.provider",), "external_provider", good),
-                     plugin("unclaimed", (), "external_provider", unclaimed),
-                     plugin("off", ("external.provider",), "external_provider", off, enable="OffKey"),
-                     type("raising", (Plugin,), {"NAME": "raising", "CLAIMS": ("external.provider",),
-                                                 "external_provider": classmethod(lambda cls, p: 1 / 0)}))
-  try:
-    got = plugins.external_providers(FakeParams())
-    if got != [good] or "externald.external_provider" not in faults:
-      errors.append(f"P24 external providers {got}, faults {faults}")
-  except Exception as e:
-    errors.append(f"P24 external_providers raised {e!r}")
+  from openpilot.cereal import log
+  from openpilot.cereal.services import SERVICE_LIST
+  from openpilot.tesla import manifest, plugin_msgd
+  if ("externald" in plugin_msgd.HOST_CLAIMS or hasattr(Plugin, "external_provider") or hasattr(plugins, "external_providers") or
+      "external_provider" in manifest.HOST_CAPS["hooks"] or manifest._CLAIM_RE.fullmatch("external.provider") or
+      {"externalIn", "externalOut"} & SERVICE_LIST.keys()):
+    errors.append("P24 plugin-specific external-compute system API remains")
+  for name, ordinal in (("deprecatedExternalIn", 137), ("deprecatedExternalOut", 138)):
+    field = log.Event.schema.fields.get(name)
+    if field is None or field.proto.ordinal.explicit != ordinal or field.schema != log.Event.schema.fields["pluginMsg"].schema:
+      errors.append(f"P24 {name} ordinal/type changed")
   return errors
 
 
@@ -441,6 +804,177 @@ def msg_checks(plugins) -> list[str]:
     errors.append("G3 demo.a fresh within 100 ms only")
   if reader.fresh("demo.b", t + 10**12) != {"pub": [2]}:
     errors.append("G3 validForMs 0 expired, or kinds mixed")
+  return errors
+
+
+def registration_checks(plugins) -> list[str]:
+  errors, faults, logs = [], [], []
+  plugins.record_fault = lambda name, where, exc: faults.append((name, where))
+  modules = {
+    "openpilot.common.hardware": types.SimpleNamespace(PC=True),
+    "openpilot.sunnypilot.hardware.driver_monitoring": types.SimpleNamespace(driver_monitoring_enabled=lambda p: True),
+    "openpilot.sunnypilot.hardware.profile": types.SimpleNamespace(
+      HardwareProfile=types.SimpleNamespace(C3XL="c3xl"), get_hardware_profile=lambda: "pc",
+      has_audio_output=lambda: True, has_microphone=lambda: True),
+    "openpilot.system.manager.process": types.SimpleNamespace(
+      PythonProcess=lambda name, module, should_run: types.SimpleNamespace(name=name, should_run=should_run)),
+  }
+  with patch.dict(sys.modules, modules):
+    apply = runpy.run_path(str(ROOT / "openpilot/sunnypilot/system/fork_processes.py"))["apply_fork_processes"]
+
+  def official():
+    return [types.SimpleNamespace(name=n, should_run=lambda s, p, c: s) for n in (
+      "controlsd", "dmonitoringmodeld", "dmonitoringd", "micd", "soundd", "mapd", "mapd_manager", "map_osm",
+      "models_manager", "modeld", "modeld_tinygrad", "modeld_warmup")]
+
+  plugins.PLUGINS = (make("bad_proc", "processes"), make("good_proc"))
+  try:
+    if "good_procd" not in [p.name for p in apply(official(), None)]:
+      errors.append("P28 healthy plugin process lost")
+  except Exception as e:
+    errors.append(f"P28 manager registration raised {e!r}")
+  if faults != [("bad_proc", "manager.processes")]:
+    errors.append(f"P28 registration fault not recorded: {faults}")
+
+  first = types.SimpleNamespace(name="shared", should_run=lambda s, p, c: s)
+  second = types.SimpleNamespace(name="shared", should_run=lambda s, p, c: s)
+  rogue = [types.SimpleNamespace(name=n, should_run=lambda s, p, c: s) for n in ("controlsd", "alert_output")]
+  plugins.PLUGINS = tuple(type(name, (Plugin,), {"NAME": name, "ENABLE_PARAM": "OffKey",
+    "CLAIMS": tuple(f"process:{p.name}" for p in procs), "processes": classmethod(lambda cls, ps=procs: ps)})
+    for name, procs in (("rogue", rogue), ("first", [first]), ("second", [second])))
+  core = official()
+  with patch.object(plugins.cloudlog, "error", side_effect=lambda msg: logs.append(msg)):
+    procs = apply(core, None)
+  managed = {p.name: p for p in procs}
+  if managed["controlsd"] is not core[0] or managed["alert_output"] is rogue[1] or managed.get("shared") is not first or \
+     len(procs) != len(managed) or len(logs) != 3:
+    errors.append(f"P29 duplicate processes accepted: {[p.name for p in procs]}, logs {logs}")
+
+  role = "role:perception.model"
+  model_names = ("models_manager", "modeld", "modeld_tinygrad", "modeld_warmup")
+  from openpilot.tesla.plugins.sp_models.plugin import SpModels
+
+  class Replacement(Plugin):
+    NAME, ENABLE_PARAM, PRIORITY = "op_models", "OpKey", 100
+    CLAIMS = (role, "process:op_modeld")
+
+    @classmethod
+    def processes(cls):
+      return [types.SimpleNamespace(name="op_modeld", should_run=lambda s, p, c: s)]
+
+  plugins.PLUGINS = (SpModels, Replacement)
+  procs = apply(official(), None)
+  managed = {p.name: p for p in procs}
+  if len(procs) != len(managed) or any(n not in managed for n in model_names):
+    errors.append(f"P26 missing or repeated model processes: {[p.name for p in procs]}")
+  else:
+    for enabled in (False, True, False):
+      params = FakeParams({"OpKey": enabled})
+      for started in (False, True):
+        runs = [managed[n].should_run(started, params, None) for n in model_names]
+        if runs != [started and not enabled] * 4 or managed["op_modeld"].should_run(started, params, None) != (started and enabled):
+          errors.append(f"P26 model switch on={enabled}, started={started}: {runs}")
+
+  class Selector(Plugin):
+    NAME, CLAIMS = "custom_models", (role,)
+    selected = model_names
+
+    @classmethod
+    def role_processes(cls, claimed_role, procs):
+      assert claimed_role == role and tuple(procs) == model_names
+      return [procs[n] for n in cls.selected]
+
+  for selected in (model_names, model_names[:2], ()):
+    Selector.selected = selected
+    plugins.PLUGINS = (SpModels, Selector)
+    procs = apply(official(), None)
+    got = {p.name for p in procs if p.name in model_names and p.should_run(True, FakeParams(), None)}
+    if got != set(selected):
+      errors.append(f"P26 arbitrary role owner selected {selected}, running {sorted(got)}")
+
+  plugins.PLUGINS = ()
+  procs = apply(official(), None)
+  if any(p.should_run(s, FakeParams(), None) for p in procs if p.name in model_names for s in (False, True)):
+    errors.append("P33 model processes run without an owner")
+
+  class Unclaimed(Selector):
+    NAME, CLAIMS = "unclaimed_models", ()
+
+    @classmethod
+    def role_processes(cls, claimed_role, procs):
+      calls.append((cls.NAME, "role_processes"))
+      return list(procs.values())
+
+  class Foreign(Selector):
+    NAME = "foreign_models"
+
+    @classmethod
+    def role_processes(cls, claimed_role, procs):
+      return [procs["models_manager"], types.SimpleNamespace(**vars(procs["modeld"]))]
+
+  plugins.PLUGINS = (Unclaimed,)
+  procs = apply(official(), None)
+  if (Unclaimed.NAME, "role_processes") in calls or any(p.should_run(True, FakeParams(), None) for p in procs if p.name in model_names):
+    errors.append("P34 role_processes called or processes granted without a role claim")
+  faults.clear()
+  plugins.PLUGINS = (Foreign,)
+  procs = apply(official(), None)
+  if any(p.should_run(True, FakeParams(), None) for p in procs if p.name in model_names) or faults != [(Foreign.NAME, "manager.role_processes")]:
+    errors.append(f"P34 foreign process accepted or not recorded: {faults}")
+
+  class Raising(Selector):
+    NAME = "raising_models"
+
+    @classmethod
+    def role_processes(cls, claimed_role, procs):
+      raise RuntimeError("role_processes")
+
+  faults.clear()
+  plugins.PLUGINS = (Raising, SpModels, make("healthy"))
+  try:
+    procs = apply(official(), None)
+    if "healthyd" not in [p.name for p in procs] or any(p.should_run(True, FakeParams(), None) for p in procs if p.name in model_names):
+      errors.append("P35 raising role hook lost healthy processes or kept its role processes")
+  except Exception as e:
+    errors.append(f"P35 role registration raised {e!r}")
+  if faults != [(Raising.NAME, "manager.role_processes")]:
+    errors.append(f"P35 role fault not recorded: {faults}")
+
+  rogue = [types.SimpleNamespace(name=n, should_run=lambda s, p, c: True) for n in model_names]
+  plugins.PLUGINS = (type("Rogue", (Plugin,), {"NAME": "rogue_models", "CLAIMS": tuple(f"process:{n}" for n in model_names),
+    "processes": classmethod(lambda cls: rogue)}),)
+  procs = apply(official(), None)
+  if any(p is r for p in procs for r in rogue) or plugins.processes():
+    errors.append("P36 processes() registered a reserved model process name")
+  return errors
+
+
+def service_checks(plugins) -> list[str]:
+  errors = []
+  with tempfile.TemporaryDirectory() as tmp:
+    for name, services in (("svc_good", ("carState",)), ("svc_bad", ("carState", "unknownPluginService"))):
+      path = Path(tmp) / name
+      path.mkdir()
+      (path / "__init__.py").write_text("")
+      (path / "plugin.json").write_text(json.dumps({"id": name, "api": 1, "category": "tools", "use": "both", "entry": "plugin:P"}))
+      (path / "plugin.py").write_text(f"from openpilot.tesla.plugin import Plugin\nclass P(Plugin):\n  SERVICES = {services!r}\n")
+    with patch.object(plugins.mf, "INSTALL_DIR", Path(tmp)):
+      loaded, faults, _ = plugins._discover()
+    if "svc_bad" in [p.NAME for p in loaded] or "unknownPluginService" not in faults.get("svc_bad", "") or \
+       "svc_good" not in [p.NAME for p in loaded] or "svc_good" in faults:
+      errors.append(f"P30 invalid SERVICES discovery: {[p.NAME for p in loaded]}, errors {faults}")
+
+  plugins.PLUGINS = tuple(type(name, (Plugin,), {"NAME": name, "ENABLE_PARAM": enable,
+    "CLAIMS": claims, "SERVICES": (svc,)}) for name, enable, claims, svc in (
+      ("on", None, ("source:demo",), "carState"), ("off", "OffKey", (), "radarState"),
+      ("loser", None, ("source:demo",), "modelV2")))
+  plugins.PLUGINS[0].PRIORITY = 1
+  for params, expected in ((FakeParams(), ["carState"]),
+                           (FakeParams({"OffKey": True}), ["carState", "radarState"]),
+                           (object(), ["carState", "modelV2", "radarState"])):
+    with patch("openpilot.common.params.Params", return_value=params):
+      if (got := plugins.services()) != expected:
+        errors.append(f"P31 subscribed {got}, expected {expected}")
   return errors
 
 

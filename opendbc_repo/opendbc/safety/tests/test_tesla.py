@@ -1,4 +1,13 @@
 #!/usr/bin/env python3
+"""RX failure cases:
+RX1 exempt UI_status2 at 2 Hz keeps safety_rx_checks_invalid true.
+RX2 a non-exempt message configured below 10 Hz leaves RX checks valid.
+Stock AP (xpilot EAP plugin) failure cases:
+SA1 with TeslaSafetyFlagsSP.STOCK_AP a stock 0x488/0x2B9/0x27D frame from the AP ECU is not forwarded
+    (stock Autosteer, TACC or EAC would stop), with or without openpilot longitudinal.
+SA2 with STOCK_AP openpilot can still send 0x488/0x2B9/0x27D while controls are allowed.
+SA3 without STOCK_AP stock 0x488 is forwarded while stock LKAS is off (the flag leaks into the default mode).
+"""
 import random
 import unittest
 import numpy as np
@@ -15,6 +24,7 @@ from opendbc.safety.tests.libsafety import libsafety_py
 from opendbc.safety.tests.common import CANPackerSafety, MAX_SPEED_DELTA, MAX_WRONG_COUNTERS, away_round, round_speed
 
 from opendbc.sunnypilot.car.tesla.values import TeslaSafetyFlagsSP
+
 
 MSG_DAS_steeringControl = 0x488
 MSG_APS_eacMonitor = 0x27d
@@ -477,6 +487,29 @@ class TestTeslaVehicleBusSafety(TestTeslaSafetyBase):
 
   LONGITUDINAL = False
 
+  def test_rx_minimum_frequency(self):
+    values = {0x155: {"ESP_wheelSpeedsQF": 1}, 0x145: {"ESP_driverBrakeApply": 1}, 0x257: {"DI_vehicleSpeed": 0}}
+    for ignore_frequency_check in (False, True):
+      with self.subTest(ignore_frequency_check=ignore_frequency_check):
+        self.setUp()
+        cfg = self.safety.current_safety_config
+        ui_status = cfg.rx_checks[cfg.rx_checks_len - 1].msg[0]
+        self.assertEqual((ui_status.addr, ui_status.bus, ui_status.frequency), (0x3DF, 1, 2))
+        ui_status.ignore_frequency_check = ignore_frequency_check
+        for ts in range(0, 2_000_001, 10_000):
+          self.safety.set_timer(ts)
+          for i in range(cfg.rx_checks_len):
+            msg = cfg.rx_checks[i].msg[0]
+            if ts % (1_000_000 // msg.frequency) == 0:
+              packer = self.packer_adas if msg.bus == CANBUS.vehicle else self.packer
+              self.assertTrue(self._rx(packer.make_can_msg_safety(msg.addr, msg.bus, values.get(msg.addr, {}))))
+          if ts and ts % 1_000_000 == 0:
+            self.safety.set_controls_allowed(True)
+            self.safety.safety_tick()
+            self.assertTrue(self.safety.safety_config_valid())
+            self.assertEqual(self.safety.safety_rx_checks_invalid, not ignore_frequency_check)
+            self.assertEqual(self.safety.get_controls_allowed(), ignore_frequency_check)
+
   def setUp(self):
     super().setUp()
     self.safety = libsafety_py.libsafety
@@ -522,5 +555,31 @@ class TestTeslaVehicleBusSafety(TestTeslaSafetyBase):
       with self.subTest(actual=actual):
         self._rx(self._touch_points_msg(actual))
         self.assertEqual(-1, self.safety.get_mads_button_press())  # UNAVAILABLE
+class TestTeslaStockApSafety(unittest.TestCase):
+  def setUp(self):
+    self.safety = libsafety_py.libsafety
+    self.packer = CANPackerSafety("tesla_model3_party")
+
+  def _init(self, param, param_sp):
+    self.safety.set_current_safety_param_sp(TeslaSafetyFlagsSP.HAS_VEHICLE_BUS | param_sp)
+    self.safety.set_safety_hooks(CarParams.SafetyModel.tesla, param)
+    self.safety.init_tests()
+    self.safety.set_controls_allowed(True)
+
+  def test_stock_ap(self):
+    ops = (self.packer.make_can_msg_safety("DAS_steeringControl", 0, {"DAS_steeringAngleRequest": 0, "DAS_steeringControlType": 1}),
+           self.packer.make_can_msg_safety("DAS_control", 0, {"DAS_setSpeed": 10, "DAS_accState": 4}),
+           self.packer.make_can_msg_safety("APS_eacMonitor", 0, {}))
+    for param in (0, TeslaSafetyFlags.LONG_CONTROL):
+      with self.subTest(param=param):
+        self._init(param, TeslaSafetyFlagsSP.STOCK_AP)
+        for addr in (MSG_DAS_steeringControl, MSG_DAS_Control, MSG_APS_eacMonitor):
+          self.assertEqual(0, self.safety.safety_fwd_hook(2, addr))  # SA1
+        for msg in ops:
+          self.assertFalse(self.safety.safety_tx_hook(msg))  # SA2
+        self._init(param, 0)
+        self.assertEqual(-1, self.safety.safety_fwd_hook(2, MSG_DAS_steeringControl))  # SA3
+
+
 if __name__ == "__main__":
   unittest.main()

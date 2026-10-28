@@ -1,0 +1,71 @@
+{
+  "elapsed_seconds": 120.00421930599987,
+  "manager_samples": 239,
+  "expected_running": [
+    "alert_output",
+    "deleter",
+    "hardwared",
+    "logmessaged",
+    "mapd",
+    "mapd_manager",
+    "modeld_warmup",
+    "models_manager",
+    "pandad",
+    "timed",
+    "tombstoned",
+    "ui",
+    "updated"
+  ],
+  "alive": {
+    "deviceState": true,
+    "pandaStates": true,
+    "managerState": true
+  },
+  "passed": true,
+  "pid_sets": {
+    "alert_output": [
+      97978
+    ],
+    "deleter": [
+      97953
+    ],
+    "hardwared": [
+      97956
+    ],
+    "logmessaged": [
+      97945
+    ],
+    "mapd": [
+      97967
+    ],
+    "mapd_manager": [
+      97971
+    ],
+    "modeld_warmup": [
+      97988
+    ],
+    "models_manager": [
+      97980
+    ],
+    "pandad": [
+      97955
+    ],
+    "timed": [
+      97948
+    ],
+    "tombstoned": [
+      97957
+    ],
+    "ui": [
+      97949
+    ],
+    "updated": [
+      97961
+    ]
+  },
+  "scanned_errors": {
+    "production-startup.log": [],
+    "production-runtime.log": [],
+    "production-messages.jsonl": []
+  }
+}

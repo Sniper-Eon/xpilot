@@ -11,8 +11,7 @@
 #include "opendbc/safety/modes/tesla.h"
 #include "opendbc/safety/modes/elm327.h"
 
-// xpilot feature plugins (experimental): each owns one extra TX message and validates it itself
-#include "opendbc/safety/plugins/registry.h"
+#include "opendbc/safety/xpilot_rules.h"
 
 // cppcheck-suppress misra-c2012-8.7; shared declaration exported by libsafety test ABI.
 uint32_t GET_BYTES_LE(const CANPacket_t *msg, int start, int len) {
@@ -191,9 +190,9 @@ bool safety_rx_hook(const CANPacket_t *msg) {
   if (valid && whitelisted) {
     current_hooks->rx(msg);
   }
-  // xpilot plugins observe every valid frame (templates, freshness); they never change mode state
+  // Rules observe valid RX without changing mode state.
   if (valid) {
-    safety_plugins_rx(msg);
+    xpilot_rules_rx(msg);
   }
 
   // Handles gas, brake, and regen paddle
@@ -215,6 +214,7 @@ bool safety_rx_hook(const CANPacket_t *msg) {
     heartbeat_engaged_mismatches = 0;
   }
 
+  tesla_long_update();
   return valid;
 }
 
@@ -230,17 +230,16 @@ static bool tx_msg_safety_check(const CANPacket_t *msg, const CanMsg msg_list[],
 }
 
 bool safety_tx_hook(CANPacket_t *msg) {
-  const safety_plugin *plugin = safety_plugin_for(msg);
+  tesla_long_update();
   bool whitelisted = tx_msg_safety_check(msg, current_safety_config.tx_msgs, current_safety_config.tx_msgs_len);
   if ((current_safety_mode == SAFETY_ALLOUTPUT) || (current_safety_mode == SAFETY_ELM327)) {
     whitelisted = true;
   }
 
   bool safety_allowed = false;
-  if (plugin != NULL) {
-    // xpilot plugin message: validated only by its plugin; the mode's own messages are untouched
+  if ((current_safety_mode == SAFETY_TESLA) && !xpilot_mode_owned(msg->addr)) {
     whitelisted = true;
-    safety_allowed = plugin->tx(msg);
+    safety_allowed = xpilot_rules_tx(msg);
   } else if (whitelisted) {
     safety_allowed = current_hooks->tx(msg);
   } else {
@@ -284,6 +283,31 @@ int safety_fwd_hook(int bus_num, int addr) {
   return blocked ? -1 : destination_bus;
 }
 
+// Tesla long needs current-payload AEB and validated counters before forwarding.
+int safety_rx_fwd_hook(const CANPacket_t *msg, bool *valid, bool tx_available) {
+  int bus_fwd;
+  if ((current_safety_mode == SAFETY_TESLA) && (msg->addr == 0x2b9U) && (msg->bus == 2U)) {
+    bool well_formed = (GET_LEN(msg) == 8U) && (msg->extended == 0U);
+    if (well_formed) {
+      tesla_stock_aeb = (msg->data[2] & 0x03U) == 1U;
+      *valid = safety_rx_hook(msg);
+    } else {
+      *valid = false;
+      tesla_long_oem.valid = false;
+    }
+    if (!*valid) {
+      if (tesla_long_pending != TESLA_LONG_NONE) {
+        tesla_long_clear(TESLA_LONG_RX_INVALID);
+      }
+    }
+    bus_fwd = well_formed ? tesla_long_route(msg, *valid, tx_available) : -1;
+  } else {
+    bus_fwd = safety_fwd_hook(msg->bus, msg->addr);
+    *valid = safety_rx_hook(msg);
+  }
+  return bus_fwd;
+}
+
 // Given a CRC-8 poly, generate a static lookup table to use with a fast CRC-8
 // algorithm. Called at init time for safety modes using CRC-8.
 // cppcheck-suppress misra-c2012-8.7; shared declaration exported by libsafety test ABI.
@@ -316,11 +340,12 @@ void gen_crc_lookup_table_16(uint16_t poly, uint16_t crc_lut[]) {
   }
 }
 
-// 1Hz safety function called by main. Now just a check for lagging safety messages
+// 1Hz safety function called by main.
 void safety_tick(void) {
   const uint8_t MAX_MISSED_MSGS = 10U;
   bool rx_checks_invalid = false;
   uint32_t ts = microsecond_timer_get();
+  xpilot_rules_tick(ts);
   for (int i=0; i < current_safety_config.rx_checks_len; i++) {
     uint32_t elapsed_time = safety_get_ts_elapsed(ts, current_safety_config.rx_checks[i].status.last_timestamp);
     // lag threshold is max of: 1s and MAX_MISSED_MSGS * expected timestep.
@@ -344,6 +369,7 @@ void safety_tick(void) {
   }
 
   safety_rx_checks_invalid = rx_checks_invalid;
+  tesla_long_update();
 }
 
 static void relay_malfunction_set(void) {
@@ -403,6 +429,9 @@ int set_safety_hooks(uint16_t mode, uint16_t param) {
 #endif
   };
 
+  xpilot_rules_reset();
+  tesla_long_reset(false);
+
   // reset state set by safety mode
   safety_mode_cnt = 0U;
   relay_malfunction = false;
@@ -453,7 +482,10 @@ int set_safety_hooks(uint16_t mode, uint16_t param) {
       current_hooks = safety_hook_registry[i].hooks;
       current_safety_mode = mode;
       current_safety_param = param;
-      safety_plugins_reset();
+      xpilot_rule_error = 0U;
+      if (xpilot_non_car_mode(mode) || (xpilot_rule_status == 1U)) {
+        xpilot_rules_clear();
+      }
       set_status = 0;  // set
     }
   }

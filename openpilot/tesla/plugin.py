@@ -77,6 +77,13 @@ class Plugin:
     """Extra manager processes (ManagerProcess instances). Import manager code inside, not at module level."""
     return []
 
+  @classmethod
+  def role_processes(cls, role, procs) -> list:
+    """manager: select all, some or none of SP's procs (name -> ManagerProcess) for a claimed role. Return only
+    supplied objects; they run with their original conditions only while this plugin owns role. Extra processes
+    still come from processes(). Raising or returning a foreign object records a fault and rejects this selection."""
+    return []
+
   # ---- selfdrived (claim "alert") ----
   @classmethod
   def alert_source(cls, CP, params):
@@ -108,6 +115,12 @@ class Plugin:
     desired_curvature, calibrated_pose, curvature_limited, lat_delay) -> (steer, steering_angle_deg, lac_log) and
     reset(). Its output is not limited against SP's; the car port's angle rate limits and panda still apply. SP's
     controller keeps running alongside and takes over for good if this one raises or returns a non-finite output."""
+    return None
+
+  @classmethod
+  def long_owner(cls, CP, CP_SP, params):
+    """None, or an object with desired(ctx, CS) -> None | "stock" | "sp". Exclusive role:long.owner;
+    proposes ownership only. Host vetoes and Panda health remain authoritative; a fault disables this hook for the drive."""
     return None
 
   # ---- plannerd (claim "role:long.planner", exclusive) ----
@@ -150,18 +163,20 @@ class Plugin:
   def engagement(cls, selfdrive):
     """None, or an object with state_machine (SP StateMachine interface: update(events) -> (enabled, active), state,
     current_alert_types, soft_disable_timer) and mads (ModularAssistiveDrivingSystem interface: update(CS), enabled,
-    active, state_machine.state, read_params(); None keeps SP's MADS bound to this state machine). Replaces SP's whole
+    active, enabled_toggle, state_machine.state, read_params(); None disables MADS). Plugins may retain/read
+    selfdrive, but change engagement only through these outputs, which the host clamps. Replaces SP's whole
     engagement. The host clamps the outputs: floor disables win, an engage needs SP's driver ENABLE event (MADS: the
     LKAS button), active implies enabled, soft disable ends within 4 s, ET.PERMANENT always shows. Raising or an
     invalid output latches both axes off for the rest of the drive."""
     return None
 
   @classmethod
-  def safety_fallback(cls, selfdrive):
-    """None, or an object with update(selfdrive, CS), called every selfdrived cycle after SP's update_events. It
-    replaces SP's fallback policy by editing selfdrive.events / events_sp in place (it may clear them and add its own);
-    the host puts back every floor event (pedals, cancel, FCW, stock AEB, panda/CAN faults, core-data liveness,
-    selfdrivedLagging, DM). Raising or replacing the event objects latches both axes off for the rest of the drive."""
+  def safety_fallback(cls, ctx):
+    """Return an object with update(ctx, CS, names, names_sp) -> (names, names_sp), after SP's update_events.
+    ctx is built once: SimpleNamespace(sm, CP, CP_SP, params=view(params)); it exposes no selfdrive or Events.
+    Return lists of known event names to keep/add. The host rebuilds the same Events objects, preserving counters,
+    then restores every floor (pedals, cancel, FCW, stock AEB, panda/CAN faults, core-data liveness, DM).
+    Missing owner/output, raising or invalid lists latch both axes off for the rest of the drive; no fallback."""
     return None
 
   @classmethod
@@ -169,10 +184,4 @@ class Plugin:
     """None, or a RadarInterfaceBase (update(can_list) -> RadarData or None) replacing the port's radar in card; needs
     the source:radar claim. The port's radar keeps running alongside and takes over for good if this one raises.
     A radar that sends CAN also needs a panda safety plugin."""
-    return None
-
-  @classmethod
-  def external_provider(cls, params):
-    """None, or a Provider (xpilot-plugins: plugins/external_compute/provider.py) for externald to bridge; needs the external.provider
-    claim. externald runs only while external_compute is on."""
     return None

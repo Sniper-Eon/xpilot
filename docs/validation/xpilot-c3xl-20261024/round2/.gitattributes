@@ -1,0 +1,2 @@
+# Preserve the captured Git patch context lines verbatim.
+*.patch -whitespace

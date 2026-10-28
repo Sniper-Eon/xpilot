@@ -19,8 +19,12 @@ Panda::Panda(std::string serial) {
     handle = std::make_unique<PandaUsbHandle>(serial);
     LOGW("connected to %s over USB", serial.c_str());
   } catch (const std::exception &) {
+#ifdef __linux__
     handle = std::make_unique<PandaSpiHandle>(serial);
     LOGW("connected to %s over SPI", serial.c_str());
+#else
+    throw;
+#endif
   }
 
   hw_type = get_hw_type();
@@ -42,13 +46,28 @@ std::string Panda::hw_serial() {
 std::vector<std::string> Panda::list() {
   auto serials = PandaUsbHandle::list();
   if (Hardware::get_device_type() == cereal::InitData::DeviceType::TICI) return serials;
+#ifdef __linux__
   auto internal = PandaSpiHandle::list();
   internal.insert(internal.end(), serials.begin(), serials.end());
   return internal;
+#else
+  return serials;
+#endif
 }
 
-void Panda::set_safety_model(cereal::CarParams::SafetyModel safety_model, uint16_t safety_param) {
-  handle->control_write(0xdc, (uint16_t)safety_model, safety_param);
+std::vector<uint8_t> Panda::rules_control(uint8_t request, uint16_t param1, uint16_t param2) {
+  std::vector<uint8_t> response(request == 0xa0 ? 16 : 24);
+  int n = handle->control_read(request, param1, param2, response.data(), response.size(), 5);
+  if (n != response.size()) return {};
+  return response;
+}
+
+bool Panda::rules_write(std::array<uint8_t, 64> &record) {
+  return handle->bulk_write(2, record.data(), record.size(), 5) == record.size();
+}
+
+void Panda::set_safety_model(cereal::CarParams::SafetyModel safety_model, uint16_t safety_param, unsigned int timeout) {
+  handle->control_write(0xdc, (uint16_t)safety_model, safety_param, timeout);
 }
 
 void Panda::set_alternative_experience(uint16_t alternative_experience, uint16_t safety_param_sp) {
@@ -95,10 +114,43 @@ void Panda::set_ir_pwr(uint16_t ir_pwr) {
   handle->control_write(0xb0, ir_pwr, 0);
 }
 
-std::optional<health_t> Panda::get_state() {
-  health_t health {0};
-  int err = handle->control_read(0xd2, 0, 0, (unsigned char*)&health, sizeof(health));
-  return err >= 0 ? std::make_optional(health) : std::nullopt;
+bool Panda::request_long_owner(uint8_t target) {
+  if (!long_owner_supported || !long_owner_capable || target > 1) return false;
+  std::array<uint8_t, 8> reply{};
+  int n = handle->control_read(0xa5, target, 0, reply.data(), reply.size(), 5);
+  return n == reply.size() && reply[0] == 1 && reply[1] <= 1 &&
+         (reply[2] <= 1 || reply[2] == 255) && reply[3] <= 20 && reply[6] == 0 && reply[7] == 0;
+}
+
+std::optional<health_t> Panda::get_state(unsigned int timeout) {
+  long_owner_supported = false;
+  long_owner_capable = false;
+  if (!packet_versions_checked) {
+    std::array<uint32_t, 2> versions{};
+    if (handle->control_read(0xdd, 0, 0, reinterpret_cast<uint8_t *>(versions.data()), sizeof(versions), timeout) != sizeof(versions)) {
+      return std::nullopt;
+    }
+    health_version = versions[0];
+    packet_versions_checked = true;
+  }
+  std::array<uint8_t, 64> raw{};
+  int n = handle->control_read(0xd2, 0, 0, raw.data(), raw.size(), timeout);
+  bool owner_abi = XPILOT_LONG_HEALTH_VERSION != 0 && health_version == XPILOT_LONG_HEALTH_VERSION;
+  if (n != (owner_abi ? 54 : 49)) return std::nullopt;
+  if (owner_abi && (raw[49] > 1 || (raw[50] > 1 && raw[50] != 255) || raw[53] > 20 ||
+                   (raw[50] == 255 && (raw[51] != 0 || raw[52] != 0)))) return std::nullopt;
+  health_t health{};
+  memcpy(&health, raw.data(), std::min(sizeof(health), size_t(n)));
+  long_owner_supported = owner_abi;
+  long_owner_capable = owner_abi && health.safety_mode_pkt == uint8_t(cereal::CarParams::SafetyModel::TESLA) &&
+                       (health.safety_param_pkt & 2U) != 0;
+  if (owner_abi) {
+    long_owner = raw[49];
+    long_pending = raw[50];
+    long_pending_age_ms = raw[51] | (uint16_t(raw[52]) << 8);
+    long_refusal = raw[53];
+  }
+  return health;
 }
 
 std::optional<can_health_t> Panda::get_can_state(uint16_t can_number) {

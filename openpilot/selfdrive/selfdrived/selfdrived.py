@@ -17,6 +17,7 @@ from openpilot.common.swaglog import cloudlog
 from openpilot.common.gps import get_gps_location_service
 
 from openpilot.selfdrive.car.car_events import CarEvents
+from openpilot.selfdrive.controls.lib.long_owner import sp_longitudinal
 from openpilot.selfdrive.locationd.helpers import PoseCalibrator, Pose
 from openpilot.selfdrive.selfdrived.events import Events, ET
 from openpilot.selfdrive.selfdrived.helpers import ExcessiveActuationCheck
@@ -101,7 +102,7 @@ class SelfdriveD:
     base_services = (['deviceState', 'pandaStates', 'peripheralState', 'modelV2', 'extrinsicsCalibration',
                       'carOutput', 'driverMonitoringState', 'longitudinalPlan', 'deviceMotion', 'lateralDelay',
                       'managerState', 'vehicleParameters', 'radarState',
-                      'controlsState', 'carControl', 'driverAssistance', 'alertDebug', 'userBookmark',
+                      'controlsState', 'carControl', 'carControlSP', 'driverAssistance', 'alertDebug', 'userBookmark',
                       'lateralManeuverPlan', 'modelDataV2SP', 'longitudinalPlanSP'] +
                      self.camera_packets + self.sensor_packets + self.gps_packets)
     plugin_services = plugins.services(base_services)
@@ -193,6 +194,8 @@ class SelfdriveD:
   def update_events(self, CS):
     """Compute onroadEvents from carState"""
 
+    op_long = sp_longitudinal(self.CP, self.sm['carControlSP'])
+    pcm_cruise = self.CP.pcmCruise or (self.CP.brand == 'tesla' and not op_long)
     self.events.clear()
     self.events_sp.clear()
 
@@ -252,7 +255,7 @@ class SelfdriveD:
 
     # Block resume if cruise never previously enabled
     resume_pressed = any(be.type in (ButtonType.accelCruise, ButtonType.resumeCruise) for be in CS.buttonEvents)
-    if not self.CP.pcmCruise and CS.vCruise > 250 and resume_pressed:
+    if not pcm_cruise and CS.vCruise > 250 and resume_pressed:
       self.events.add(EventName.resumeBlocked)
 
     # Handle DM
@@ -285,7 +288,7 @@ class SelfdriveD:
 
     # Add car events, ignore if CAN isn't valid
     if CS.canValid:
-      car_events = self.car_events.update(CS, self.CS_prev, self.sm['carControl']).to_msg()
+      car_events = self.car_events.update(CS, self.CS_prev, self.sm['carControl'], self.sm['carControlSP']).to_msg()
       self.events.add_from_msg(car_events)
 
       car_events_sp = self.car_events_sp.update(CS, self.events).to_msg()
@@ -426,7 +429,7 @@ class SelfdriveD:
           self.events.add(EventName.cameraFrameRate)
     if not REPLAY and self.rk.lagging:
       self.events.add(EventName.selfdrivedLagging)
-    if self.CP.openpilotLongitudinalControl:
+    if op_long:
       if self.sm['radarState'].radarErrors.canError:
         self.events.add(EventName.canError)
       elif self.sm['radarState'].radarErrors.radarUnavailableTemporary:
@@ -477,7 +480,7 @@ class SelfdriveD:
 
     if not REPLAY:
       # Check for mismatch between openpilot and car's PCM
-      cruise_mismatch = CS.cruiseState.enabled and (not self.enabled or not self.CP.pcmCruise)
+      cruise_mismatch = CS.cruiseState.enabled and (not self.enabled or not pcm_cruise)
       self.cruise_mismatch_counter = self.cruise_mismatch_counter + 1 if cruise_mismatch else 0
       if self.cruise_mismatch_counter > int(6. / DT_CTRL):
         self.events.add(EventName.cruiseMismatch)
@@ -499,7 +502,7 @@ class SelfdriveD:
         self.events.add(EventName.steerSaturated)
 
     # Check for FCW
-    stock_long_is_braking = self.enabled and not self.CP.openpilotLongitudinalControl and CS.aEgo < -1.25
+    stock_long_is_braking = self.enabled and not op_long and CS.aEgo < -1.25
     model_fcw = self.sm['modelV2'].meta.hardBrakePredicted and not CS.brakePressed and not stock_long_is_braking
     planner_fcw = self.sm['longitudinalPlan'].fcw and self.enabled
     if (planner_fcw or model_fcw) and not self.CP.notCar:
@@ -523,7 +526,7 @@ class SelfdriveD:
       self.events.remove(EventName.canBusMissing)
 
     # Decrement personality on distance button press
-    if self.CP.openpilotLongitudinalControl:
+    if op_long:
       if any(not be.pressed and be.type == ButtonType.gapAdjustCruise for be in CS.buttonEvents):
         self.personality = (self.personality - 1) % 3
         self.params.put('LongitudinalPersonality', self.personality)

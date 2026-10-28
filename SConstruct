@@ -89,7 +89,7 @@ acados_include_dirs = [
 # vendored in commaai/dependencies.
 allowed_system_libs = {
   "EGL", "GLESv2", "GL",
-  "dl", "drm", "gbm", "m", "pthread",
+  "dl", "drm", "gbm", "m", "pthread", "z",  # Panda rule-table CRC uses the OS zlib.
 }
 
 def _resolve_lib(env, name):

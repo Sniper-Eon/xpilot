@@ -1,0 +1,334 @@
+1689600
+1689600
+tee: /sys/devices/system/cpu/cpufreq/policy4/scaling_max_freq: Invalid argument
+waiting for magic
+magic ready after 0s
+ln: failed to create symbolic link '/home/comma/.cursor-server/vscode-server': F
+ile exists
+ln: failed to create symbolic link '/home/comma/.windsurf-server/vscode-server':
+ File exists
+Valid overlay update found, installing
+Restarting launch script /data/openpilot/launch_chffrplus.sh
+scons: Reading SConscript files ...
+kj/filesystem-disk-unix.c++:1734: warning: PWD environment variable doesn't matc
+h current directory; pwd = /data/openpilot/openpilot/system/manager
+gbm_create_device(156): Info: backend name is: msm_drm
+raylib: COMMA: Failed to initialize color correction
+raylib: FONT: Requested codepoints glyphs found: [117/122]
+raylib: FONT: Requested codepoints glyphs found: [117/122]
+raylib: FONT: Requested codepoints glyphs found: [117/122]
+raylib: FONT: Requested codepoints glyphs found: [107/122]
+raylib: FONT: Requested codepoints glyphs found: [117/122]
+scons: done reading SConscript files.
+scons: Building targets ...
+Retrieved `msgq_repo/msgq/ipc.os' from cache
+Retrieved `msgq_repo/msgq/event.os' from cache
+Retrieved `msgq_repo/msgq/impl_msgq.os' from cache
+Retrieved `msgq_repo/msgq/impl_fake.os' from cache
+Retrieved `msgq_repo/msgq/msgq.os' from cache
+Retrieved `msgq_repo/msgq/visionipc/visionipc.os' from cache
+Building compilation database compile_commands.json
+Retrieved `msgq_repo/libmsgq.a' from cache
+Retrieved `msgq_repo/msgq/visionipc/visionipc_server.os' from cache
+Retrieved `msgq_repo/msgq/visionipc/visionipc_client.os' from cache
+Retrieved `msgq_repo/msgq/visionipc/visionbuf_ion.os' from cache
+Retrieved `msgq_repo/msgq/ipc_pyx.cpp' from cache
+Retrieved `openpilot/cereal/gen/cpp/log.capnp.c++' from cache
+Retrieved `openpilot/cereal/gen/cpp/deprecated.capnp.c++' from cache
+Retrieved `openpilot/cereal/gen/cpp/custom.capnp.c++' from cache
+Retrieved `openpilot/cereal/gen/cpp/car.capnp.c++' from cache
+Retrieved `openpilot/cereal/gen/cpp/log.capnp.h' from cache
+Retrieved `openpilot/cereal/gen/cpp/deprecated.capnp.h' from cache
+Retrieved `openpilot/cereal/gen/cpp/custom.capnp.h' from cache
+Retrieved `openpilot/cereal/gen/cpp/car.capnp.h' from cache
+Retrieved `msgq_repo/msgq/ipc_pyx.o' from cache
+Retrieved `msgq_repo/libvisionipc.a' from cache
+Retrieved `openpilot/common/params.o' from cache
+  [CXX] openpilot/common/swaglog.o
+Retrieved `openpilot/common/util.o' from cache
+Retrieved `openpilot/common/ratekeeper.o' from cache
+Retrieved `openpilot/common/yuv.o' from cache
+Retrieved `msgq_repo/msgq/visionipc/visionipc_pyx.cpp' from cache
+Retrieved `openpilot/cereal/gen/cpp/car.capnp.o' from cache
+  [CXX] openpilot/cereal/gen/cpp/custom.capnp.o
+Retrieved `msgq_repo/msgq/visionipc/visionipc_pyx.o' from cache
+Retrieved `openpilot/cereal/gen/cpp/deprecated.capnp.o' from cache
+  [CXX] openpilot/cereal/gen/cpp/log.capnp.o
+Retrieved `openpilot/cereal/services.h' from cache
+Retrieved `openpilot/cereal/messaging/socketmaster.o' from cache
+Retrieved `openpilot/cereal/libsocketmaster.a' from cache
+Retrieved `openpilot/cereal/messaging/bridge.o' from cache
+Retrieved `openpilot/cereal/messaging/msgq_to_zmq.o' from cache
+Retrieved `openpilot/cereal/messaging/bridge_zmq.o' from cache
+Retrieved `openpilot/common/params_c.os' from cache
+Retrieved `openpilot/selfdrive/controls/lib/longitudinal_mpc_lib/c_generated_cod
+e/libacados.so' from cache
+Retrieved `openpilot/selfdrive/controls/lib/longitudinal_mpc_lib/c_generated_cod
+e/libblasfeo.so' from cache
+Retrieved `openpilot/selfdrive/controls/lib/longitudinal_mpc_lib/c_generated_cod
+e/libhpipm.so' from cache
+Retrieved `openpilot/selfdrive/controls/lib/longitudinal_mpc_lib/c_generated_cod
+e/libqpOASES_e.so.3.1' from cache
+Retrieved `openpilot/selfdrive/locationd/models/generated/car.cpp' from cache
+Retrieved `openpilot/selfdrive/locationd/models/generated/car.h' from cache
+Retrieved `openpilot/selfdrive/locationd/models/generated/car.os' from cache
+Retrieved `openpilot/selfdrive/locationd/models/generated/libcar.so' from cache
+Retrieved `openpilot/selfdrive/locationd/models/generated/pose.cpp' from cache
+Retrieved `openpilot/selfdrive/locationd/models/generated/pose.h' from cache
+Retrieved `openpilot/selfdrive/locationd/models/generated/pose.os' from cache
+Retrieved `openpilot/selfdrive/locationd/models/generated/libpose.so' from cache
+DEV=QCOM IMAGE=1 FLOAT16=1 NOLOCALS=1 JIT_BATCH_SIZE=0 OPENPILOT_HACKS=1 python3
+ "/data/openpilot/tinygrad_repo/examples/openpilot/compile_warp.py" --frame 1344
+,760,1408,768,384,2428928 --warp-to 1440x960 --layout luma --border-fill 16 --tr
+ansform-device NPY --output /data/openpilot/openpilot/selfdrive/modeld/models/dm
+_warp_1344x760_tinygrad.pkl
+DEV=QCOM IMAGE=1 FLOAT16=1 NOLOCALS=1 JIT_BATCH_SIZE=0 OPENPILOT_HACKS=1 python3
+ "/data/openpilot/tinygrad_repo/examples/openpilot/compile_warp.py" --frame 1928
+,1208,2048,1216,608,4804608 --warp-to 1440x960 --layout luma --border-fill 16 --
+transform-device NPY --output /data/openpilot/openpilot/selfdrive/modeld/models/
+dm_warp_1928x1208_tinygrad.pkl
+  [AR] openpilot/cereal/libcereal.a
+  [RANLIB] openpilot/cereal/libcereal.a
+  [ONNX] openpilot/selfdrive/modeld/models/dmonitoring_model_tinygrad.pkl
+  [AR] openpilot/common/libcommon.a
+  [RANLIB] openpilot/common/libcommon.a
+  [0/20] 3.08 ms
+  [0/20] 2.82 ms
+  [1/20] 2.57 ms
+  [LINK] msgq_repo/msgq/ipc_pyx.so
+  [1/20] 2.27 ms
+  [2/20] 2.33 ms
+  [2/20] 2.21 ms
+  [3/20] 2.10 ms
+  [3/20] 2.86 ms
+  [4/20] 2.26 ms
+  [4/20] 3.75 ms
+  [5/20] 3.02 ms
+  [6/20] 2.35 ms
+  [5/20] 2.24 ms
+  [7/20] 2.34 ms
+  [6/20] 2.24 ms
+  [8/20] 2.78 ms
+  [7/20] 2.20 ms
+  [9/20] 2.27 ms
+  [8/20] 3.06 ms
+  [10/20] 2.17 ms
+  [9/20] 2.95 ms
+  [11/20] 2.83 ms
+  [12/20] 2.37 ms
+  [10/20] 2.97 ms
+  [13/20] 3.24 ms
+  [11/20] 2.92 ms
+  [14/20] 3.12 ms
+  [12/20] 3.08 ms
+  [15/20] 2.21 ms
+  [13/20] 3.26 ms
+  [16/20] 3.11 ms
+  [14/20] 3.34 ms
+  [17/20] 3.05 ms
+  [15/20] 3.26 ms
+  [18/20] 3.15 ms
+  [16/20] 3.11 ms
+  [19/20] 3.23 ms
+  [17/20] 3.27 ms
+  [LINK] openpilot/cereal/messaging/bridge
+  [18/20] 2.26 ms
+  [19/20] 2.14 ms
+  [LINK] msgq_repo/msgq/visionipc/visionipc_pyx.so
+  [LINK] openpilot/common/libparams_c.so
+  [ONNX] openpilot/selfdrive/modeld/models/driving_tinygrad.pkl
+cd /data/openpilot/openpilot/selfdrive/controls/lib/longitudinal_mpc_lib && pyth
+on3 long_mpc.py
+DEV=QCOM IMAGE=1 FLOAT16=1 NOLOCALS=1 JIT_BATCH_SIZE=0 OPENPILOT_HACKS=1 taskset
+ -c 0-7 python3 "/data/openpilot/tinygrad_repo/examples/openpilot/compile_warp.p
+y" --frame 1344,760,1408,768,384,1622016 --warp-to 512x256 --layout yuv420 --fra
+mes 2 --output /data/openpilot/openpilot/selfdrive/modeld/models/driving_warp_13
+44x760_tinygrad.pkl
+Warning: Please note that the following versions of CasADi  are officially suppo
+rted: 3.5.6 or 3.5.5 or 3.5.4 or 3.5.3 or 3.5.2 or 3.5.1 or 3.4.5 or 3.4.0.
+ If there is an incompatibility with the CasADi generated code, please consider
+changing your CasADi version.
+Version 3.6.7 currently in use.
+Retrieved `openpilot/selfdrive/controls/lib/longitudinal_mpc_lib/c_generated_cod
+e/acados_solver_long.os' from cache
+Retrieved `openpilot/selfdrive/controls/lib/longitudinal_mpc_lib/c_generated_cod
+e/long_cost/long_cost_y_0_fun_jac_ut_xt.os' from cache
+Retrieved `openpilot/selfdrive/controls/lib/longitudinal_mpc_lib/c_generated_cod
+e/long_cost/long_cost_y_fun.os' from cache
+Retrieved `openpilot/selfdrive/controls/lib/longitudinal_mpc_lib/c_generated_cod
+e/long_constraints/long_constr_h_fun_jac_uxt_zt.os' from cache
+Retrieved `openpilot/selfdrive/controls/lib/longitudinal_mpc_lib/c_generated_cod
+e/long_cost/long_cost_y_e_fun.os' from cache
+Retrieved `openpilot/selfdrive/controls/lib/longitudinal_mpc_lib/c_generated_cod
+e/long_cost/long_cost_y_0_fun.os' from cache
+cython -o /data/openpilot/openpilot/selfdrive/controls/lib/longitudinal_mpc_lib/
+c_generated_code/acados_ocp_solver_pyx.c -I /data/openpilot/openpilot/selfdrive/
+controls/lib/longitudinal_mpc_lib/c_generated_code -I /usr/local/venv/lib/python
+3.12/site-packages/acados/acados_template /usr/local/venv/lib/python3.12/site-pa
+ckages/acados/acados_template/acados_ocp_solver_pyx.pyx
+  [0/20] 1.94 ms
+  [1/20] 1.52 ms
+  [2/20] 1.50 ms
+  [3/20] 1.72 ms
+  [4/20] 2.12 ms
+  [5/20] 1.93 ms
+  [6/20] 2.37 ms
+  [7/20] 1.46 ms
+  [8/20] 1.59 ms
+  [9/20] 2.05 ms
+  [10/20] 2.66 ms
+  [11/20] 2.10 ms
+  [12/20] 2.11 ms
+  [13/20] 2.12 ms
+  [14/20] 2.06 ms
+  [15/20] 2.24 ms
+  [16/20] 2.11 ms
+  [17/20] 2.10 ms
+  [18/20] 2.08 ms
+  [19/20] 2.11 ms
+Retrieved `openpilot/selfdrive/controls/lib/longitudinal_mpc_lib/c_generated_cod
+e/long_model/long_expl_vde_forw.os' from cache
+Retrieved `openpilot/selfdrive/controls/lib/longitudinal_mpc_lib/c_generated_cod
+e/long_constraints/long_constr_h_fun.os' from cache
+Retrieved `openpilot/selfdrive/controls/lib/longitudinal_mpc_lib/c_generated_cod
+e/long_cost/long_cost_y_hess.os' from cache
+Retrieved `openpilot/selfdrive/controls/lib/longitudinal_mpc_lib/c_generated_cod
+e/long_cost/long_cost_y_e_hess.os' from cache
+Retrieved `openpilot/selfdrive/controls/lib/longitudinal_mpc_lib/c_generated_cod
+e/long_model/long_expl_ode_fun.os' from cache
+Retrieved `openpilot/selfdrive/controls/lib/longitudinal_mpc_lib/c_generated_cod
+e/long_cost/long_cost_y_0_hess.os' from cache
+Retrieved `openpilot/selfdrive/controls/lib/longitudinal_mpc_lib/c_generated_cod
+e/long_cost/long_cost_y_fun_jac_ut_xt.os' from cache
+Retrieved `openpilot/selfdrive/controls/lib/longitudinal_mpc_lib/c_generated_cod
+e/long_cost/long_cost_y_e_fun_jac_ut_xt.os' from cache
+Retrieved `openpilot/selfdrive/controls/lib/longitudinal_mpc_lib/c_generated_cod
+e/libacados_ocp_solver_long.so' from cache
+DEV=QCOM IMAGE=1 FLOAT16=1 NOLOCALS=1 JIT_BATCH_SIZE=0 OPENPILOT_HACKS=1 taskset
+ -c 0-7 python3 "/data/openpilot/tinygrad_repo/examples/openpilot/compile_warp.p
+y" --frame 1928,1208,2048,1216,608,3735552 --warp-to 512x256 --layout yuv420 --f
+rames 2 --output /data/openpilot/openpilot/selfdrive/modeld/models/driving_warp_
+1928x1208_tinygrad.pkl
+  [CC] openpilot/selfdrive/controls/lib/longitudinal_mpc_lib/c_generated_code/ac
+ados_ocp_solver_pyx.o
+FPS dropped below 60: 53
+  [0/20] 2.15 ms
+  [1/20] 2.17 ms
+  [2/20] 2.39 ms
+  [3/20] 3.03 ms
+  [4/20] 2.15 ms
+  [5/20] 2.26 ms
+  [6/20] 2.17 ms
+  [7/20] 2.22 ms
+  [8/20] 2.35 ms
+  [9/20] 2.16 ms
+  [10/20] 2.19 ms
+  [11/20] 2.19 ms
+  [12/20] 2.17 ms
+  [13/20] 2.31 ms
+  [14/20] 2.16 ms
+  [15/20] 2.18 ms
+  [16/20] 2.13 ms
+  [17/20] 2.27 ms
+scheduled   393 kernels in 20222.86 ms | CACHE MISS da703d64 |   49463 uops in c
+ache | /data/openpilot/tinygrad_repo/examples/openpilot/compile_onnx.py:59
+  [18/20] 2.18 ms
+  [19/20] 2.16 ms
+memory reduced from 28.49 MB -> 20.29 MB, 192 -> 1 bufs
+Retrieved `openpilot/selfdrive/pandad/panda.o' from cache
+Retrieved `openpilot/selfdrive/pandad/usb.o' from cache
+Retrieved `openpilot/selfdrive/pandad/spi.o' from cache
+Retrieved `openpilot/selfdrive/pandad/libpanda.a' from cache
+Retrieved `openpilot/selfdrive/pandad/main.o' from cache
+Retrieved `openpilot/selfdrive/pandad/panda_safety.o' from cache
+Retrieved `openpilot/selfdrive/pandad/pandad.o' from cache
+  [LINK] openpilot/selfdrive/pandad/pandad
+Retrieved `openpilot/sunnypilot/common/transformations/coordinates.o' from cache
+Retrieved `openpilot/sunnypilot/common/transformations/orientation.o' from cache
+Retrieved `openpilot/sunnypilot/common/transformations/libtransformations.a' fro
+m cache
+Retrieved `openpilot/sunnypilot/selfdrive/locationd/models/generated/live.cpp' f
+rom cache
+Retrieved `openpilot/sunnypilot/selfdrive/locationd/models/generated/live.h' fro
+m cache
+Retrieved `openpilot/sunnypilot/selfdrive/locationd/models/generated/live_kf_con
+stants.h' from cache
+Retrieved `openpilot/sunnypilot/selfdrive/locationd/locationd.o' from cache
+Retrieved `openpilot/sunnypilot/selfdrive/locationd/models/live_kf.o' from cache
+Retrieved `rednose_repo/rednose/helpers/ekf_load.os' from cache
+Retrieved `rednose_repo/rednose/helpers/ekf_sym.os' from cache
+Retrieved `rednose_repo/rednose/helpers/libekf_sym.a' from cache
+Retrieved `openpilot/sunnypilot/selfdrive/locationd/models/generated/live.os' fr
+om cache
+Retrieved `openpilot/sunnypilot/selfdrive/locationd/models/generated/liblive.so'
+ from cache
+  [LINK] openpilot/sunnypilot/selfdrive/locationd/locationd
+Retrieved `openpilot/system/camerad/main.o' from cache
+Retrieved `openpilot/system/camerad/cameras/camera_qcom2.o' from cache
+Retrieved `openpilot/system/camerad/cameras/camera_common.o' from cache
+Retrieved `openpilot/system/camerad/cameras/spectra.o' from cache
+Retrieved `openpilot/system/camerad/cameras/cdm.o' from cache
+Retrieved `openpilot/system/camerad/sensors/ox03c10.o' from cache
+Retrieved `openpilot/system/camerad/sensors/os04c10.o' from cache
+  [LINK] openpilot/system/camerad/camerad
+Retrieved `openpilot/system/loggerd/bootlog.o' from cache
+Retrieved `openpilot/system/loggerd/logger.o' from cache
+Retrieved `openpilot/system/loggerd/zstd_writer.o' from cache
+Retrieved `openpilot/system/loggerd/video_writer.o' from cache
+Retrieved `openpilot/system/loggerd/encoder/encoder.o' from cache
+Retrieved `openpilot/system/loggerd/encoder/jpeg_encoder.o' from cache
+Retrieved `openpilot/system/loggerd/clip_encoder.o' from cache
+Retrieved `openpilot/system/loggerd/encoder/v4l_encoder.o' from cache
+Retrieved `openpilot/system/loggerd/encoder/v4l_decoder.o' from cache
+Retrieved `openpilot/system/loggerd/liblogger.a' from cache
+  [LINK] openpilot/system/loggerd/bootlog
+Retrieved `openpilot/system/loggerd/encoderd.o' from cache
+  [LINK] openpilot/system/loggerd/encoderd
+Retrieved `openpilot/system/loggerd/loggerd.o' from cache
+  [LINK] openpilot/system/loggerd/loggerd
+  [LINK] openpilot/selfdrive/controls/lib/longitudinal_mpc_lib/c_generated_code/
+acados_ocp_solver_pyx.so
+Retrieved `panda/board/board/obj/panda_h7bootstub.o' from cache
+Retrieved `panda/board/board/obj/body_h7bootstub.o' from cache
+Retrieved `panda/board/board/obj/panda_h7main.o' from cache
+Retrieved `panda/board/board/obj/pandabootstub.o' from cache
+Retrieved `panda/board/body/board/obj/body_h7main.o' from cache
+Retrieved `panda/board/board/obj/pandamain.o' from cache
+Retrieved `panda/board/crypto/board/obj/body_h7rsa.o' from cache
+Retrieved `panda/board/crypto/board/obj/body_h7sha.o' from cache
+Retrieved `panda/board/crypto/board/obj/panda_h7rsa.o' from cache
+Retrieved `panda/board/crypto/board/obj/panda_h7sha.o' from cache
+Retrieved `panda/board/crypto/board/obj/pandarsa.o' from cache
+Retrieved `panda/board/crypto/board/obj/pandasha.o' from cache
+Retrieved `panda/board/stm32h7/board/obj/body_h7startup_stm32h7x5xx.o' from cach
+e
+Retrieved `panda/board/stm32f4/board/obj/pandastartup_stm32f413xx.o' from cache
+Retrieved `panda/board/obj/body_h7/bootstub.elf' from cache
+Retrieved `panda/board/obj/panda/bootstub.elf' from cache
+Retrieved `panda/board/obj/bootstub.body_h7.bin' from cache
+Retrieved `panda/board/obj/bootstub.panda.bin' from cache
+Retrieved `panda/board/obj/body_h7/main.elf' from cache
+Retrieved `panda/board/stm32h7/board/obj/panda_h7startup_stm32h7x5xx.o' from cac
+he
+Retrieved `panda/board/obj/panda_h7/bootstub.elf' from cache
+Retrieved `panda/board/obj/body_h7/main.bin' from cache
+Retrieved `panda/board/obj/bootstub.panda_h7.bin' from cache
+Retrieved `panda/board/obj/body_h7.bin.signed' from cache
+Retrieved `panda/board/obj/panda_h7/main.elf' from cache
+Retrieved `panda/board/obj/panda/main.elf' from cache
+Retrieved `panda/board/obj/panda/main.bin' from cache
+Retrieved `panda/board/obj/panda_h7/main.bin' from cache
+Retrieved `panda/board/obj/panda_h7.bin.signed' from cache
+Retrieved `panda/board/obj/panda.bin.signed' from cache
+Retrieved `rednose_repo/rednose/helpers/ekf_sym_pyx.cpp' from cache
+Retrieved `rednose_repo/rednose/helpers/ekf_sym_pyx.o' from cache
+  [LINK] rednose_repo/rednose/helpers/ekf_sym_pyx.so
+compiling r_2_16_8_4_4_4_3_3_3                    : 100%|█| 95/95 [00:33<00:00,
+ 2.83it/s]
+scheduled   628 kernels in 45075.16 ms | CACHE MISS 2cea1131 |   72991 uops in c
+ache | /data/openpilot/tinygrad_repo/examples/openpilot/compile_onnx.py:59
+memory reduced from 78.58 MB -> 69.58 MB, 310 -> 1 bufs
+  [0/1] 12.58 ms
+compiling r_23_2_56_64_8_4_4                      : 100%|█| 136/136 [00:38<00:00
+,  3.49it/s]
+

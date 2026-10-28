@@ -1,0 +1,45 @@
+{
+  "head": "65bb09e3d5d306487d005f15cef799e31cf37fa2",
+  "service": "active",
+  "all_params_restored_before_start": true,
+  "original_count": 156,
+  "current_count": 156,
+  "final_deltas": {
+    "/data/params/d/BootCount": {
+      "before_sha256": "48449a14a4ff7d79bb7a1b6f3d488eba397c36ef25634c111b49baf362511afc",
+      "after_sha256": "5316ca1c5ddca8e6ceccfce58f3b8540e540ee22f6180fb89492904051b3d531"
+    },
+    "/data/params/d/CurrentBootlog": {
+      "before_sha256": "039635ccefd5ca642c50d4166a8f158f8918174671abb1ec8dc2ef7fed503d41",
+      "after_sha256": "cde9c928753c30355ddce3045726c854bdd01a3dca307606f4443255a6a7feed"
+    },
+    "/data/params/d/LastUpdateTime": {
+      "before_sha256": "8ce9c3f7726f508805351f52e7c91163ca24347acfe6f54a96bb210cd812508c",
+      "after_sha256": "970e247b44e7955a2bde010116030c4744c092d71bed429587cf2158db4bd2d3"
+    },
+    "/data/params/d/UpdaterAvailableBranches": {
+      "before_sha256": "d86c016bc073a8c54cf13ab44f6f3fbdcbfa4dfea6e943a6acf88465bebe75ba",
+      "after_sha256": "63ced9dda39b5c2f95e676e1ecb7257bbc4a01e1e6f334ad88a71d9d4b7522dc"
+    },
+    "/data/params/d/UpdaterLastFetchTime": {
+      "before_sha256": "5cea211c61255bbf26d2bb4c891f4bd24e04180ae5799ff4e03a436a112d6b30",
+      "after_sha256": "4282d03281afb72bf871bdb87199adcc4b4dddf2ab703263a34f75b8ebf72331"
+    },
+    "/data/params/d/UptimeOffroad": {
+      "before_sha256": "b15f1959f58a8e117d061f9005914662cc8601fed2dcf225764f2f93c7afa313",
+      "after_sha256": "9fd41d8cdb5540333c63292dbbff5c71a80a3670ace733b7ffde4e5eaed86997"
+    }
+  },
+  "persistent_deltas": [
+    "/data/params/d/BootCount",
+    "/data/params/d/CurrentBootlog",
+    "/data/params/d/LastUpdateTime",
+    "/data/params/d/UpdaterAvailableBranches",
+    "/data/params/d/UpdaterLastFetchTime",
+    "/data/params/d/UptimeOffroad"
+  ],
+  "store_unchanged": true,
+  "store_files": 7,
+  "dirty_unchanged": true,
+  "dirty_status": "?? prebuilt\n"
+}
