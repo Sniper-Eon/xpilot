@@ -45,6 +45,8 @@ from pathlib import Path
 import re
 import sys
 import types
+import tempfile
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path[:0] = [str(ROOT), str(ROOT / "opendbc_repo")]
@@ -401,23 +403,40 @@ def source_checks(plugins, real) -> list[str]:
 
 
 def msg_checks(plugins) -> list[str]:
+  import socket
   from openpilot.cereal import messaging
+  from openpilot.tesla import plugin_msgd
   errors, faults, sent = [], [], []
   plugins.record_fault = lambda name, where, exc: faults.append((name, where))
-  pm = types.SimpleNamespace(send=lambda svc, msg: sent.append((svc, messaging.log_from_bytes(msg.to_bytes()))))
 
   class Pub(Plugin):
     NAME, CLAIMS = "pub", ("msg:demo.a", "msg:demo.b")
-  if plugins.send_msg(pm, Pub, "demo.c", {"x": 1}) or sent or faults != [("pub", "pluginMsg")]:
-    errors.append(f"G1 undeclared kind: sent {len(sent)}, faults {faults}")
-  ok = plugins.send_msg(pm, Pub(CP, None), "demo.a", {"x": 1}, 100) and plugins.send_msg(pm, Pub, "demo.b", [2])
-  m = sent[0][1].pluginMsg if sent else None
-  if not ok or [s for s, _ in sent] != ["pluginMsg"] * 2 or (m.source, m.kind, json.loads(m.payload), m.validForMs) != ("pub", "demo.a", {"x": 1}, 100):
-    errors.append(f"G2 declared kind: ok {ok}, sent {[(s, e.pluginMsg) for s, e in sent]}")
-
+  with tempfile.TemporaryDirectory(prefix="msg-check-", dir="/tmp") as directory:
+    path = str(Path(directory) / "socket")
+    with socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM) as sock, patch.object(plugin_msgd, "socket_path", return_value=path):
+      sock.bind(path)
+      sock.settimeout(.2)
+      if plugins.send_msg(object(), Pub, "demo.c", {"x": 1}) or faults != [("pub", "pluginMsg")]:
+        errors.append(f"G1 undeclared kind: faults {faults}")
+      ok = plugins.send_msg(object(), Pub(CP, None), "demo.a", {"x": 1}, 100) and plugins.send_msg(Pub, "demo.b", [2])
+      if not ok:
+        errors.append("G2 declared kind not sent")
+        return errors
+      for _ in range(2):
+        data = json.loads(sock.recv(65536))
+        event = messaging.new_message("pluginMsg", logMonoTime=data["logMonoTime"])
+        event.pluginMsg = {k: v for k, v in data.items() if k in ("source", "kind", "payload", "validForMs")}
+        sent.append(event)
+      m = sent[0].pluginMsg
+      if (m.source, m.kind, json.loads(m.payload), m.validForMs) != ("pub", "demo.a", {"x": 1}, 100):
+        errors.append("G2 source/kind/payload/TTL lost")
+    faults.clear()
+    with patch.object(plugin_msgd, "socket_path", return_value=str(Path(directory) / "missing")):
+      if plugins.send_msg(Pub, "demo.a", {}) or faults:
+        errors.append(f"P32 missing broker did not drop silently: {faults}")
   reader = plugins.PluginMsgs(sock=object())
-  reader.messaging = types.SimpleNamespace(drain_sock=lambda sock: [e for _, e in sent])
-  t = sent[0][1].logMonoTime if sent else 0
+  reader.messaging = types.SimpleNamespace(drain_sock=lambda sock: sent)
+  t = sent[0].logMonoTime
   if reader.fresh("demo.a", t + 50_000_000) != {"pub": {"x": 1}} or reader.fresh("demo.a", t + 200_000_000):
     errors.append("G3 demo.a fresh within 100 ms only")
   if reader.fresh("demo.b", t + 10**12) != {"pub": [2]}:
