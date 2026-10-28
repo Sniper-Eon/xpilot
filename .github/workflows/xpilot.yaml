@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
-      PYTHONPATH: ${{ github.workspace }}/msgq_repo
+      PYTHONPATH: ${{ github.workspace }}/msgq_repo:${{ github.workspace }}/opendbc_repo
     steps:
     - uses: actions/checkout@v4
     - run: git submodule update --init --depth 1 msgq_repo
