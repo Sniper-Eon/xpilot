@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Failures first: branding remains text/old spinner; wide logo is stretched or
 cropped; status/progress overlaps it; mici labels cover footer controls; missing
-asset crashes boot. Exercise actual layout and drawing with fake GPU calls,
+asset crashes boot; device GLES links a default vertex shader of another version.
+Exercise actual layout and drawing with fake GPU calls,
 then validate the bundled PNG header. No vehicle, settings or live publisher.
 """
 
@@ -35,6 +36,12 @@ def main():
   nodes = [n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name in ("_logo_texture", "_logo_shader", "draw_logo")]
   calls = []
   fallback = []
+
+  def load_shader(vertex, fragment):
+    assert isinstance(vertex, str) and vertex.startswith("#version 300 es"), "Device shader must provide a matching GLES vertex stage"
+    assert fragment.startswith("#version 300 es")
+    return N(id=1)
+
   rl = N(
     ffi=N(NULL=object()),
     Rectangle=lambda *v: N(x=v[0], y=v[1], width=v[2], height=v[3]),
@@ -42,7 +49,7 @@ def main():
     WHITE="white",
     draw_texture_pro=lambda *a: calls.append(a),
     draw_text_ex=lambda *a: fallback.append(a),
-    load_shader_from_memory=lambda *a: N(id=1),
+    load_shader_from_memory=load_shader,
     begin_shader_mode=lambda *a: None,
     end_shader_mode=lambda: None,
     draw_rectangle_rec=lambda *a: None,
@@ -54,7 +61,7 @@ def main():
     contain=contain,
     lru_cache=lru_cache,
     ASSETS_DIR=N(joinpath=lambda *a: N(is_file=lambda: True)),
-    GL_VERSION="",
+    GL_VERSION="#version 300 es\nprecision highp float;\n",
     LOGO_ASSET="branding/xpilot.png",
     INK_RECT=(0, 0, 2048, 512),
     FONT_SCALE=1.0,

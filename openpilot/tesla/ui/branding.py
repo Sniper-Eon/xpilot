@@ -26,6 +26,19 @@ def _logo_texture():
 @lru_cache(maxsize=1)
 def _logo_shader():
   # Render the supplied alpha silhouette; the original PNG remains byte-identical.
+  vertex = GL_VERSION + """
+in vec3 vertexPosition;
+in vec2 vertexTexCoord;
+in vec4 vertexColor;
+uniform mat4 mvp;
+out vec2 fragTexCoord;
+out vec4 fragColor;
+void main() {
+  fragTexCoord = vertexTexCoord;
+  fragColor = vertexColor;
+  gl_Position = mvp * vec4(vertexPosition, 1.0);
+}
+"""
   fragment = (
     GL_VERSION
     + """
@@ -40,7 +53,7 @@ void main() {
 """
   )
   try:
-    shader = rl.load_shader_from_memory(rl.ffi.NULL, fragment)
+    shader = rl.load_shader_from_memory(vertex, fragment)
     return shader if shader.id else None
   except (OSError, ValueError, RuntimeError, TypeError):
     return None
