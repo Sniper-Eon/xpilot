@@ -28,7 +28,8 @@ def rule(addr, length, copy, const=(0,) * 8, value=(0,) * 8, fields=(), tuples=(
 
 def table(rules=()):
   body = b''.join(rules)
-  return struct.pack('<IHHHBBI', MAGIC, 1, 16, 16 + len(body), len(rules), 0, 0) + body
+  abi = 2 if any(r[2] == 2 for r in rules) else 1
+  return struct.pack('<IHHHBBI', MAGIC, abi, 16, 16 + len(body), len(rules), 0, 0) + body
 
 
 def record(upload, offset, data, flags=0):
@@ -51,12 +52,15 @@ def _int(value, lo, hi, name):
 
 
 def encode_rule(r):
-  if not isinstance(r, dict) or r.get('type') != 'template_clone.v1':
-    raise ValueError('rule type must be template_clone.v1 (ABI 1)')
+  if not isinstance(r, dict) or r.get('type') not in ('template_clone.v1', 'template_clone.v2'):
+    raise ValueError('rule type must be template_clone.v1/v2')
+  v2 = r['type'] == 'template_clone.v2'
   span_key = 'window_us' if r.get('session') == 2 else 'max_span_us'
   _keys(r, 'type tx_address rx_address tx_bus rx_bus tx_length rx_length template_ttl_us min_interval_us ' +
            'session max_count idle_reset_us counter tx_checksum rx_checksum predicate_mask predicate_value ' +
-           'copy_mask constant_mask constant_value fields legal_tuples ' + span_key)
+           'copy_mask constant_mask constant_value fields legal_tuples ' + span_key + (' engagement' if v2 else ''))
+  if v2 and r['engagement'] not in ('primary', 'primary_or_lateral'):
+    raise ValueError('unknown engagement guard')
   addr = _int(r['tx_address'], 0, 0x1fffffff, 'tx_address')
   rx = _int(r['rx_address'], 0, 0x1fffffff, 'rx_address')
   if addr in OWNED:
@@ -140,6 +144,9 @@ def encode_rule(r):
                        ttl, interval, session, count, idle, span, (kind, offset, width), checksums[0]))
   struct.pack_into('<I', out, 8, rx)
   out[41:43] = bytes(checksums[1])
+  if v2:
+    out[2] = 2
+    out[43] = int(r['engagement'] == 'primary_or_lateral')
   return bytes(out)
 
 

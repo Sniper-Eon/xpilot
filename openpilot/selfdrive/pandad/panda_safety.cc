@@ -5,7 +5,7 @@
 #include <zlib.h>
 
 namespace {
-const std::vector<uint8_t> RULE_CAPS = {0x58, 0x50, 0x52, 0x31, 1, 0, 0, 16, 8, 8, 8, 8, 64, 0, 0, 0};
+const std::vector<uint8_t> RULE_CAPS = {0x58, 0x50, 0x52, 0x31, 2, 0, 0, 16, 8, 8, 8, 8, 64, 0, 0, 0};
 
 uint32_t read_le(const uint8_t *p, size_t n) {
   uint32_t v = 0;
@@ -14,7 +14,7 @@ uint32_t read_le(const uint8_t *p, size_t n) {
 }
 
 bool status_ok(const std::vector<uint8_t> &s, uint8_t state) {
-  return s.size() == 24 && read_le(s.data(), 4) == 0x31525058 && read_le(s.data() + 4, 2) == 1 &&
+  return s.size() == 24 && read_le(s.data(), 4) == 0x31525058 && read_le(s.data() + 4, 2) == 2 &&
          s[6] == state && s[7] == 0 && s[15] == 0 && s[23] == 0;
 }
 

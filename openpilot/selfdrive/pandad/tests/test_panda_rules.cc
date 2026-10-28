@@ -65,7 +65,7 @@ struct FakeHandle : PandaCommsHandle {
     if (req == 0xa0 && (failure == "caps" || failure == "bootstub")) return -1;
     uint8_t response[64] = {};
     int n = fw.control(req, p1, p2, response);
-    if (req == 0xa0 && failure == "abi") response[4] = 2;
+    if (req == 0xa0 && failure == "abi") response[4] = 3;
     if (req == 0xa0 && failure == "limits") response[8] = 7;
     if (req == 0xa2 && failure == "begin") response[7] = 3;
     if (req == 0xa3 && failure == "commit") response[7] = 5;

@@ -113,7 +113,7 @@ static bool xpilot_cover(uint8_t *coverage, uint8_t offset, uint8_t width) {
   return valid;
 }
 
-static uint8_t xpilot_validate_rule(const uint8_t *r) {
+static uint8_t xpilot_validate_rule(const uint8_t *r, uint8_t abi) {
   uint8_t error = 0U;
   const uint8_t length = r[14];
   const uint8_t fields = r[3];
@@ -123,14 +123,15 @@ static uint8_t xpilot_validate_rule(const uint8_t *r) {
   const uint32_t interval = xpilot_read_le(&r[20], 4U);
   const uint32_t idle = xpilot_read_le(&r[28], 4U);
   const uint32_t span = xpilot_read_le(&r[32], 4U);
-  if ((r[2] != 1U) || (fields > 8U) || (tuples > 8U)) {
+  if (((r[2] != 1U) && ((abi != 2U) || (r[2] != 2U))) || (fields > 8U) || (tuples > 8U)) {
     error = 6U;
   } else if ((addr > 0x1FFFFFFFU) || (xpilot_read_le(&r[8], 4U) > 0x1FFFFFFFU) ||
              (r[12] != 1U) || (r[13] != 1U) || (length == 0U) || (length > 8U) || (r[15] != length) ||
              (ttl == 0U) || (ttl > 0x7FFFFFFFU) || (interval == 0U) || (interval > 0x7FFFFFFFU) ||
              (idle > 0x7FFFFFFFU) || (span > 0x7FFFFFFFU) || (xpilot_read_le(&r[26], 2U) == 0U) ||
              ((r[24] != 1U) && (r[24] != 2U)) || ((r[24] == 1U) && (idle == 0U)) ||
-             ((r[24] == 2U) && ((idle != 0U) || (span == 0U))) || (r[43] != 0U)) {
+             ((r[24] == 2U) && ((idle != 0U) || (span == 0U))) ||
+             ((r[2] == 1U) ? (r[43] != 0U) : (r[43] > 1U))) {
     error = 7U;
   } else if (xpilot_mode_owned(addr)) {
     error = 9U;
@@ -227,7 +228,8 @@ static uint8_t xpilot_validate_rule(const uint8_t *r) {
 static inline uint8_t xpilot_rules_validate(void) {
   uint8_t error = 0U;
   const uint8_t *h = xpilot_rule_table;
-  if ((xpilot_read_le(h, 4U) != XPILOT_RULES_MAGIC) || (xpilot_read_le(&h[4], 2U) != XPILOT_RULES_ABI) ||
+  const uint32_t abi = xpilot_read_le(&h[4], 2U);
+  if ((xpilot_read_le(h, 4U) != XPILOT_RULES_MAGIC) || ((abi != 1U) && (abi != XPILOT_RULES_ABI)) ||
       (xpilot_read_le(&h[6], 2U) != 16U) || (h[11] != 0U) || (xpilot_read_le(&h[12], 4U) != 0U)) {
     error = 6U;
   } else if ((xpilot_read_le(&h[8], 2U) != xpilot_upload_len) || (h[10] != xpilot_upload_count)) {
@@ -245,7 +247,7 @@ static inline uint8_t xpilot_rules_validate(void) {
               ((offset + len) > xpilot_upload_len)) {
             error = 2U;
           } else {
-            error = xpilot_validate_rule(r);
+            error = xpilot_validate_rule(r, (uint8_t)abi);
             for (uint8_t j = 0U; j < XPILOT_RULES_MAX; j++) {
               if ((j < i) && (xpilot_read_le(&h[xpilot_rule_offsets[j] + 4U], 4U) == xpilot_read_le(&r[4], 4U))) {
                 error = 9U;
@@ -372,7 +374,11 @@ static bool xpilot_rule_tx(const CANPacket_t *msg, const uint8_t *r, XpilotRuleS
   }
   const bool span_ok = (r[24] == 2U) || (xpilot_read_le(&r[32], 4U) == 0U) ||
                        (safety_get_ts_elapsed(now, s->session_ts) < xpilot_read_le(&r[32], 4U));
-  allowed = allowed && (controls_allowed || exempt) &&
+  const bool lateral_authority = (r[2] == 2U) && (r[43] == 1U) &&
+                                 GET_FLAG(alternative_experience, ALT_EXP_ENABLE_MADS) && controls_allowed_lateral;
+  const bool engagement_allowed = controls_allowed || lateral_authority;
+  allowed = allowed && (engagement_allowed || exempt) &&
+            ((r[2] == 1U) || exempt || !brake_pressed) &&
             (exempt || new_session || ((s->count < xpilot_read_le(&r[26], 2U)) && span_ok));
   if (allowed) {
     if (!exempt) {

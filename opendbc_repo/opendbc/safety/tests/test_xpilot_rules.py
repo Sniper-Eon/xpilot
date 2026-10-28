@@ -45,7 +45,7 @@ class TestXpilotRules(unittest.TestCase):
       r = bytearray(AUTO)
       b = bytearray(table((r,)))
       if kind == 'abi':
-        b[4] = 2
+        b[4] = 3
       elif kind == 'ownership':
         struct.pack_into('<I', b, 20, 0x488)
       elif kind == 'coverage':
@@ -55,7 +55,7 @@ class TestXpilotRules(unittest.TestCase):
         struct.pack_into('<H', b, 8, len(b))
       self.assertEqual(error, upload(self.s, b)[3])
     bad = []
-    for offset, value in ((0, 0), (4, 2), (6, 0), (8, 0), (10, 9), (11, 1), (12, 1),
+    for offset, value in ((0, 0), (4, 3), (6, 0), (8, 0), (10, 9), (11, 1), (12, 1),
                           (18, 2), (19, 9), (28, 0), (29, 0), (30, 0), (31, 0),
                           (52, 2), (54, 33), (55, 2), (56, 9), (57, 9), (59, 1),
                           (100, 64), (101, 33), (102, 9), (103, 1)):

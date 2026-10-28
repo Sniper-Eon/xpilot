@@ -175,6 +175,9 @@ def parse(path: Path) -> Manifest:
   from openpilot.tesla.panda_rules import encode_rules
   rules = d.get("rules", [])
   encode_rules(rules)
+  if any(r.get('type') == 'template_clone.v2' for r in rules):
+    if not isinstance(requires, dict) or requires.get('rule_abi') != 2:
+      raise ValueError('template_clone.v2 requires rule_abi=2')
   if can_tx(claims) != {(r["tx_address"], r["tx_bus"]) for r in rules}:
     raise ValueError("can.tx must match rule TX addresses")
 
@@ -242,7 +245,7 @@ def platform_ok(plat: dict | None) -> bool:
   return plat is None or all(plat.get(k) == v for k, v in host.items())
 
 
-RULE_ABI = 1
+RULE_ABI = 2
 HOST_CAPS = {
   "hooks": ("__init__", "setup", "observe_can", "publish_state", "control_sends", "service_params", "processes",
             "role_processes", "alert_source", "buzzer_policy", "lane_change_policy", "lat_correction", "lat_controller", "long_owner", "long_planner",
@@ -274,7 +277,7 @@ def compatible(manifest, caps) -> tuple[bool, str]:
         return False, f"requires {key} {name!r}"
   if "rule_abi" in requires:
     abi = requires["rule_abi"]
-    if type(abi) is not int or abi < 1 or abi != caps["rule_abi"]:
+    if type(abi) is not int or abi < 1 or abi > caps["rule_abi"]:
       return False, f"requires rule_abi {abi!r}, host supports {caps['rule_abi']!r}"
   if "native" in requires and requires["native"] != caps["native"]:
     return False, f"requires native {requires['native']!r}, host supports {caps['native']}"

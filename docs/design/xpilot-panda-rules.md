@@ -268,3 +268,25 @@ Cancel skips session budget; tick-based expiry latches invalidate stale template
 and retire expired interval/session markers across full timer cycles; mismatched
 standard/extended CAN ID types are rejected.
 No signature or network authentication work is included. No device/flash proof.
+
+## ABI 2 compatibility extension (Sniper-Eon, 2026-10-28)
+
+Firmware advertises ABI 2 and accepts existing ABI 1 tables unchanged. A type-2
+`template_clone.v2` row is permitted only in a version-2 table. Its record size
+and field encoding are unchanged; byte 43 is an engagement guard: 0 primary,
+1 primary-or-native-MADS-lateral. Type 1 continues requiring byte 43=0 and its
+original primary-control contract. Unknown guards/types/versions are rejected.
+
+Type 2 active frames additionally require brake_pressed=false. Guard 1 uses
+controls_allowed OR (ALT_EXP_ENABLE_MADS AND controls_allowed_lateral); neither
+the host nor a plugin may forge that native permission. Exempt cancel retains
+its bounded release semantics; TTL/template/counter/checksum/bus/session/relay
+gates remain unchanged. No CAN address is hard-coded for this extension, and no
+existing v1 rule gains lateral authority. A type-2 rule must declare rule_abi=2.
+The host accepts declared ABI 1 or 2, emits table ABI 2 only if a type-2 row is
+present, and negotiates firmware ABI 2 before loading either format. Old hosts
+and old firmware therefore cannot silently accept this new authority contract.
+
+Native failure matrix: test_xpilot_lateral_rule.py. All existing Tesla/runtime
+safety, native loader, MISRA and board build gates remain required before any
+device firmware migration. This section is a design contract until those pass.
