@@ -90,6 +90,13 @@ class Plugin:
     """None, or an object with update(sm) -> list[PluginAlert], called every selfdrived cycle (100 Hz)."""
     return None
 
+  @classmethod
+  def buzzer_policy(cls, params):
+    """Optional sound claim: allow_prompt(title, alert_type) -> bool for GPIO
+    ordinary prompts only. Cannot suppress emergency warnings or engagement tones.
+    """
+    return None
+
   # ---- modeld (claim "role:lane_change.policy", exclusive) ----
   @classmethod
   def lane_change_policy(cls, params):

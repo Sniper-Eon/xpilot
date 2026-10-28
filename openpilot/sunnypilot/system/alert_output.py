@@ -105,9 +105,11 @@ class Beepd:
         os.close(self.gpio_fd)
         self.gpio_fd = None
 
-  def update_alert(self, new_alert):
+  def update_alert(self, new_alert, *, prompt_allowed=True):
     now = time.monotonic()
-    if new_alert != self.current_alert:
+    edge = (new_alert, prompt_allowed if new_alert in (AudibleAlert.prompt, AudibleAlert.promptRepeat) else True)
+    if edge != getattr(self, '_alert_edge', (self.current_alert, True)):
+      self._alert_edge = edge
       self.current_alert = new_alert
       print(f"[BEEP] New alert: {new_alert}")
       #if new_alert == AudibleAlert.engage:
@@ -117,11 +119,11 @@ class Beepd:
       if new_alert in [AudibleAlert.warningSoft, AudibleAlert.warningImmediate]:
         self.dispatch_beep(self.warning)
       elif new_alert == AudibleAlert.prompt:
-        # Match the standard sound backend: one short notice, including plugin navigation preparation.
-        self.dispatch_beep(self.engage)
+        if prompt_allowed:
+          self.dispatch_beep(self.engage)
       elif new_alert == AudibleAlert.promptRepeat:
         # 如果在抑制期内则忽略后续的 promptRepeat
-        if now >= getattr(self, 'prompt_suppress_until', 0):
+        if prompt_allowed and now >= getattr(self, 'prompt_suppress_until', 0):
           # 设置抑制期（秒），在这段时间内忽略重复的 promptRepeat
           self.prompt_suppress_until = now + 10
           self.dispatch_beep(self.engage)
@@ -130,8 +132,11 @@ class Beepd:
 
   def get_audible_alert(self, sm):
     if sm.updated['selfdriveState']:
+      from openpilot.tesla import plugins
       new_alert = sm['selfdriveState'].alertSound.raw
-      self.update_alert(new_alert)
+      allowed = plugins.buzzer_prompt_allowed(getattr(self, '_buzzer_policies', []),
+        sm['selfdriveState'].alertText1, sm['selfdriveState'].alertType)
+      self.update_alert(new_alert, prompt_allowed=allowed)
 
     if sm.updated['selfdriveStateSP']:
       self.update_mads(bool(sm['selfdriveStateSP'].mads.enabled))
@@ -167,6 +172,9 @@ class Beepd:
       rk.keep_time()
 
   def beepd_thread(self, test=False):
+    from openpilot.common.params import Params
+    from openpilot.tesla import plugins
+    self._buzzer_policies = plugins.buzzer_policies(Params())
     if test:
       threading.Thread(target=self.test_beepd_thread, daemon=True).start()
 

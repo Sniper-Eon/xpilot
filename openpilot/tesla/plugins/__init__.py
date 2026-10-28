@@ -456,6 +456,23 @@ def alert_sources(CP, params) -> list:
   return _collect(params, "alert_source", "alert", "selfdrived", CP, params) if CP.brand == "tesla" else []
 
 
+def buzzer_policies(params) -> list:
+  return _collect(params, 'buzzer_policy', 'sound', 'beepd', params)
+
+
+def buzzer_prompt_allowed(policies, title, alert_type):
+  allowed = True
+  for policy in list(policies):
+    ok, value = _call(policies, policy, 'allow_prompt', 'beepd.buzzer_policy', title, alert_type)
+    if ok:
+      if type(value) is not bool:
+        policies.remove(policy)
+        record_fault(policy.plugin_name, 'beepd.buzzer_policy', ValueError('expected bool'))
+      else:
+        allowed = allowed and value
+  return allowed
+
+
 def update_alerts(sources: list, sm, events_sp) -> None:
   """First alert per severity in plugin order -> tesla.alerts.current, and its SP event into events_sp."""
   from openpilot.tesla import alerts
