@@ -11,13 +11,19 @@ sys.path.insert(0, str(ROOT))
 
 def font_merge_contract(source):
   """Failures: absent base catalog crashes; either provider's glyphs/font are
-  lost by a merge; changing a role-owned font reuses the previous font cache.
+  lost by a merge; changing a role-owned font reuses the previous font cache;
+  production imports fail to bind the catalog path (do not hide this with mocks).
   Execute the actual drawing helper with mock GPU calls, no Params/vehicle IO.
   """
   import ast
   from contextlib import nullcontext
   import tempfile
   tree=ast.parse(source)
+  bindings={}
+  production_imports=[n for n in tree.body if isinstance(n,ast.ImportFrom)
+                      and n.module=='openpilot.system.ui.lib.multilang']
+  exec(compile(ast.Module(body=production_imports,type_ignores=[]),'<production font imports>','exec'),bindings)
+  assert 'TRANSLATIONS_DIR' in bindings, 'production fallback catalog path is unbound'
   cls=next(n for n in tree.body if isinstance(n,ast.ClassDef) and n.name=='GuiApplication')
   method=next(n for n in cls.body if isinstance(n,ast.FunctionDef) and n.name=='fallback_font')
   calls=[]
