@@ -3,8 +3,9 @@
 
 Failure cases listed before implementation:
 - M1 an invalid manifest (id != directory, unknown category, wrong api, bad claim, bad JSON) crashes discovery
-     or loads anyway, instead of being skipped with an error while the other plugins load
-- M2 discovery order is not deterministic (category order, then priority, then id)
+     or loads anyway, instead of being skipped with an error while the other plugins load; or the display category
+     is not derived from claims (owner 2026-10-28)
+- M2 discovery order is not deterministic (category field = pipeline stage, then priority, then id)
 - M3 two enabled plugins with the same exclusive claim both become active (two senders on one CAN address)
 - M4 a conflict is won by load order instead of priority (then id)
 - M5 a plugin uses something it did not claim and keeps running: sends an unclaimed CAN address/bus,
@@ -182,7 +183,7 @@ def main() -> int:
     root = Path(tmp)
     write(root, "good_b", priority=50)
     write(root, "good_a", priority=50)
-    write(root, "early", category="engagement", priority=900)
+    write(root, "early", category="engagement", claims=["role:engagement.state"], priority=900)
     write(root, "wrong_id", id="other")
     write(root, "bad_cat", category="nope")
     write(root, "bad_api", api=mf.API_VERSION + 1)
@@ -203,6 +204,8 @@ def main() -> int:
       errors.append("M9 unknown claim kind accepted")
     if ids != ["early", "good_a", "good_b"]:
       errors.append(f"M2 order {ids}")
+    if [m.category for m in found if m.id in ("early", "good_a")] != ["modes", "ui"]:
+      errors.append("M1 category not derived from claims")
 
   with tempfile.TemporaryDirectory() as tmp:
     root = Path(tmp)
