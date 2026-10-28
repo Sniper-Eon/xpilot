@@ -2,6 +2,7 @@ import math
 import numpy as np
 import time
 import wave
+from pathlib import Path
 
 
 from openpilot.cereal import log, messaging, custom
@@ -26,6 +27,11 @@ FILTER_DT = 1. / (micd.SAMPLE_RATE / micd.FFT_SAMPLES)
 
 AMBIENT_DB = 26 # DB where MIN_VOLUME is applied
 DB_SCALE = 30 # AMBIENT_DB + DB_SCALE is where MAX_VOLUME is applied
+
+# Optional store param from the navassist plugin: when "1", every alert sound is muted except the
+# navigation turn-signal chime (alert text "Navigation turn signal").
+ONLY_NAV_CHIME_PARAM = Path('/data/xpilot_plugins/.params/ExtNavAssistOnlySound')
+NAV_CHIME_TEXT = 'Navigation turn signal'
 
 VOLUME_BASE = 20
 if HARDWARE.get_device_type() == "tizi":
@@ -85,6 +91,20 @@ class Soundd(QuietMode):
 
     self.selfdrive_timeout_alert = False
     self.pending_stop = False
+    self.only_nav_chime = False
+    self._nav_chime_now = False
+    self._param_frame = 0
+
+  def _read_only_nav_chime(self) -> bool:
+    try:
+      return ONLY_NAV_CHIME_PARAM.read_text().strip() == '1'
+    except OSError:
+      return False
+
+  def should_play_sound(self, current_alert: int) -> bool:
+    if self.only_nav_chime:
+      return current_alert == AudibleAlert.prompt and self._nav_chime_now
+    return super().should_play_sound(current_alert)
 
     self.spl_filter_weighted = FirstOrderFilter(0, 2.5, FILTER_DT, initialized=False)
 
@@ -156,8 +176,11 @@ class Soundd(QuietMode):
   def get_audible_alert(self, sm):
     if sm.updated['selfdriveState']:
       new_alert = sm['selfdriveState'].alertSound.raw
+      if self.only_nav_chime:
+        self._nav_chime_now = sm['selfdriveState'].alertText1 == NAV_CHIME_TEXT
+        new_alert = AudibleAlert.prompt if self._nav_chime_now else AudibleAlert.none
       self.update_alert(new_alert)
-    elif check_selfdrive_timeout_alert(sm):
+    elif check_selfdrive_timeout_alert(sm) and not self.only_nav_chime:
       self.update_alert(AudibleAlert.warningImmediate)
       self.selfdrive_timeout_alert = True
     elif self.selfdrive_timeout_alert:
@@ -190,6 +213,9 @@ class Soundd(QuietMode):
         sm.update(0)
 
         self.load_param()
+        self._param_frame += 1
+        if self._param_frame % 50 == 0:
+          self.only_nav_chime = self._read_only_nav_chime()
 
         # freeze volume during alerts to avoid mic feedback increasing volume
         if sm.updated['soundPressure']:
