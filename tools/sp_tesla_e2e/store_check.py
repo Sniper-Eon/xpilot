@@ -256,7 +256,7 @@ def main() -> int:
     after = {p.name: p.read_bytes() for p in use_target.iterdir() if p.is_file()}
     if not error or after != before_use:
       errors.append(f"{code} use={use!r} show={show!r}: error={error!r}, preserved={after == before_use}")
-  incompatible = {"need_hook": {"hooks": ["teleport"]}, "need_rules": {"rule_abi": 2},
+  incompatible = {"need_hook": {"hooks": ["teleport"]}, "need_rules": {"rule_abi": 3},
                   "need_native": {"native": {"machine": "sparc", "python": "cpython-27"}}, "bad_requires": []}
   for pid, requires in incompatible.items():
     publish("ext_ok", archive("ext_ok", good_files("ext_ok", requires=requires)), version="4.0.0")

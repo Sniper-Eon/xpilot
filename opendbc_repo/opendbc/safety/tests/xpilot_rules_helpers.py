@@ -29,6 +29,7 @@ NAV = rule(0x3E9, 8, (255, 252, 225, 255, 255, 255, 15, 0),
            predicate=(bytes((0, 3, 0, 0, 0, 0, 0, 0)), bytes(8)),
            interval=100_000, session=2, count=200, idle=0, span=60_000_000,
            counter=(1, 52, 4), checksum=(1, 7))
+NAV_LATERAL = NAV[:2] + b'\x02' + NAV[3:43] + b'\x01' + NAV[44:]
 RULES = (AUTO, AMBIENT, NAV)
 ADDRS = (0x3C2, 0x679, 0x3E9)
 

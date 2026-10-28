@@ -1,4 +1,4 @@
-"""Panda rules ABI v1 encoder. Contract: docs/design/xpilot-panda-rules.md."""
+"""Panda rules ABI 1/2 encoder. Contract: docs/design/xpilot-panda-rules.md."""
 import struct
 import zlib
 

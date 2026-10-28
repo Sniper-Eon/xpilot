@@ -1,4 +1,4 @@
-# Xpilot Panda runtime rules ABI v1
+# Xpilot Panda runtime rules ABI 1 and 2
 
 Contract for X-20261025-32 firmware and X-20261025-33 host. All integers are unsigned
 little endian; offsets below are bytes. No C struct serialization, pointers, padding,

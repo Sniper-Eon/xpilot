@@ -661,3 +661,15 @@ Source synchronized from onemiless/xpilot; changes push only to Sniper-Eon/xpilo
 TesNav remains the deliberately integrated navassist feature under ExtNavAssistEnabled. CP is a separately selected cp_nav under ExtCpNavEnabled; route/lane/signal ownership is mutually exclusive. Other optional features keep their own BOOL master. Phone installation never enables a vehicle feature. Prefer qualified fresh independent phone positioning; this Tesla has no established usable GPS CAN feed.
 
 A source synchronization is not deployment. Runtime-rule ABI and new host hooks require paired software/firmware qualification before installation. Keep private logs, settings, keys and training captures out of Git. Run tools/sp_tesla_e2e/upstream_sync_check.py locally with the paired plugin repository to verify source ancestry and retained fork identity.
+
+## Sniper-Eon rule ABI compatibility, 2026-10-28
+
+The paired host advertises maximum rule ABI 2 and accepts declared ABI 1/2.
+Existing template_clone.v1 tables retain byte-identical primary-control-only
+semantics. template_clone.v2 requires rule_abi=2 and an explicit engagement guard;
+only primary_or_lateral opts into native enabled MADS lateral authority. All other
+v1 rules retain their original gate. The loader negotiates firmware ABI 2 and
+never interprets an old app as compatible. See docs/design/xpilot-panda-rules.md.
+This is a deliberate compatibility extension to retain this user's existing
+navassist/CP physical-lamp behavior; it does not grant steering or acceleration
+rights or remove brake/relay/template/source bounds.
