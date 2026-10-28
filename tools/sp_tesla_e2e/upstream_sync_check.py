@@ -9,7 +9,7 @@ from pathlib import Path
 import subprocess
 
 ROOT=Path(__file__).resolve().parents[2]
-PINS={'xpilot':'38b158fbcc9a3cfad0b12b44d008bb9a32839dae','xpilot-plugins':'36f2bfedca506ef86b79701c550820ef1f8a1a06'}
+PINS={'xpilot':'1de0b807d1ffde580dd2fd19f49b2f18b329e794','xpilot-plugins':'36f2bfedca506ef86b79701c550820ef1f8a1a06'}
 
 def main():
  ap=argparse.ArgumentParser();ap.add_argument('--plugins-repo',type=Path,default=ROOT.parent/'xpilot-plugins');args=ap.parse_args()
