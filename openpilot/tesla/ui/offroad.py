@@ -51,24 +51,15 @@ MODEL_PARAM = "CarPlatformBundle"  # card.py fingerprints as bundle["platform"] 
 _plugin_msgs = None
 
 CATEGORY_LABELS = {
-  "perception_model": tr_noop("Perception Models"),
-  "object_fusion": tr_noop("Lead & Object Fusion"),
-  "vehicle_params": tr_noop("Calibration & Vehicle Params"),
-  "engagement": tr_noop("Engagement"),
-  "driver_monitoring": tr_noop("Driver Monitoring"),
-  "lateral_planning": tr_noop("Lateral Planning"),
-  "longitudinal_planning": tr_noop("Longitudinal Planning"),
-  "lane_change": tr_noop("Lane Change"),
-  "navigation": tr_noop("Navigate on xpilot"),
-  "controller": tr_noop("Controllers"),
-  "actuation": tr_noop("Actuation & Car Messages"),
-  "safety_fallback": tr_noop("Safety Fallback & Autopilot Handoff"),
-  "data_source": tr_noop("Data Sources & External Compute"),
+  "modes": tr_noop("Driving Modes"),
+  "models": tr_noop("Models"),
+  "lateral": tr_noop("Lateral Control"),
+  "longitudinal": tr_noop("Longitudinal Control"),
+  "car_actions": tr_noop("Car Actions (CAN)"),
+  "data": tr_noop("Data & System"),
   "alerts": tr_noop("Alerts"),
-  "body_comfort": tr_noop("Body & Comfort"),
-  "ui": tr_noop("Tiles"),
-  "overlays": tr_noop("Driving Overlays"),
-  "tools": tr_noop("Tools & Diagnostics"),
+  "ui": tr_noop("Tiles & Overlays"),
+  "language": tr_noop("Languages"),
 }
 
 
@@ -129,14 +120,14 @@ def plugin_sections():
 
 def market_sections(entries) -> list[tuple[str, list, list]]:
   """Plugin market: (category title, plugins, store entries) per manifest category with any, in CATEGORIES order.
-  Store entries are index entries not loaded this boot (new, or installed and waiting for a restart); an unknown
-  category goes to tools."""
+  Store entries are index entries not loaded this boot (new, or installed and waiting for a restart); store.fetch_index
+  already gave them their claims-derived category (unknown goes to data)."""
   loaded = {p.NAME for p in PLUGINS}
   extra = [e for e in entries if e.id not in loaded]
   sections = []
   for c in CATEGORIES:
     plugins = [p for p in PLUGINS if p.CATEGORY == c]
-    found = [e for e in extra if (e.category if e.category in CATEGORIES else "tools") == c]
+    found = [e for e in extra if (e.category if e.category in CATEGORIES else "data") == c]
     if plugins or found:
       sections.append((CATEGORY_LABELS[c], plugins, found))
   return sections
@@ -171,13 +162,17 @@ def switch_changes(name, value, items, enabled) -> tuple[dict[str, bool], str | 
 
 def switch_plugin(plugin, value: bool, params, jobs=None) -> str | None:
   """Switch a plugin; switching on switches off every plugin sharing an exclusive claim. Clears its fault mark.
-  None on success, else the required-role refusal. params = plugins.view(...); callers check offroad."""
+  Switching on refuses while a plugin named in requires.plugins is off. None on success, else the refusal. params = plugins.view(...); callers check offroad."""
   if jobs is not None and jobs.busy:
     return tr("store busy")
   if value:
     ok, reason = mf.compatible(plugin.MANIFEST, mf.HOST_CAPS)
     if not ok:
       return reason
+    needs = plugin.MANIFEST.requires.get("plugins", []) if plugin.MANIFEST else []
+    missing = [n for n in needs if not any(p.NAME == n and is_enabled(p, params) for p in PLUGINS)]
+    if missing:
+      return tr("turn on first: {}").format(", ".join(next((p.TITLE for p in PLUGINS if p.NAME == n), "") or n for n in missing))
   if plugin.ENABLE_PARAM is None:
     return
   changes, error = switch_changes(plugin.NAME, value, [(p.NAME, p.PRIORITY, p.CLAIMS, p.ENABLE_PARAM) for p in PLUGINS],
