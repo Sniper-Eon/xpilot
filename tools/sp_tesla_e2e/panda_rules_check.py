@@ -33,13 +33,16 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path[:0] = [str(ROOT), str(ROOT / 'opendbc_repo')]
 
 
-def sample_rule(address=0x600):
-  return {'type': 'template_clone.v2', 'engagement': 'primary_or_lateral', 'tx_address': address, 'rx_address': address, 'tx_bus': 1, 'rx_bus': 1,
+def sample_rule(address=0x600, *, abi2=False):
+  result = {'type': 'template_clone.v1', 'tx_address': address, 'rx_address': address, 'tx_bus': 1, 'rx_bus': 1,
               'tx_length': 8, 'rx_length': 8, 'template_ttl_us': 1_500_000, 'min_interval_us': 250_000,
               'session': 1, 'max_count': 50, 'idle_reset_us': 3_000_000, 'max_span_us': 0,
               'counter': {'kind': 0, 'bit_offset': 0, 'width': 0}, 'tx_checksum': {'kind': 0, 'checksum_byte': 0},
               'rx_checksum': {'kind': 0, 'checksum_byte': 0}, 'predicate_mask': [0]*8, 'predicate_value': [0]*8,
               'copy_mask': [255]*8, 'constant_mask': [0]*8, 'constant_value': [0]*8, 'fields': [], 'legal_tuples': []}
+  if abi2:
+    result.update(type='template_clone.v2', engagement='primary_or_lateral')
+  return result
 
 
 def spi_check(output):
@@ -97,7 +100,7 @@ def main():
   source = args.output / 'fixture' / 'plugin.json'
   source.parent.mkdir(exist_ok=True)
   source.write_text(json.dumps({'id': 'fixture', 'api': 1, 'category': 'actuation', 'use': 'onroad',
-                                'entry': 'plugin:P', 'requires': {'rule_abi': 2}, 'claims': ['can.tx:0x600:1'], 'rules': [sample_rule()]}))
+                                'entry': 'plugin:P', 'requires': {'rule_abi': 2}, 'claims': ['can.tx:0x600:1'], 'rules': [sample_rule(abi2=True)]}))
   m = manifest.parse(source)
   candidate = type('P', (Plugin,), {'NAME': m.id, 'MANIFEST': m, 'CLAIMS': m.claims})
   from openpilot.common.params import Params
