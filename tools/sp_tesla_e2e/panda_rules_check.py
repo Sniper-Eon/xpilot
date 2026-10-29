@@ -15,6 +15,7 @@ Failure cases, before implementation:
 - H11 failed CLEAR and NO_OUTPUT are treated as revoked without readback, or never retried.
 - H12 an onroad SILENT/reset causes automatic re-arm or upload.
 - H13 configured idle loops read health/params at 100 Hz instead of the 10 Hz slow path.
+- H15 ABI2 manifests are rejected by a host that advertises ABI2; ABI1 remains valid and unsupported table ABIs are rejected.
 - H14 SPI lock wait consumes the 5 ms transfer deadline and faults a healthy upload.
 """
 import argparse
@@ -33,7 +34,7 @@ sys.path[:0] = [str(ROOT), str(ROOT / 'opendbc_repo')]
 
 
 def sample_rule(address=0x600):
-  return {'type': 'template_clone.v1', 'tx_address': address, 'rx_address': address, 'tx_bus': 1, 'rx_bus': 1,
+  return {'type': 'template_clone.v2', 'engagement': 'primary_or_lateral', 'tx_address': address, 'rx_address': address, 'tx_bus': 1, 'rx_bus': 1,
               'tx_length': 8, 'rx_length': 8, 'template_ttl_us': 1_500_000, 'min_interval_us': 250_000,
               'session': 1, 'max_count': 50, 'idle_reset_us': 3_000_000, 'max_span_us': 0,
               'counter': {'kind': 0, 'bit_offset': 0, 'width': 0}, 'tx_checksum': {'kind': 0, 'checksum_byte': 0},
@@ -96,7 +97,7 @@ def main():
   source = args.output / 'fixture' / 'plugin.json'
   source.parent.mkdir(exist_ok=True)
   source.write_text(json.dumps({'id': 'fixture', 'api': 1, 'category': 'actuation', 'use': 'onroad',
-                                'entry': 'plugin:P', 'claims': ['can.tx:0x600:1'], 'rules': [sample_rule()]}))
+                                'entry': 'plugin:P', 'requires': {'rule_abi': 2}, 'claims': ['can.tx:0x600:1'], 'rules': [sample_rule()]}))
   m = manifest.parse(source)
   candidate = type('P', (Plugin,), {'NAME': m.id, 'MANIFEST': m, 'CLAIMS': m.claims})
   from openpilot.common.params import Params

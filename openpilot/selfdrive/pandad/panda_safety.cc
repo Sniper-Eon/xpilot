@@ -95,7 +95,8 @@ bool PandaSafety::loadRules() {
     if (rules_.size() < 20 || rules_.size() > 4100) return fail();
     const auto *b = reinterpret_cast<const uint8_t *>(rules_.data());
     size_t len = rules_.size() - 4;
-    if (read_le(b, 4) != 0x31525058 || read_le(b + 4, 2) != 1 || read_le(b + 6, 2) != 16 ||
+    const uint32_t table_abi = read_le(b + 4, 2);
+    if (read_le(b, 4) != 0x31525058 || (table_abi != 1 && table_abi != 2) || read_le(b + 6, 2) != 16 ||
         read_le(b + 8, 2) != len || b[10] > 8 || b[11] != 0 || read_le(b + 12, 4) != 0 ||
         crc32(0, b, len) != read_le(b + len, 4)) return fail();
     rules_step_ = RulesStep::BEGIN;

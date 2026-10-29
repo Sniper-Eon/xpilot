@@ -2,6 +2,7 @@
 #include <dlfcn.h>
 #include <fstream>
 #include <thread>
+#include <zlib.h>
 
 #include "common/tests/native_test.h"
 #include "common/timing.h"
@@ -117,11 +118,16 @@ void run(Firmware &fw, const std::string &out) {
   params.putBool("ControlsReady", true);
   std::ofstream trace(out + "/trace.jsonl");
   std::ofstream(out + "/review-trace.jsonl").close();
-  for (const std::string failure : {"", "host", "caps", "bootstub", "abi", "limits", "crc", "count", "length", "begin", "commit", "deadline", "short", "changed-caps", "churn", "param"}) {
+  for (const std::string failure : {"", "host", "caps", "bootstub", "abi", "limits", "crc", "count", "length", "begin", "commit", "deadline", "short", "changed-caps", "churn", "param", "table-abi"}) {
     if (const char *only = getenv("PANDA_RULES_CASE"); only && failure != only) continue;
     fw.mode(19, 0);
     bool success = failure.empty() || failure == "host";
     std::string blob = util::read_file(out + (failure == "host" ? "/rules.bin" : "/reference.bin"));
+    if (failure == "table-abi") {
+      blob[4] = 3;  // CRC-valid unsupported table ABI must fail before upload.
+      uint32_t crc = crc32(0, reinterpret_cast<const uint8_t *>(blob.data()), blob.size() - 4);
+      for (size_t i = 0; i < 4; ++i) blob[blob.size() - 4 + i] = (crc >> (8 * i)) & 0xff;
+    }
     params.put("XpilotPandaRules", failure == "param" ? "broken" : blob);
     params.putBool("XpilotPandaRulesFault", false);
     auto handle = std::make_unique<FakeHandle>(fw, failure);
@@ -151,7 +157,7 @@ void run(Firmware &fw, const std::string &out) {
     }
     REQUIRE(fw.get_mode() == 10);
     REQUIRE(params.getBool("XpilotPandaRulesFault") == !success);
-    if (failure == "caps" || failure == "bootstub" || failure == "abi" || failure == "limits") REQUIRE(h->writes == 0);
+    if (failure == "caps" || failure == "bootstub" || failure == "abi" || failure == "limits" || failure == "table-abi") REQUIRE(h->writes == 0);
     uint8_t status[64] = {};
     fw.control(0xa1, 0, 0, status);
     if (success) {
