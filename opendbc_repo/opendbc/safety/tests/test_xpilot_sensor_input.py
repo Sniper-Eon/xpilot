@@ -41,6 +41,12 @@ GOOD = bytes((0x40 | 1, 0x2C))  # forward, 300 * 0.02 = 6 m/s
 
 
 class TestSensorInput(unittest.TestCase):
+  def test_sensor_flag_cannot_alias_v2_engagement(self):
+    # Byte43 in v2 already means lateral engagement, never disengaged sensor TX.
+    for engagement in ('primary', 'primary_or_lateral'):
+      with self.assertRaises(ValueError):
+        encode_rule(speed_rule(type='template_clone.v2', engagement=engagement))
+
   def setUp(self):
     self.s = harness()
     configure(self.s, (SPEED, AUTO))

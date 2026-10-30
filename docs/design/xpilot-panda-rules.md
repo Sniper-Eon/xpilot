@@ -54,7 +54,12 @@ header with total length 16/count 0; CLEAR instead reports committed CRC 0.
 | 68 | u8[8] | constant_mask |
 | 76 | u8[8] | constant_value (bits outside mask must be zero) |
 
-### sensor_input (byte 43 = 1)
+### sensor_input (type 1 byte 43 = 1)
+
+The flag is scoped to `template_clone.v1` records (record type 1). Type 2 uses
+byte 43 for its existing engagement guard; it is never a disengaged sensor
+permission or a sensor collision latch. The host rejects `sensor_input` on v2
+rather than overwriting that guard. This preserves the ABI2 wire representation.
 
 For frames a device needs while the driver has not engaged, e.g. ARS408 speed
 (0x300) and yaw (0x301). The whole TX payload is host-computed and checked only by

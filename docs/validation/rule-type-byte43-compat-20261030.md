@@ -1,0 +1,11 @@
+# Keep sensor input separate from ABI2 engagement
+
+Merging remote xpilot commit07364b9 exposed a real protocol collision: upstream sensor_input interpreted byte43=1 as disengaged sensor authority for every record type, while this fork already uses that byte in type2 for primary_or_lateral engagement. Native ABI2 upload failed; sensor validation also rejected existing copied-template car frames.
+
+The host now rejects sensor_input on v2. The firmware engine applies sensor presence/collision/disengaged rules only to type1 records. Type2 retains its existing primary/MADS engagement semantics and all native brake/template/rate/relay checks. Neither ABI nor existing encoded tables change. No Tesla mode or car/DBC implementation was changed.
+
+Failure-first: native panda_rules_check failed its host-v2 upload before the fix; a new encoder test also failed before implementation. Afterward19 focused tests/288subtests passed; full opendbc safety tests (separate from the MISRA mutation runner) passed473tests/720subtests,136skipped. Native host-loader and SPI E2E both returned0. MISRA test_misra.sh returned0 in55sec (SKIP_BUILD=1 after the separate successful board build; SKIP_TABLES_DIFF=1 avoids regenerating coverage metadata). All three debug board builds passed. Firmware text/data/bss bytes: panda30024/2736/128480; panda_h738996/2936/436025; body_h735756/2932/422517. Signed application bytes:33024,42208,38964 respectively, including256-byte signatures. Build artifacts stay private/untracked.
+
+The CI section11 host checks and fork-pair/interface checks passed. long_owner_check passed using its required output argument. Obsolete shared_safety_check is not presented as passed (its removed safety_problem API was already documented in navigation-lamp-abi2-20261029.md). Host checks initially hit local tool PATH/generated-header issues and relative Params-output paths; reruns used Python3.12/toolchain PATH and absolute native output directories.
+
+This is source/build/native-test evidence only. The C3 speed-threshold plugin update was independently verified with its existing protected host and firmware unchanged; no newly built firmware was flashed. Road validation remains outstanding. Raw traces and compiler outputs stay outside Git.

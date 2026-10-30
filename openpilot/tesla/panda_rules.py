@@ -68,6 +68,8 @@ def encode_rule(r):
   v2 = r['type'] == 'template_clone.v2'
   span_key = 'window_us' if r.get('session') == 2 else 'max_span_us'
   sensor = 'sensor_input' in r
+  if sensor and v2:
+    raise ValueError('sensor_input is only valid for template_clone.v1; v2 byte 43 is engagement')
   if sensor and r['sensor_input'] is not True:
     raise ValueError('sensor_input must be true when present')
   _keys(r, ('sensor_input ' if sensor else '') + 'type tx_address rx_address tx_bus rx_bus tx_length rx_length template_ttl_us min_interval_us ' +

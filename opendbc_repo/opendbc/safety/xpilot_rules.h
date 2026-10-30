@@ -124,7 +124,7 @@ static uint8_t xpilot_validate_rule(const uint8_t *r, uint8_t abi) {
   const uint32_t interval = xpilot_read_le(&r[20], 4U);
   const uint32_t idle = xpilot_read_le(&r[28], 4U);
   const uint32_t span = xpilot_read_le(&r[32], 4U);
-  const bool sensor = r[43] == 1U;
+  const bool sensor = (r[2] == 1U) && (r[43] == 1U);
   if (((r[2] != 1U) && ((abi != 2U) || (r[2] != 2U))) || (fields > 8U) || (tuples > 8U)) {
     error = 6U;
   } else if ((addr > 0x1FFFFFFFU) || (xpilot_read_le(&r[8], 4U) > 0x1FFFFFFFU) ||
@@ -310,7 +310,7 @@ static void xpilot_rules_rx(const CANPacket_t *msg) {
         const uint8_t *r = &xpilot_rule_table[xpilot_rule_offsets[i]];
         const uint32_t addr = xpilot_read_le(&r[8], 4U);
         const uint32_t tx_addr = xpilot_read_le(&r[4], 4U);
-        if ((r[43] == 1U) && (msg->addr == tx_addr) && ((msg->extended != 0U) == (tx_addr > 0x7FFU)) &&
+        if ((r[2] == 1U) && (r[43] == 1U) && (msg->addr == tx_addr) && ((msg->extended != 0U) == (tx_addr > 0x7FFU)) &&
             (msg->bus == r[12])) {
           xpilot_rule_states[i].collided = true;
         }
@@ -382,7 +382,7 @@ static bool xpilot_rule_tx(const CANPacket_t *msg, const uint8_t *r, XpilotRuleS
   }
   const bool span_ok = (r[24] == 2U) || (xpilot_read_le(&r[32], 4U) == 0U) ||
                        (safety_get_ts_elapsed(now, s->session_ts) < xpilot_read_le(&r[32], 4U));
-  const bool sensor = r[43] == 1U;
+  const bool sensor = (r[2] == 1U) && (r[43] == 1U);
   const bool lateral_authority = (r[2] == 2U) && (r[43] == 1U) &&
                                  GET_FLAG(alternative_experience, ALT_EXP_ENABLE_MADS) && controls_allowed_lateral;
   const bool engagement_allowed = controls_allowed || lateral_authority;
