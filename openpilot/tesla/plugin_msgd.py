@@ -17,7 +17,7 @@ SOURCE_HZ = 100
 SOURCE_BYTES = 256 * 1024
 TOTAL_BYTES = 1024 * 1024
 HOST_CLAIMS = {
-  "plannerd": ("long.target", "plan.filter", "role:long.planner"),
+  "plannerd": ("long.target", "plan.filter", "role:long.planner", "role:long.accel_boost"),
   "controlsd": ("lat.correction", "role:lateral.controller", "role:long.owner"),
   "selfdrived": ("alert", "event.filter", "role:engagement.state", "role:safety.fallback"),
   "modeld": ("role:lane_change.policy", "role:perception.model"),

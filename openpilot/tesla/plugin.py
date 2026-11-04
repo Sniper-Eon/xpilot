@@ -116,6 +116,15 @@ class Plugin:
     None, wrong lengths or non-finite values keep SP's plan; raising drops the planner."""
     return None
 
+  # ---- plannerd (claim "role:long.accel_boost", exclusive) ----
+  @classmethod
+  def accel_boost(cls, CP, CP_SP, params):
+    """None, or an object with update(sm, a_e2e, a_mpc, a_cruise) -> accel, replacing the planner's AccelBoost (the
+    gas-override boost from openpilot). It may only raise the model (e2e) candidate, by at most ACCEL_BOOST_CAP; the
+    planner still takes min(lead MPC, cruise, e2e) and clips to ACCEL_MAX, so it never beats the lead or set speed.
+    Lower, non-finite or raising results fall back to openpilot's AccelBoost for the drive."""
+    return None
+
   # ---- plannerd ----
   @classmethod
   def long_target(cls, CP, params):

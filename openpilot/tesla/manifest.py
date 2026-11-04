@@ -56,7 +56,7 @@ _CATEGORY_CLAIMS = (
   ("modes", ("role:engagement.state", "role:stock.ap", "role:safety.fallback")),
   ("models", ("role:perception.model",)),
   ("lateral", ("role:lateral.controller", "lat.correction", "role:lane_change.policy")),
-  ("longitudinal", ("role:long.owner", "role:long.planner", "plan.filter", "long.target")),
+  ("longitudinal", ("role:long.owner", "role:long.planner", "role:long.accel_boost", "plan.filter", "long.target")),
   ("car_actions", ("can.tx:",)),
   ("alerts", ("alert",)),
   ("language", ("lang:",)),
@@ -272,7 +272,7 @@ RULE_ABI = 1
 HOST_CAPS = {
   "hooks": ("__init__", "setup", "observe_can", "publish_state", "control_sends", "service_params", "processes",
             "role_processes", "alert_source", "lane_change_policy", "lat_correction", "lat_controller", "long_owner", "long_planner",
-            "long_target", "plan_filter", "event_filter", "engagement", "safety_fallback", "radar_interface"),
+            "accel_boost", "long_target", "plan_filter", "event_filter", "engagement", "safety_fallback", "radar_interface"),
   "msg": ("*",),  # plugin_msgd authenticates/limits publishers; every declared kind, no payload schema.
   "host_api": ("parked", "reboot", "shutdown", "wifi_connect", "wifi_forget", "hotspot", "play_sound", "data_dir"),
   "rule_abi": RULE_ABI,

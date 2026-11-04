@@ -17,6 +17,12 @@ Failure cases listed before implementation:
 - P4 the planner can change FCW (SP's MPC keeps deciding forward collision warnings)
 - P5 a planner without role:long.planner is used
 - P6 the planner runs after the speed filter integrates aTarget, or before SP's own output is final
+- B1 an accel boost without role:long.accel_boost is used, or without a plugin the planner loses openpilot's AccelBoost object
+- B2 a boost plugin lowers the model (e2e) acceleration, or raises it by more than ACCEL_BOOST_CAP
+- B3 a boost that raises or returns NaN/inf keeps running or changes the e2e candidate (openpilot's AccelBoost must take over)
+- B4 openpilot's AccelBoost stops updating while a plugin boosts (a fallback would start from stale state)
+- B5 total_boost (published as longitudinalPlan.accelBoost) differs from the boost actually applied
+- B6 plannerd does not hand the planner's AccelBoost to the plugin hook
 """
 import json
 import math
@@ -175,6 +181,58 @@ def main() -> int:
   k = src.find("self.v_desired_filter.x = self.v_desired_filter.x + self.dt")
   if not (0 <= j < i < k):
     errors.append("P6 apply_long_planner not between SP's final output and the speed filter integration")
+
+  # ---- accel boost ----
+  class SpBoost:
+    def __init__(self):
+      self.calls, self.total_boost = 0, 0.05
+
+    def update(self, sm, a_e2e, a_mpc, a_cruise):
+      self.calls += 1
+      return a_e2e + self.total_boost
+
+  class Boost:
+    def __init__(self, out=None, fail=False):
+      self.out, self.fail, self.calls = out, fail, 0
+
+    def update(self, sm, a_e2e, a_mpc, a_cruise):
+      self.calls += 1
+      if self.fail:
+        raise RuntimeError("boom")
+      return self.out(a_e2e)
+
+  plugins.PLUGINS = (make("ab_no", [], accel_boost=Boost(lambda a: a + 0.2)),)
+  sp_b = SpBoost()
+  if plugins.accel_boost(CP, None, FakeParams(), sp_b) is not sp_b:
+    errors.append("B1 unclaimed accel boost used or openpilot's AccelBoost replaced")
+  plugins.PLUGINS = ()
+  if plugins.accel_boost(CP, None, FakeParams(), sp_b) is not sp_b:
+    errors.append("B1 no plugin: openpilot's AccelBoost not kept")
+  for label, fn, want in (("ok", lambda a: a + 0.2, 0.2), ("cap", lambda a: a + 3.0, plugins.ACCEL_BOOST_CAP)):
+    sp_b = SpBoost()
+    plugins.PLUGINS = (make("ab", ["role:long.accel_boost"], accel_boost=Boost(fn)),)
+    g = plugins.accel_boost(CP, None, FakeParams(), sp_b)
+    out = g.update({}, 0.3, 1.0, 1.0)
+    if abs(out - (0.3 + want)) > 1e-9:
+      errors.append(f"B2 {label}: e2e 0.3 became {out}, expected {0.3 + want}")
+    if abs(g.total_boost - want) > 1e-9:
+      errors.append(f"B5 {label}: total_boost {g.total_boost} != applied {want}")
+    if sp_b.calls != 1:
+      errors.append(f"B4 {label}: openpilot's AccelBoost updated {sp_b.calls}x")
+  for label, b in (("lower", Boost(lambda a: a - 0.2)), ("nan", Boost(lambda a: math.nan)), ("raise", Boost(fail=True))):
+    sp_b = SpBoost()
+    plugins.PLUGINS = (make("ab_" + label, ["role:long.accel_boost"], accel_boost=b),)
+    g = plugins.accel_boost(CP, None, FakeParams(), sp_b)
+    try:
+      outs = [g.update({}, 0.3, 1.0, 1.0) for _ in range(2)]
+    except Exception as e:
+      errors.append(f"B3 {label}: raised {e!r}")
+      continue
+    if outs != [0.35, 0.35] or b.calls != 1 or g.total_boost != 0.05:
+      errors.append(f"B{'2' if label == 'lower' else '3'} {label}: outputs {outs}, plugin calls {b.calls}, total_boost {g.total_boost}")
+  src = (ROOT / "openpilot/selfdrive/controls/plannerd.py").read_text()
+  if "longitudinal_planner.accel_boost = plugins.accel_boost(CP, CP_SP, params, longitudinal_planner.accel_boost)" not in src:
+    errors.append("B6 plannerd does not wire the accel_boost hook")
 
   print(json.dumps({"errors": errors}, indent=1))
   return 1 if errors else 0

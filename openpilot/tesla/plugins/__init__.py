@@ -604,6 +604,44 @@ def apply_long_planner(planners: list, planner, sm) -> None:
   planner.output_should_stop = bool(plan.should_stop)
 
 
+# ---- plannerd: replaceable accel boost ----
+ACCEL_BOOST_CAP = 0.5  # m/s^2 a plugin may add to the model's acceleration (SP's own predictive boost peaks at 0.4)
+
+
+class _GuardedAccelBoost:
+  """Boosts with the plugin while openpilot's AccelBoost runs alongside; on a raise or invalid result openpilot's takes
+  over for good. Only raises the e2e candidate, by at most ACCEL_BOOST_CAP."""
+
+  def __init__(self, plugin, sp):
+    self.plugin, self.sp, self._plugins = plugin, sp, [plugin]
+    self.total_boost = 0.0
+
+  def update(self, sm, a_e2e, a_mpc, a_cruise):
+    sp_out = self.sp.update(sm, a_e2e, a_mpc, a_cruise)
+    if self._plugins:
+      ok, out = _call(self._plugins, self.plugin, "update", "plannerd.accel_boost", sm, a_e2e, a_mpc, a_cruise)
+      if ok:
+        try:
+          boost = float(out) - float(a_e2e)
+          if not math.isfinite(boost) or boost < -1e-6:
+            raise ValueError(f"accel boost result {out} for e2e {a_e2e}")
+          self.total_boost = min(max(boost, 0.0), ACCEL_BOOST_CAP)
+          return a_e2e + self.total_boost
+        except Exception as e:
+          self._plugins.clear()
+          record_fault(getattr(self.plugin, "plugin_name", "?"), "plannerd.accel_boost.result", e)
+    self.total_boost = self.sp.total_boost
+    return sp_out
+
+
+def accel_boost(CP, CP_SP, params, sp_boost):
+  """plannerd: openpilot's AccelBoost itself, or a guard around the active role:long.accel_boost plugin."""
+  if CP.brand != "tesla":
+    return sp_boost
+  found = _collect(params, "accel_boost", "role:long.accel_boost", "plannerd", CP, CP_SP, params)
+  return _GuardedAccelBoost(found[0], sp_boost) if found else sp_boost
+
+
 # ---- card: replaceable radar ----
 class _GuardedRadar:
   """Reads the plugin radar while the port's RadarInterface runs alongside; if the plugin raises the port's takes over for good."""

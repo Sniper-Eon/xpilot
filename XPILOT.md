@@ -33,7 +33,7 @@ C3/C3XL 保留各自锁定的 mr-one 引导链和写前白名单校验，禁止�
 
 1. **不改 SP 主体逻辑。** SP 文件里每个钩子点只加一行插件调用（循环、出错隔离等逻辑放在 `openpilot/tesla/` 里）。功能逻辑全部写在 `openpilot/tesla/plugins/<功能名>/`。
 2. **不改上游 Tesla 车端代码。** `opendbc_repo/opendbc/car/tesla/*`、`opendbc_repo/opendbc/sunnypilot/car/tesla/*`、`opendbc/dbc/tesla_model3_*.dbc`、`opendbc/safety/modes/tesla.h` 保持上游原样。需要车端数据，就在插件里用自己的 `CANParser` 读。
-3. **插件不能绕过车端和 panda 的检查。** 纵向：`long_target` 加速只能替换驾驶员设定车速（条件见第 4 节）；`plan_filter` 只能收紧；`role:long.planner` 可以整体替换纵向计划、包括跟车（用户 2026-10-22 决定），但加速度限制、FCW、踩刹车退出、原车 AEB 和 panda 限制不变。横向：`role:lateral.controller` 的输出不额外限制，靠车端转角速率限制和 panda 兜底。外接算力的数据只做建议。
+3. **插件不能绕过车端和 panda 的检查。** 纵向：`long_target` 加速只能替换驾驶员设定车速（条件见第 4 节）；`plan_filter` 只能收紧；`role:long.planner` 可以整体替换纵向计划、包括跟车（用户 2026-10-22 决定）；`role:long.accel_boost` 只能把模型（e2e）候选加速度抬高最多 `ACCEL_BOOST_CAP`（0.5 m/s²），规划器仍取 min(跟车 MPC, 巡航, e2e)，不会超过跟车或设定车速（车主 2026-11-04）；但加速度限制、FCW、踩刹车退出、原车 AEB 和 panda 限制不变。横向：`role:lateral.controller` 的输出不额外限制，靠车端转角速率限制和 panda 兜底。外接算力的数据只做建议。
 4. **每个额外 CAN 发送地址都必须声明 panda 运行时规则**（第 6 节），固件校验内容、频率、时效和接管门。Tesla 自有地址只由原模式校验；没有规则的其他地址一律阻断。
 5. **插件出错不能拖垮进程**：输入过期就当周期什么都不发。宿主兜底：插件在任何钩子里抛异常，就被记进 `XpilotPluginFaults`、本次进程内停用，其他插件和 SP 照常运行；plan filter 出错时计划照常发布。UI 磁贴和叠加层连续出错 3 次会停止绘制。
 6. **Params**：插件的 key 写在自己 `plugin.json` 的 `params` 里，然后运行 `python3 openpilot/tesla/plugins/gen_params.py` 生成 `common/plugin_params.inc` 并一起提交；不属于插件的 key 才写进 `params_keys.h`。每个插件有一个 BOOL 总开关 `enable_param`，默认关闭；例外：只做显示、`claims` 为空的 `ui`、`overlays` 类插件（如 `speed_card`）可以默认开启；可替换核心环节的内置默认插件（如 `sp_models`）`enable_param` 为 `null`、一直开启，被替换时按优先级让位。设置项写在 `plugin.json` 的 `settings` 里。
@@ -128,7 +128,7 @@ card 每次启动用 `cloudlog.event("xpilot.drive_snapshot", ...)` 记录本行
 | 1 | `modes` 驾驶模式 | `role:engagement.state`、`role:stock.ap`、`role:safety.fallback` |
 | 2 | `models` 模型 | `role:perception.model` |
 | 3 | `lateral` 横向控制 | `role:lateral.controller`、`lat.correction`、`role:lane_change.policy` |
-| 4 | `longitudinal` 纵向控制 | `role:long.owner`、`role:long.planner`、`plan.filter`、`long.target` |
+| 4 | `longitudinal` 纵向控制 | `role:long.owner`、`role:long.planner`、`role:long.accel_boost`、`plan.filter`、`long.target` |
 | 5 | `car_actions` 车辆动作（CAN） | `can.tx:*` |
 | 6 | `alerts` 提醒 | 只有 `alert`（可再带 `lang:*`）时归此类；带其他资源时跳过此行继续往下匹配 |
 | 7 | `language` 语言 | `lang:*` |
@@ -171,6 +171,7 @@ card 每次启动用 `cloudlog.event("xpilot.drive_snapshot", ...)` 记录本行
 | `role:lateral.controller` | 替换横向控制器（`lat_controller`） | 是 |
 | `role:long.owner` | 用 `long_owner` 提议 STOCK/SP owner；必须 `requires.hooks=["long_owner"]`，不授予 CAN 或安全权限 | 是 |
 | `role:long.planner` | 替换纵向规划（`long_planner`），可以自带跟车逻辑 | 是 |
+| `role:long.accel_boost` | 替换规划器的 AccelBoost（`accel_boost`），只能抬高 e2e 候选 | 是 |
 | `role:perception.model` | 整体替换模型（下载、选择、缓存、推理）。宿主 `ROLE_PROCESSES` 保留 `models_manager`、`modeld`、`modeld_tinygrad`、`modeld_warmup` 四个名字，`fork_processes.py` 把原进程对象交给宿主；只有声明该 role 的插件会收到 `role_processes(role, procs)`，可返回全部、部分或不返回，且必须是传入字典里的原对象（按身份校验）。返回的进程只在该插件持有 role 且原 `should_run` 条件成立时运行；无人持有时四个都不运行。默认 `sp_models`（优先级 10000、一直开启）返回全部；替换插件也可保持空选择、用 `processes()` 自带进程，不能借此占用这四个保留名。hook 抛异常或返回外来对象时记录故障、拒绝本次选择，其他插件继续注册。必须按原语义发布 `modelV2`、`drivingModelData`、`cameraOdometry`、`modelDataV2SP`。替换插件优先级要小于 10000；切换只在停车时改开关、下次启动进程时生效 | 是 |
 | `role:engagement.state` | 用 `engagement(selfdrive)` 整体替换接管：普通状态机和 MADS。默认 `sp_engagement`（优先级 10000、一直开启） | 是 |
 | `role:safety.fallback` | 用 `safety_fallback(ctx)` 整体替换兜底策略（哪些事件触发退出、禁止接管、软退出）。默认 `sp_safety_fallback` | 是 |
@@ -222,6 +223,7 @@ Host E2E：`PYTHONPATH=tinygrad_repo python3 tools/sp_tesla_e2e/model_source_e2e
 | `lat_controller(CP, CP_SP, CI, params)`（类方法） | controlsd | 返回和 `LatControl` 接口一致的对象（`update(...) -> (steer, 转角, lac_log)`、`reset()`），替换 SP 的横向控制器。输出不和 SP 比较、不额外限制，只靠车端转角速率限制和 panda 兜底。SP 的控制器一直并行运行；插件出错或输出 NaN/inf 时，本次运行剩下的时间都改用 SP 的输出 |
 | `long_owner(CP, CP_SP, params)`（类方法） | controlsd | 可选独占 `role:long.owner`，返回带 `desired(ctx, CS) -> None / "stock" / "sp"` 的对象。只提议 owner，所有 host veto 和 Panda health 确认仍生效；构造/调用异常、非法返回值记录故障并停用本行程，不自动提升落败插件；None 保持 owner。collector/context/手动脉冲合同见 [host design](docs/design/xpilot-long-owner-host.md) |
 | `long_planner(CP, CP_SP, params)`（类方法） | plannerd，SP 算完之后 | 返回带 `update(sm, sp) -> plan 或 None` 的对象。`sp` 是 SP 的结果（`speeds`、`accels`、`jerks` 各 17 个点，`a_target`、`should_stop`）；返回同样字段的 plan 就替换 SP 的计划，**包括跟车**。`a_target` 限制在 ACCEL_MIN/MAX；长度不对、NaN/inf 或 None 时保留 SP 的计划；出错的规划器被停用。SP 的 MPC 仍然运行，FCW 仍由它决定 |
+| `accel_boost(CP, CP_SP, params)`（类方法） | plannerd，每个规划周期、取最小值之前 | 返回带 `update(sm, a_e2e, a_mpc, a_cruise) -> 加速度` 的对象，替换 openpilot 的 AccelBoost（踩油门超驰后的加速补偿）。结果只能抬高 e2e 候选，最多 `ACCEL_BOOST_CAP`（0.5 m/s²）；之后规划器照常取 min(跟车 MPC, 巡航, e2e) 并限制到 ACCEL_MAX。变低、NaN/inf 或抛异常时本行程改回 openpilot 的 AccelBoost（它一直并行更新）。`longitudinalPlan.accelBoost` 发布实际生效的量。检查：`phase3_check.py` B1–B6 |
 | `plan_filter(CP, params)`（类方法） | plannerd | 返回带 `publisher(pm, sm)` 的对象，用来收紧纵向计划；不需要就返回 None |
 | `engagement(selfdrive)`（类方法） | selfdrived，启动时一次 | 返回带 `state_machine`（SP `StateMachine` 接口）和 `mads`（MADS 接口，None 表示关闭 MADS 横向接管）的对象。插件可以保存、读取 `selfdrive`，只通过这两个输出改变接管，由宿主限幅；默认插件返回 `SelfdriveD.__init__` 已建好的 SP 实例，也走相同宿主路径。宿主底线（`openpilot/tesla/core_host.py`，用户 2026-10-23 决定）：底线里的 USER/IMMEDIATE 退出事件一定生效；接管必须有 SP 产生的驾驶员 ENABLE 事件（MADS：LKAS 按钮或屏幕手势，或普通 ENABLE）且没有底线 NO_ENTRY；`active` 必须和 `enabled`、状态一致；软退出最多 SOFT_DISABLE_TIME + 1 秒；`ET.PERMANENT` 一直显示（FCW、原车 AEB）；MADS 开启时按 LKAS 按钮一定退出；遵守 `Mads` 开关 |
 | `event_filter(ctx, CS, names, names_sp)`（可选类方法） | selfdrived，每周期 SP 事件生成之后、独占 fallback 之前 | 声明 `event.filter`，返回 `(drop, drop_sp)` 两个列表；只接收事件名副本，不改 CarState。宿主 allowlist 首项且唯一项是普通事件 `invalidLkasSetting`，`drop_sp` 必须为空。越权、非列表或异常均记录该插件故障，后续不再调用并显示 `xpilotPluginFault`；过滤器故障不锁定两轴，保留事件使策略更严格 |
@@ -300,6 +302,7 @@ class MyTile(Tile):
 | plannerd | `long_target(CP, params)` | `long.target` |
 | plannerd | `plan_filter(CP, params)` | `plan.filter` |
 | plannerd | `long_planner(CP, CP_SP, params)` | `role:long.planner` |
+| plannerd | `accel_boost(CP, CP_SP, params)` | `role:long.accel_boost` |
 | controlsd | `lat_correction(CP, params)` | `lat.correction` |
 | controlsd | `lat_controller(CP, CP_SP, CI, params)` | `role:lateral.controller` |
 | controlsd | `long_owner(CP, CP_SP, params)` | `role:long.owner`（可选） |
