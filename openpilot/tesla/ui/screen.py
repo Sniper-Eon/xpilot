@@ -87,6 +87,9 @@ class AddTilesPage(ListPage):
 
 class BigScreenHost:
   size = SCREEN
+  # Camera and model publish at 20 Hz; 60 FPS (the tici default) redrew the same frame 3x and doubled UI CPU.
+  # Fixed for the whole process: mici filters take their step from gui_app.target_fps when they are built.
+  fps = 20
 
   def __init__(self):
     self._params = Params()

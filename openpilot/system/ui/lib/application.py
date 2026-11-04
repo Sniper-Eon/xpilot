@@ -304,6 +304,7 @@ class GuiApplication(GuiApplicationExt):
         self._width, self._height, self._scale = 536, 240, HOST_TEXTURE_SCALE
         self._scaled_width, self._scaled_height = 536 * HOST_TEXTURE_SCALE, 240 * HOST_TEXTURE_SCALE
         self._nav_stack_widgets_to_render = 2
+        fps = int(os.getenv("FPS", host.fps))  # xpilot: big screen renders at the host rate, set before widgets build their filters
       def _close(sig, frame):
         self.close()
         sys.exit(0)
