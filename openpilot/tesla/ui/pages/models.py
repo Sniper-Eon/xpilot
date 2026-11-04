@@ -1,7 +1,8 @@
 """Models page (native): what mici ModelsLayoutMici offers (active model and download state, small and big model lists,
 cancel download, refresh list, clear cache), reusing selfdrive/ui/sunnypilot/model_info.py. Each model list is a native
 sub-page: the default, then one row per bundle under its folder header (favorites first). Select, refresh and clear cache
-are offroad-only (the model manager runs offroad only); clear cache asks in a tici ConfirmDialog."""
+are offroad-only (the model manager runs offroad only); clear cache asks in a tici ConfirmDialog. Blendful (alpha) is the
+mici toggle, offered only with a tinygrad runner."""
 import time
 
 from openpilot.cereal import custom
@@ -14,7 +15,7 @@ from openpilot.system.ui.lib.application import gui_app
 from openpilot.system.ui.lib.multilang import tr, tr_noop
 from openpilot.system.ui.widgets.confirm_dialog import alert_dialog
 from openpilot.system.ui.widgets.list_view import ButtonAction, ListItem, button_item, text_item
-from openpilot.tesla.ui.pages.base import Header, ListPage, confirm
+from openpilot.tesla.ui.pages.base import Header, ListPage, ParamToggle, confirm
 
 DS = custom.ModelManagerSP.DownloadStatus
 SOURCES = (("qcom", tr_noop("Small models")), ("chestnut", tr_noop("Big models")))
@@ -110,6 +111,9 @@ class ModelsPage(ListPage):
     cancel = button_item(lambda: tr("Cancel verification") if self._s[4] else tr("Cancel download"), tr("CANCEL"),
                          callback=lambda: params.remove("ModelManager_DownloadRef"))
     cancel.set_visible(lambda: self._downloading and params.get("ModelManager_DownloadRef") is not None)
+    # as mici: Blendful runs in the tinygrad runner only; parked only, like the other rows
+    self._blendful = ParamToggle(tr("Blendful (alpha)"), "Blendful", tr("Blends the lane center into the model's path. Custom (tinygrad) models only."),
+                                 enabled=lambda: offroad() and ui_state.active_runner_tinygrad)
     self.add(
       text_item(lambda: tr(self._s[0]).capitalize(), lambda: self._s[1]),
       text_item(lambda: tr(self._s[2]).capitalize(), lambda: tr(self._s[3])),
@@ -120,6 +124,7 @@ class ModelsPage(ListPage):
       _row(tr("Clear model cache"), tr("CLEAR"), lambda: tr("clearing...") if self._clearing else self._cache, lambda: confirm(
         tr("Clear the model cache? Selected models download again."), "clear", lambda: params.put_bool("ModelManager_ClearCache", True)),
            lambda: offroad() and not self._downloading and not self._clearing),
+      self._blendful.item,
     )
 
   def _refreshing(self) -> bool:
@@ -156,6 +161,7 @@ class ModelsPage(ListPage):
   def show_event(self):
     super().show_event()
     self._cache_t = 0.0
+    self._blendful.refresh()
 
   def hide_event(self):
     super().hide_event()
