@@ -36,7 +36,7 @@ C3/C3XL 保留各自锁定的 mr-one 引导链和写前白名单校验，禁止�
 3. **插件不能绕过车端和 panda 的检查。** 纵向：`long_target` 加速只能替换驾驶员设定车速（条件见第 4 节）；`plan_filter` 只能收紧；`role:long.planner` 可以整体替换纵向计划、包括跟车（用户 2026-10-22 决定）；`role:long.accel_boost` 只能把模型（e2e）候选加速度抬高最多 `ACCEL_BOOST_CAP`（0.5 m/s²），规划器仍取 min(跟车 MPC, 巡航, e2e)，不会超过跟车或设定车速（车主 2026-11-04）；但加速度限制、FCW、踩刹车退出、原车 AEB 和 panda 限制不变。横向：`role:lateral.controller` 的输出不额外限制，靠车端转角速率限制和 panda 兜底。外接算力的数据只做建议。
 4. **每个额外 CAN 发送地址都必须声明 panda 运行时规则**（第 6 节），固件校验内容、频率、时效和接管门。Tesla 自有地址只由原模式校验；没有规则的其他地址一律阻断。
 5. **插件出错不能拖垮进程**：输入过期就当周期什么都不发。宿主兜底：插件在任何钩子里抛异常，就被记进 `XpilotPluginFaults`、本次进程内停用，其他插件和 SP 照常运行；plan filter 出错时计划照常发布。UI 磁贴和叠加层连续出错 3 次会停止绘制。
-6. **Params**：插件的 key 写在自己 `plugin.json` 的 `params` 里，然后运行 `python3 openpilot/tesla/plugins/gen_params.py` 生成 `common/plugin_params.inc` 并一起提交；不属于插件的 key 才写进 `params_keys.h`。每个插件有一个 BOOL 总开关 `enable_param`，默认关闭；例外：只做显示、`claims` 为空的 `ui`、`overlays` 类插件（如 `speed_card`）可以默认开启；可替换核心环节的内置默认插件（如 `sp_models`）`enable_param` 为 `null`、一直开启，被替换时按优先级让位。设置项写在 `plugin.json` 的 `settings` 里。
+6. **Params**：插件的 key 写在自己 `plugin.json` 的 `params` 里，然后运行 `python3 openpilot/tesla/plugins/gen_params.py` 生成 `common/plugin_params.inc` 并一起提交；不属于插件的 key 才写进 `params_keys.h`。每个插件有一个 BOOL 总开关 `enable_param`，默认关闭；例外：只做显示、`claims` 为空的 `ui`、`overlays` 类插件（如 `speed_card`）可以默认开启；`accel_boost`（`role:long.accel_boost`，SP 上游默认开启）按车主 2026-11-04 决定默认开启并首次启动自动安装；可替换核心环节的内置默认插件（如 `sp_models`）`enable_param` 为 `null`、一直开启，被替换时按优先级让位。设置项写在 `plugin.json` 的 `settings` 里。
 7. **cereal**：只追加字段，不改已有字段的序号和类型。新消息用 `custom.capnp` 里的 `customReserved*` 槽位。
 8. **验证**（沿用 `AGENTS.md`）：
    - 先列出失败模式，再写检查。
@@ -610,7 +610,7 @@ X-50 自动速度策略和 G3 横向均未实现；刷写和实车接合测试�
 | 插件 | 功能 | 参数 | panda |
 |---|---|---|---|
 | `sp_engagement` / `sp_safety_fallback` | 默认接管和兜底：返回 SP 已建好的状态机/MADS 和事件列表，与其他实现走相同宿主底线；装一个持有 `role:engagement.state` / `role:safety.fallback` 的插件并打开即替换，宿主底线见第 4.4 节 | 无（一直开启） | 无发送 |
-| `sp_models` | 默认模型：SP 的模型管理器和 modeld 原样运行，只是归到插件下；装一个持有 `role:perception.model` 的插件（如 OP、Jetlink、Chipmunk 模型）并打开即替换 | 无（一直开启） | 无发送 |
+| `sp_models` | 默认模型：SP 的模型管理器和 modeld 原样运行，只是归到插件下（含 Blendful，参数 `Blendful` 默认关，Models 页开关；原商店 `blendful` 插件已删除）；装一个持有 `role:perception.model` 的插件（如 OP、Jetlink、Chipmunk 模型）并打开即替换 | 无（一直开启） | 无发送 |
 
 商店插件的列表和说明只在插件仓库的 `README.md`。它们保留原来的参数名，从旧版本升级的设备要把旧参数值复制到 `/data/xpilot_plugins/.params/`。panda 生产权限由第 6 节运行时规则提供。
 
