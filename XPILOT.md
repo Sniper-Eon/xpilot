@@ -60,7 +60,7 @@ openpilot/tesla/
   plugins/__init__.py       自动发现插件（PLUGINS），以及 card/plannerd/manager 用的调用宿主（总开关、冲突、资源检查、出错隔离）
   plugins/<id>/plugin.json  插件清单；plugins/<id>/plugin.py 插件代码；plugins/<id>/ui.py 可选，放磁贴和叠加层
   plugins/gen_params.py     把各插件清单里的 params 生成到 common/plugin_params.inc
-  plugins/sp_models/        默认模型：SP 的模型管理器和 modeld（role:perception.model）；Blendful（SP #2073，参数 Blendful，默认关）在它的 modeld_v2 里
+  plugins/sp_models/        默认模型：SP 的模型管理器和 modeld（role:perception.model）；Blendful（SP #2073，参数 Blendful，默认关）在它的 modeld_v2 里；系统 `selfdrive/modeld/modeld.py`（`run_with_model_source`，lean_mici 等外部模型源）也按同一参数对 `pick()` 选中的输出加同一个修正（lean-mici abf5d1d05）
   plugins/sp_engagement/ sp_safety_fallback/   默认接管和安全兜底
   store.py                  插件商店：下载、校验、安装；首次启动自动安装索引标记的默认插件（8c）
   ui/screen.py ui/tile.py ui/tiles.py ui/slots/   大屏磁贴宿主、磁贴基类、布局模型（无 pyray）、内置磁贴（slots/settings.py 设置页磁贴）
