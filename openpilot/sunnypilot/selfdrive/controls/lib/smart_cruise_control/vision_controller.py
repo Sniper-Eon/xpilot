@@ -29,18 +29,22 @@ _LEAVING_LAT_ACC_TH = 1.3  # Lat Acc threshold to trigger leaving turn state.
 _FINISH_LAT_ACC_TH = 1.1  # Lat Acc threshold to trigger the end of the turn cycle.
 
 _A_LAT_REG_MAX = 2.  # Maximum lateral acceleration
+# Sharper curves tighten the speed target: the base limit above holds for gentle
+# curves, and the cap reaches the sharp-curve limit at about a 31 m radius.
+_A_LAT_REG_MAX_SHARP = 1.8  # Maximum lateral acceleration on sharp curves
+_SHARP_CURVE_BP = [0.012, 0.032]  # absolute path curvature, 1/m (~83 m -> ~31 m radius)
 
 _NO_OVERSHOOT_TIME_HORIZON = 4.  # s. Time to use for velocity desired based on a_target when not overshooting.
 
 # Lookup table for the minimum smooth deceleration during the ENTERING state
 # depending on the actual maximum absolute lateral acceleration predicted on the turn ahead.
-_ENTERING_SMOOTH_DECEL_V = [-0.2, -1.]  # min decel value allowed on ENTERING state
-_ENTERING_SMOOTH_DECEL_BP = [1.3, 3.]  # absolute value of lat acc ahead
+_ENTERING_SMOOTH_DECEL_V = [-0.3, -0.8, -1.2, -1.6]  # min decel value allowed on ENTERING state
+_ENTERING_SMOOTH_DECEL_BP = [1.3, 1.9, 2.5, 3.5]  # absolute value of lat acc ahead
 
 # Lookup table for the acceleration for the TURNING state
 # depending on the current lateral acceleration of the vehicle.
-_TURNING_ACC_V = [0.5, 0., -0.4]  # acc value
-_TURNING_ACC_BP = [1.5, 2.3, 3.]  # absolute value of current lat acc
+_TURNING_ACC_V = [0.4, -0.3, -0.7, -1.]  # acc value
+_TURNING_ACC_BP = [1.6, 2.1, 2.6, 3.2]  # absolute value of current lat acc
 
 _LEAVING_ACC = 0.5  # Conformable acceleration to regain speed while leaving a turn.
 
@@ -98,8 +102,10 @@ class SmartCruiseControlVision:
       v_ego = max(self.v_ego, 0.1)  # ensure a value greater than 0 for calculations
       max_curve = self.max_pred_lat_acc / (v_ego**2)
 
-      # Get the target velocity for the maximum curve
-      self.v_target = (_A_LAT_REG_MAX / max_curve) ** 0.5
+      # Get the target velocity for the maximum curve. Sharp curves use a slightly
+      # lower lateral acceleration limit, so the speed cap tightens where it matters.
+      a_lat_reg_max = float(np.interp(max_curve, _SHARP_CURVE_BP, (_A_LAT_REG_MAX, _A_LAT_REG_MAX_SHARP)))
+      self.v_target = (a_lat_reg_max / max_curve) ** 0.5
 
   def _update_state_machine(self) -> tuple[bool, bool]:
     # ENABLED, ENTERING, TURNING, LEAVING, OVERRIDING
