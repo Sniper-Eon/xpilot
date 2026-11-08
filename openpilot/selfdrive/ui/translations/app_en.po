@@ -1868,9 +1868,9 @@ msgid "Tiles & Overlays"
 msgstr "Tiles & Overlays"
 
 #: openpilot/tesla/ui/pages/device.py:16
-msgid "Off by default. Powers off after the parked Tesla is silent for 2 minutes, or 15 minutes after ignition turns off. Comes back on only if the car restores 12V; otherwise press the power button."
-msgstr "Off by default. Powers off after the parked Tesla is silent for 2 minutes, or 15 minutes after ignition turns off. Comes back on only if the car restores 12V; otherwise press the power button."
+msgid "Off by default. After the parked Tesla is silent for 2 minutes, or 15 minutes after ignition turns off, the device stays in low power while 12V is up. Staying on can delay Tesla sleep. The screen comes back when you press the brake or leave Park. A 12V drop powers it off, and the next 12V restore turns it on. A full power off cannot see the brake."
+msgstr "Off by default. After the parked Tesla is silent for 2 minutes, or 15 minutes after ignition turns off, the device stays in low power while 12V is up. Staying on can delay Tesla sleep. The screen comes back when you press the brake or leave Park. A 12V drop powers it off, and the next 12V restore turns it on. A full power off cannot see the brake."
 
 #: openpilot/tesla/ui/pages/device.py:35
-msgid "Shut down when Tesla sleeps"
-msgstr "Shut down when Tesla sleeps"
+msgid "Stand by when Tesla sleeps"
+msgstr "Stand by when Tesla sleeps"

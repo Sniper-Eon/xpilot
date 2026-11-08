@@ -200,7 +200,27 @@ def hw_state_thread(end_event, hw_queue):
     time.sleep(DT_HW)
 
 
-def hardware_thread(end_event, hw_queue) -> None:
+def tesla_wake_thread(end_event, policy: TeslaSleepShutdown) -> None:
+  """Drain party-bus frames so a brake or gear change is not lost between pandaStates ticks."""
+  sm = None
+  while not end_event.is_set():
+    try:
+      if sm is None:
+        sm = messaging.SubMaster(["can"], poll="can")
+      sm.update(1000)
+      if not sm.updated["can"]:
+        continue
+      now = time.monotonic()
+      for frame in sm["can"]:
+        policy.observe_frame(int(frame.address), int(frame.src), bytes(frame.dat), now)
+    except Exception:
+      cloudlog.exception("tesla wake can")
+      sm = None
+      if end_event.wait(1.0):
+        return
+
+
+def hardware_thread(end_event, hw_queue, tesla_sleep: TeslaSleepShutdown) -> None:
   system_stats = LinuxSystemStats() if sys.platform == "linux" else None
   pm = messaging.PubMaster(['deviceState'])
   sm = messaging.SubMaster(["peripheralState", "gpsLocationExternal", "selfdriveState", "pandaStates", "chestnutState"], poll="pandaStates")
@@ -241,7 +261,8 @@ def hardware_thread(end_event, hw_queue) -> None:
 
   params = Params()
   power_monitor = PowerMonitoring()
-  tesla_sleep = TeslaSleepShutdown()
+  tesla_screen_on = False
+  tesla_hold_logged = False
 
   uptime_offroad: float = params.get("UptimeOffroad", return_default=True)
   uptime_onroad: float = params.get("UptimeOnroad", return_default=True)
@@ -455,18 +476,45 @@ def hardware_thread(end_event, hw_queue) -> None:
     statlog.sample("som_power_draw", som_power_draw)
     msg.deviceState.somPowerDrawW = som_power_draw
 
-    # Check if we need to shut down. Tesla sleep is opt-in and uses this same write.
+    # Tesla sleep is opt-in and uses this same write. A full poweroff cannot
+    # see the next brake press unless 12V actually falls and later returns.
     panda_alive = bool(sm.alive["pandaStates"]) and len(pandaStates) > 0
+    enabled = params.get_bool("TeslaSleepShutdown")
+    now_mono = time.monotonic()
+    driver_present = tesla_sleep.driver_present(now_mono) if enabled else False
+    screen_on = tesla_sleep.note_screen(driver_present, now_mono) if enabled else False
+    if not enabled:
+      tesla_sleep.disarm()
+      screen_on = False
+    if screen_on != tesla_screen_on:
+      params.put_bool("TeslaDriverPresent", screen_on)
+      tesla_screen_on = screen_on
     sleep_reason = tesla_sleep.update(
-      enabled=params.get_bool("TeslaSleepShutdown"),
+      enabled=enabled,
       ignition=bool(onroad_conditions["ignition"]),
       started=started_ts is not None,
       in_car=in_car,
       panda_alive=panda_alive,
       can_rx=panda_can_rx(pandaStates) if panda_alive else None,
-      now=time.monotonic(),
+      now=now_mono,
+      driver_present=driver_present,
     )
-    if sleep_reason is not None or power_monitor.should_shutdown(onroad_conditions["ignition"], in_car, off_ts, started_seen):
+    action = tesla_sleep.sleep_action(sleep_reason, voltage)
+    if action == "hold":
+      if not tesla_hold_logged:
+        cloudlog.warning("Tesla sleep left 12V up; waiting for brake or gear instead of poweroff")
+        tesla_hold_logged = True
+      sleep_reason = None
+    else:
+      tesla_hold_logged = False
+      if action == "poweroff":
+        sleep_reason = sleep_reason or "supply-cut"
+    # Capacity integration poweroffs after a few hours. That would turn a held
+    # device off overnight, and again the moment the brake sets holding false.
+    # Low voltage and the max-offroad cap still apply.
+    if sleep_reason is not None or power_monitor.should_shutdown(
+        onroad_conditions["ignition"], in_car, off_ts, started_seen,
+        ignore_capacity=enabled and not tesla_sleep.power_is_dropping()):
       if sleep_reason is not None:
         cloudlog.warning(f"shutting device down after Tesla sleep ({sleep_reason}), offroad since {off_ts}")
       else:
@@ -540,10 +588,12 @@ def hardware_thread(end_event, hw_queue) -> None:
 def main():
   hw_queue = queue.Queue(maxsize=1)
   end_event = threading.Event()
+  tesla_sleep = TeslaSleepShutdown()
 
   threads = [
     threading.Thread(target=hw_state_thread, args=(end_event, hw_queue)),
-    threading.Thread(target=hardware_thread, args=(end_event, hw_queue)),
+    threading.Thread(target=hardware_thread, args=(end_event, hw_queue, tesla_sleep)),
+    threading.Thread(target=tesla_wake_thread, args=(end_event, tesla_sleep)),
   ]
 
   if COMMA_HARDWARE:
