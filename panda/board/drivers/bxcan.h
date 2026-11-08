@@ -1,4 +1,5 @@
 #include "bxcan_declarations.h"
+#include "board/drivers/tesla_som_wake.h"
 
 // IRQs: CAN1_TX, CAN1_RX0, CAN1_SCE
 //       CAN2_TX, CAN2_RX0, CAN2_SCE
@@ -180,6 +181,7 @@ void can_rx(uint8_t can_number) {
     safety_rx_invalid += rx_valid ? 0U : 1U;
     EXIT_CRITICAL();
     ignition_can_hook(&to_push);
+    tesla_som_wake_hook(&to_push);
 
     led_set(LED_BLUE, true);
     rx_buffer_overflow += can_push(&can_rx_q, &to_push) ? 0U : 1U;

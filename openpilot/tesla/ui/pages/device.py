@@ -13,7 +13,7 @@ from openpilot.tesla.ui.pages.terms import TermsPage
 from openpilot.tesla.ui.pages.training import TrainingGuidePage
 
 CALIB_DESC = tr_noop("openpilot calibrates continuously; resetting is rarely needed. Mount within 4 degrees left/right and 5 up/9 down.")
-SLEEP_DESC = tr_noop("Off by default. After the parked Tesla is silent for 2 minutes, or 15 minutes after ignition turns off, the device stays in low power while 12V is up. Staying on can delay Tesla sleep. The screen comes back when you press the brake or leave Park. A 12V drop powers it off, and the next 12V restore turns it on. A full power off cannot see the brake.")
+SLEEP_DESC = tr_noop("Off by default. Powers off after the parked Tesla is silent for 2 minutes, or 15 minutes after ignition turns off. With the matching panda firmware, the panda turns the device back on when you press the brake or leave Park.")
 
 
 def _reset_calibration() -> None:
@@ -32,7 +32,7 @@ class DevicePage(ListPage):
     power_off = button_item(tr("Power off"), tr("POWER OFF"), callback=lambda: confirm(tr("Are you sure you want to power off?"), "power off",
                                                                                lambda: params.put_bool("DoShutdown", True, block=True)))
     power_off.set_visible(lambda: not ui_state.ignition)
-    self.sleep_shutdown = ParamToggle(tr("Stand by when Tesla sleeps"), "TeslaSleepShutdown", tr(SLEEP_DESC))
+    self.sleep_shutdown = ParamToggle(tr("Shut down when Tesla sleeps"), "TeslaSleepShutdown", tr(SLEEP_DESC))
     camera_row = button_item(tr("Driver camera preview"), tr("PREVIEW"),
                              tr("Preview the cabin camera to check driver monitoring visibility. The vehicle must be off."),
                              callback=lambda: offroad() and self.open(tr("driver camera"), camera), enabled=offroad)

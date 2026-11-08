@@ -6,6 +6,7 @@
 #include "board/drivers/usb.h"
 #include "board/drivers/simple_watchdog.h"
 #include "board/drivers/bootkick.h"
+#include "board/drivers/tesla_som_wake.h"
 
 #include "board/early_init.h"
 #include "board/provision.h"
@@ -165,8 +166,13 @@ static void tick_handler(void) {
       const bool recent_heartbeat = heartbeat_counter == 0U;
 
       // tick drivers at 1Hz
-      bool started = harness_check_ignition() || ignition_can;
+      // Cabin CAN bootkicks only after the SOM heartbeat is gone, so a brake
+      // press while the device is already on does not pulse the power key.
+      // This is the same bootkick_tick a timer would call.
+      const bool som_off = heartbeat_counter >= HEARTBEAT_IGNITION_CNT_OFF;
+      bool started = harness_check_ignition() || ignition_can || (som_off && tesla_som_wake);
       bootkick_tick(started, recent_heartbeat);
+      tesla_som_wake_tick();
 
       // increase heartbeat counter and cap it at the uint32 limit
       if (heartbeat_counter < UINT32_MAX) {

@@ -112,8 +112,7 @@ class PowerMonitoring:
     return offroad_time > MAX_TIME_OFFROAD_S
 
   # See if we need to shutdown
-  def should_shutdown(self, ignition: bool, in_car: bool, offroad_timestamp: float | None, started_seen: bool,
-                      ignore_capacity: bool = False):
+  def should_shutdown(self, ignition: bool, in_car: bool, offroad_timestamp: float | None, started_seen: bool):
     if offroad_timestamp is None:
       return False
 
@@ -124,12 +123,7 @@ class PowerMonitoring:
                             offroad_time > VOLTAGE_SHUTDOWN_MIN_OFFROAD_TIME_S)
     should_shutdown |= self.max_time_offroad_exceeded(offroad_time)
     should_shutdown |= low_voltage_shutdown
-    # The integrated budget is a few hours of accessory draw. A Tesla-sleep
-    # hold has to last overnight so the brake can still wake the screen, and
-    # a poweroff at that point cannot see the pedal. Low voltage and the
-    # max-offroad cap still shut down.
-    if not ignore_capacity:
-      should_shutdown |= (self.car_battery_capacity_uWh <= 0)
+    should_shutdown |= (self.car_battery_capacity_uWh <= 0)
     should_shutdown &= not ignition
     should_shutdown &= (not self.params.get_bool("DisablePowerDown"))
     should_shutdown &= in_car

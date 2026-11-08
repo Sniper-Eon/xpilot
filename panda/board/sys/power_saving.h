@@ -25,7 +25,9 @@ void set_power_save_state(bool enable) {
     if (enable) {
       print("enable power savings\n");
 
-      // Disable CAN interrupts
+      // Disable CAN interrupts.
+      // Leave CAN0 interrupting, or CAN2 when the harness is flipped.
+      // Tesla SOM wake reads the brake and gear on that remaining controller.
       if (harness.status == HARNESS_STATUS_FLIPPED) {
         llcan_irq_disable(cans[0]);
       } else {
