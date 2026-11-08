@@ -36,6 +36,9 @@ _SHARP_CURVE_BP = [0.012, 0.032]  # absolute path curvature, 1/m (~83 m -> ~31 m
 
 _NO_OVERSHOOT_TIME_HORIZON = 4.  # s. Time to use for velocity desired based on a_target when not overshooting.
 
+_A_TARGET_SLEW_RATE = 2.0  # m/s^3. Rate limit applied to the published target acceleration.
+_PRED_LAT_ACC_TAU = 0.5  # s. Low-pass time constant for the predicted lateral acceleration.
+
 # Lookup table for the minimum smooth deceleration during the ENTERING state
 # depending on the actual maximum absolute lateral acceleration predicted on the turn ahead.
 _ENTERING_SMOOTH_DECEL_V = [-0.3, -0.8, -1.2, -1.6]  # min decel value allowed on ENTERING state
@@ -70,6 +73,7 @@ class SmartCruiseControlVision:
     self.state = VisionState.disabled
     self.current_lat_acc = 0.
     self.max_pred_lat_acc = 0.
+    self.pred_lat_acc_filt = 0.
     self.entering_prediction_frames = 0
 
   def get_a_target_from_control(self) -> float:
@@ -98,9 +102,16 @@ class SmartCruiseControlVision:
       predicted_lat_accels = rate_plan * vel_plan
       self.max_pred_lat_acc = np.percentile(predicted_lat_accels, 97)
 
+      # The model prediction is noisy frame to frame; low-pass the value that drives the
+      # speed target and the approach deceleration so it does not become commanded jerk.
+      if self.pred_lat_acc_filt <= 0.:
+        self.pred_lat_acc_filt = self.max_pred_lat_acc
+      else:
+        self.pred_lat_acc_filt += (DT_MDL / _PRED_LAT_ACC_TAU) * (self.max_pred_lat_acc - self.pred_lat_acc_filt)
+
       # get the maximum curve based on the current velocity
       v_ego = max(self.v_ego, 0.1)  # ensure a value greater than 0 for calculations
-      max_curve = self.max_pred_lat_acc / (v_ego**2)
+      max_curve = self.pred_lat_acc_filt / (v_ego**2)
 
       # Get the target velocity for the maximum curve. Sharp curves use a slightly
       # lower lateral acceleration limit, so the speed cap tightens where it matters.
@@ -184,7 +195,7 @@ class SmartCruiseControlVision:
     # ENTERING
     elif self.state == VisionState.entering:
       # when not overshooting, target a smooth deceleration in preparation for a sharp turn to come.
-      a_target = np.interp(self.max_pred_lat_acc, _ENTERING_SMOOTH_DECEL_BP, _ENTERING_SMOOTH_DECEL_V)
+      a_target = np.interp(self.pred_lat_acc_filt, _ENTERING_SMOOTH_DECEL_BP, _ENTERING_SMOOTH_DECEL_V)
     # TURNING
     elif self.state == VisionState.turning:
       # When turning, we provide a target acceleration that is comfortable for the lateral acceleration felt.
@@ -210,7 +221,11 @@ class SmartCruiseControlVision:
     self._update_calculations(sm)
 
     self.is_enabled, self.is_active = self._update_state_machine()
-    self.a_target = self._update_solution()
+    a_target = self._update_solution()
+    # Rate-limit the published target acceleration: state transitions and table
+    # breakpoints then arrive as a ramp instead of a step.
+    step = _A_TARGET_SLEW_RATE * DT_MDL
+    self.a_target = float(np.clip(a_target, self.a_target - step, self.a_target + step))
 
     self.output_v_target = self.get_v_target_from_control()
     self.output_a_target = self.get_a_target_from_control()
