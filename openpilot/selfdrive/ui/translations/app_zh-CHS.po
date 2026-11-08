@@ -130,6 +130,9 @@ msgstr "暂无可用模型"
 msgid "OK"
 msgstr "确定"
 
+msgid "Off by default. Powers off after the parked Tesla is silent for 2 minutes, or 15 minutes after ignition turns off. With the matching panda firmware, the panda turns the device back on when you press the brake or leave Park."
+msgstr "默认关闭。停车后车辆静音 2 分钟，或点火关闭 15 分钟后关机。配套的 panda 固件会在踩下刹车或离开 P 挡时把设备重新开机。"
+
 msgid "Onroad Brightness"
 msgstr "行驶亮度"
 
@@ -525,6 +528,9 @@ msgstr "重置校准"
 
 msgid "Review training guide"
 msgstr "查看培训指南"
+
+msgid "Shut down when Tesla sleeps"
+msgstr "Tesla 休眠时关机"
 
 msgid "Serial"
 msgstr "序列号"

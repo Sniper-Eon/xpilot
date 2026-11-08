@@ -13,7 +13,7 @@ from openpilot.tesla.ui.pages.terms import TermsPage
 from openpilot.tesla.ui.pages.training import TrainingGuidePage
 
 CALIB_DESC = tr_noop("openpilot calibrates continuously; resetting is rarely needed. Mount within 4 degrees left/right and 5 up/9 down.")
-SLEEP_DESC = tr_noop("Off by default. Powers off after the parked Tesla is silent for 2 minutes, or 15 minutes after ignition turns off. Comes back on only if the car restores 12V; otherwise press the power button.")
+SLEEP_DESC = tr_noop("Off by default. Powers off after the parked Tesla is silent for 2 minutes, or 15 minutes after ignition turns off. With the matching panda firmware, the panda turns the device back on when you press the brake or leave Park.")
 
 
 def _reset_calibration() -> None:

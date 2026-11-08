@@ -10,9 +10,15 @@ while ignition is on, while openpilot is onroad, while the harness is
 unplugged, or while no panda is alive. A boot into an already quiet bus does
 not shut down: the car has to have been seen awake first.
 
-poweroff stops the CPU. Nothing in software can turn it back on. The next
-drive powers the device only when sleep removes 12V and wake restores it.
-If 12V stays up, the device stays off until the power button is pressed.
+poweroff stops the SOM. The panda stays powered and is the only thing
+left that can see the car. panda/board/drivers/tesla_som_wake.h feeds
+the brake, a gear other than Park, and accessory/drive power into the
+existing bootkick line, and only after the SOM heartbeat is gone. That
+is the same GPIO a timed bootkick pulses. Stock ignition bootkick is
+DRIVE-only, so a brake press does not raise it. The wake is in panda
+firmware: the car needs that firmware flashed before the brake can
+turn the device on. This host still does a real poweroff. It does not
+stay in a black-screen wait.
 """
 CAN_SILENCE_S = 120.0
 IGNITION_OFF_DELAY_S = 15 * 60.0

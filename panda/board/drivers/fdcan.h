@@ -1,6 +1,7 @@
 #pragma once
 
 #include "board/drivers/drivers.h"
+#include "board/drivers/tesla_som_wake.h"
 
 FDCAN_GlobalTypeDef *cans[PANDA_CAN_CNT] = {FDCAN1, FDCAN2, FDCAN3};
 
@@ -224,6 +225,7 @@ static void can_rx(uint8_t can_number) {
     safety_rx_invalid += rx_valid ? 0U : 1U;
     EXIT_CRITICAL();
     ignition_can_hook(&to_push);
+    tesla_som_wake_hook(&to_push);
 
     led_set(LED_BLUE, true);
     rx_buffer_overflow += can_push(&can_rx_q, &to_push) ? 0U : 1U;

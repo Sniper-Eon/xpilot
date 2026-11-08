@@ -456,6 +456,7 @@ def hardware_thread(end_event, hw_queue) -> None:
     msg.deviceState.somPowerDrawW = som_power_draw
 
     # Check if we need to shut down. Tesla sleep is opt-in and uses this same write.
+    # After poweroff, wake is the panda bootkick in tesla_som_wake.h, not a host wait.
     panda_alive = bool(sm.alive["pandaStates"]) and len(pandaStates) > 0
     sleep_reason = tesla_sleep.update(
       enabled=params.get_bool("TeslaSleepShutdown"),

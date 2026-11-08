@@ -12,9 +12,14 @@ Failure cases:
 - S8 the bus dying together with ignition (no traffic after park) takes the fast silence path
 - S9 silence shorter than the window, or a delay shorter than the bound, shuts down
 - S10 ignition returning, a drive, disabling the toggle, or losing the panda fails to clear the timers
+- S11 the host stays awake in a low-power hold, or publishes TeslaDriverPresent, instead of the real DoShutdown
+- S12 panda firmware does not call the cabin-entry hook from both CAN drivers, or bootkick sees that request while the SOM heartbeat is still present
+- S13 the cabin-entry parser treats Park, conditioning, a skipped counter, bus 1, or the first frame as a wake, or misses brake, gear R/N/D, accessory, or drive
+- S14 the wake request stays latched after the bus goes quiet
 """
 import ast
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -57,7 +62,16 @@ def source_contracts() -> None:
   assert '"TeslaSleepShutdown"' in page, "S3 device page has no toggle"
   assert "Shut down when Tesla sleeps" in page, "S3 toggle title missing"
   assert "Off by default" in page, "S3 default-off copy missing"
+  assert "press the brake" in page and "leave Park" in page, "S3 brake and gear wake copy missing"
+  assert "panda firmware" in page, "S3 firmware requirement missing"
+  assert "low power" not in page and "Stand by" not in page, "S11 standby copy came back"
   assert page.isascii(), "S3 device page copy is not ASCII"
+  assert "TeslaDriverPresent" not in params, "S11 TeslaDriverPresent came back"
+  assert "TeslaDriverPresent" not in hardware and "sleep_action" not in hardware, "S11 host hold came back"
+  ui = (ROOT / "openpilot/selfdrive/ui/ui_state.py").read_text()
+  assert "TeslaDriverPresent" not in ui, "S11 UI still waits on a host wake flag"
+  zh = (ROOT / "openpilot/selfdrive/ui/translations/app_zh-CHS.po").read_text()
+  assert "Tesla 休眠时关机" in zh and "踩下刹车或离开 P 挡" in zh, "S3 Chinese shutdown copy missing"
 
   for path in PLUGINS.rglob("*"):
     if path.is_file() and path.suffix in {".py", ".json"}:
@@ -161,10 +175,35 @@ def behavior() -> None:
   assert panda_can_rx([Panda(0, 0, 0)]) == 0
 
 
+def panda_wake() -> None:
+  main_c = (ROOT / "panda/board/main.c").read_text()
+  fdcan = (ROOT / "panda/board/drivers/fdcan.h").read_text()
+  bxcan = (ROOT / "panda/board/drivers/bxcan.h").read_text()
+  assert "tesla_som_wake_hook(&to_push)" in fdcan, "S12 FDCAN does not feed cabin entry"
+  assert "tesla_som_wake_hook(&to_push)" in bxcan, "S12 bxCAN does not feed cabin entry"
+  assert "const bool som_off = heartbeat_counter >= HEARTBEAT_IGNITION_CNT_OFF;" in main_c, "S12 SOM-off gate missing"
+  assert "ignition_can || (som_off && tesla_som_wake)" in main_c, "S12 bootkick is not armed from cabin entry"
+  assert "bootkick_tick(started, recent_heartbeat)" in main_c, "S12 bootkick path was replaced"
+  assert "tesla_som_wake_tick()" in main_c, "S14 wake request is not aged"
+  binary = Path("/tmp/tesla_som_wake_test")
+  build = subprocess.run(
+    ["gcc", "-std=c11", "-Wall", "-Werror", "-I", str(ROOT), "-I", str(ROOT / "opendbc_repo"),
+     "-o", str(binary), str(ROOT / "tools/sp_tesla_e2e/tesla_som_wake_test.c")],
+    capture_output=True, text=True, check=False,
+  )
+  assert build.returncode == 0, "S13 wake test failed to build\n" + build.stderr
+  run = subprocess.run([str(binary)], capture_output=True, text=True, check=False)
+  assert run.returncode == 0, "S13/S14 wake parser\n" + run.stdout + run.stderr
+
+
 def main() -> None:
   source_contracts()
   behavior()
-  print(json.dumps({"passed": True, "cases": ["S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10"]}))
+  panda_wake()
+  print(json.dumps({"passed": True, "cases": [
+    "S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10",
+    "S11", "S12", "S13", "S14",
+  ]}))
 
 
 if __name__ == "__main__":
