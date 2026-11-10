@@ -167,10 +167,7 @@ GLYPHS = {
     _dim(_samples((0.46, 0.68), (0.46, 0.86), 4)),
     _bright(_samples((0.62, 0.52), (0.90, 0.52), 6)),
   ],
-  'destination': [
-    _bright(_ring(0.50, 0.36, 0.15), head=False),
-    _bright(_samples((0.50, 0.50), (0.50, 0.84), 6)),
-  ],
+  'destination': [],
   'u_turn_left': [_bright(path) for path in _u_turn(1)],
 }
 GLYPHS['u_turn_right'] = _mirror(GLYPHS['u_turn_left'])
@@ -201,15 +198,38 @@ def _approach(pts, dist=0.07):
   return prev
 
 
-def _head(prev, tip):
-  """Filled triangle and the shaft end that tucks into its base."""
+def _soften_corner(corner, toward_a, toward_b, radius):
+  """Two edge points and one midpoint. The tip of the arrow is never passed through here."""
+  def step(target):
+    dx, dy = target[0] - corner[0], target[1] - corner[1]
+    mag = math.hypot(dx, dy) or 1.0
+    dist = min(radius, mag * 0.45)
+    return (corner[0] + dx / mag * dist, corner[1] + dy / mag * dist)
+  a, b = step(toward_a), step(toward_b)
+  mid = (a[0] * 0.42 + b[0] * 0.42 + corner[0] * 0.16, a[1] * 0.42 + b[1] * 0.42 + corner[1] * 0.16)
+  return a, mid, b
+
+
+def _head_pixels(prev, tip, stroke):
+  """Sharp isosceles head. Length and width are multiples of the stroke.
+
+  The shaft ends inside the base so a round cap cannot bulge out behind it.
+  Only the two back corners are eased; the tip is a single point.
+  """
   dx, dy = tip[0] - prev[0], tip[1] - prev[1]
   mag = math.hypot(dx, dy) or 1.0
   ux, uy = dx / mag, dy / mag
   px, py = -uy, ux
-  length, wing = 0.18, 0.125
+  length = 2.0 * stroke
+  half = 1.32 * stroke  # full width 2.64 before the back corners are eased
   base = (tip[0] - ux * length, tip[1] - uy * length)
-  return (tip, (base[0] + px * wing, base[1] + py * wing), (base[0] - px * wing, base[1] - py * wing)), base
+  left = (base[0] + px * half, base[1] + py * half)
+  right = (base[0] - px * half, base[1] - py * half)
+  l_tip, l_mid, l_base = _soften_corner(left, tip, right, 0.16 * stroke)
+  r_base, r_mid, r_tip = _soften_corner(right, left, tip, 0.16 * stroke)
+  polygon = [tip, l_tip, l_mid, l_base, r_base, r_mid, r_tip]
+  shaft = (base[0] + ux * 0.70 * stroke, base[1] + uy * 0.70 * stroke)
+  return polygon, shaft, base, (ux, uy)
 
 
 HUD_CYAN = (78, 224, 255)  # the overlay's existing cyan; #4DE0FF is 77, 224, 255
@@ -218,11 +238,19 @@ HUD_CYAN = (78, 224, 255)  # the overlay's existing cyan; #4DE0FF is 77, 224, 25
 DIM_ALPHA = 0.40  # the road not taken, same hue as the bright cyan
 
 
+def _pin(cx, cy, radius, tip):
+  """Teardrop: the upper bulb, then a sharp point. The hole is drawn separately."""
+  # From the lower right, the long way over the top, to the lower left.
+  arc = _arc(cx, cy, radius, math.pi * 0.22, math.pi * 0.22 - math.pi * 1.56, 36)
+  return arc + [tip]
+
+
 def glyph_polylines(direction, x, y, size, scale=ARROW_SCALE, weight=1.0):
   """Pixel strokes, filled heads, and stroke width. A stroke is ``(points, dim)``.
 
-  ``weight`` thickens the stroke. The glass card uses a heavier weight so the
-  maneuver reads like the reference inside the ring. Heads are solid triangles.
+  ``weight`` thickens the stroke. Heads are sized from that stroke: about 2.4
+  widths across and 2.0 widths long, with a sharp tip. ``fills`` and ``holes``
+  are the destination pin.
   """
   kind = resolve_maneuver(direction)
   glyph = float(size) * float(scale)
@@ -236,12 +264,23 @@ def glyph_polylines(direction, x, y, size, scale=ARROW_SCALE, weight=1.0):
   strokes, heads = [], []
   for pts, dim, head in GLYPHS[kind]:
     if head and len(pts) >= 2:
-      tri, base = _head(_approach(pts), pts[-1])
-      strokes.append(([pix(p) for p in pts[:-1]] + [pix(base)], dim))
-      heads.append((tuple(pix(p) for p in tri), dim))
+      polygon, shaft, _base, _axis = _head_pixels(pix(_approach(pts)), pix(pts[-1]), stroke)
+      axis = _axis
+      kept = []
+      for point in (pix(p) for p in pts[:-1]):
+        along = (point[0] - shaft[0]) * axis[0] + (point[1] - shaft[1]) * axis[1]
+        if along <= 0:
+          kept.append(point)
+      kept.append(shaft)
+      strokes.append((kept, dim))
+      heads.append((polygon, dim))
     else:
       strokes.append(([pix(p) for p in pts], dim))
-  return strokes, heads, stroke
+  fills, holes = [], []
+  if kind == 'destination':
+    fills.append([pix(p) for p in _pin(0.50, 0.34, 0.18, (0.50, 0.86))])
+    holes.append([pix(p) for p in _arc(0.50, 0.32, 0.075, 0.0, math.tau, 28)])
+  return strokes, heads, stroke, fills, holes
 
 
 def _color_dim(color, dim):
@@ -252,15 +291,23 @@ def _color_dim(color, dim):
   return rl.Color(color.r, color.g, color.b, max(1, int(alpha * DIM_ALPHA)))
 
 
+def _fan(points, color):
+  """Filled polygon. Both windings, because a 2D triangle can be culled."""
+  import pyray as rl
+  vecs = [rl.Vector2(px, py) for px, py in points]
+  for i in range(1, len(vecs) - 1):
+    rl.draw_triangle(vecs[0], vecs[i], vecs[i + 1], color)
+    rl.draw_triangle(vecs[0], vecs[i + 1], vecs[i], color)
+
+
 def arrow(x, y, size, direction, color, scale=ARROW_SCALE, weight=1.0):
   """Vector arrow. Unknown directions use resolve_maneuver and never raise.
 
-  Round caps are circles at each sample. Curves are pre-sampled finely enough
-  that the circles overlap into a smooth stroke. Dim strokes are the branch
-  not taken and are drawn first.
+  A round cap is only the tail start. The shaft stops inside the head, so no
+  circle sits under the tip. Curves are sampled finely enough to stay smooth.
   """
   import pyray as rl
-  strokes, heads, stroke = glyph_polylines(direction, x, y, size, scale, weight)
+  strokes, heads, stroke, fills, holes = glyph_polylines(direction, x, y, size, scale, weight)
   radius = stroke / 2
   for dim in (True, False):
     paint = _color_dim(color, dim)
@@ -270,12 +317,16 @@ def arrow(x, y, size, direction, color, scale=ARROW_SCALE, weight=1.0):
       vecs = [rl.Vector2(px, py) for px, py in pts]
       for start, end in zip(vecs, vecs[1:], strict=True):
         rl.draw_line_ex(start, end, stroke, paint)
-      for point in vecs:
-        rl.draw_circle_v(point, radius, paint)
-    for tri, is_dim in heads:
+      rl.draw_circle_v(vecs[0], radius, paint)
+    for polygon, is_dim in heads:
       if is_dim != dim:
         continue
-      rl.draw_triangle(*(rl.Vector2(px, py) for px, py in tri), paint)
+      _fan(polygon, paint)
+  for polygon in fills:
+    _fan(polygon, color)
+  hole = rl.Color(6, 10, 16, 255)
+  for polygon in holes:
+    _fan(polygon, hole)
 
 
 def card_layout(box):
