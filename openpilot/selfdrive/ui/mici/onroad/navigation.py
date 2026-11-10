@@ -95,18 +95,10 @@ class NavigationPanel(Widget):
     rl.draw_rectangle_rec(rect, rl.Color(7, 13, 18, 255))
     instruction = ui_state.sm['navInstruction']
     if self.routing:
-      direction = instruction.maneuverModifier
-      flip = -1 if 'left' in direction else 1
-      # The maneuver arrow on a 1.4x grid, centered in the header's icon box, with round joins for the thick stroke.
-      if direction in ('straight', ''):
-        shape = [(0, 14), (0, -12), (-6, -5), (0, -12), (6, -5)]
-      else:
-        shape = [(-flip*9, 14), (-flip*9, -4), (-flip*2, -9), (flip*9, -9), (flip*3, -15), (flip*9, -9), (flip*3, -3)]
-      points = [rl.Vector2(x + 31 + 1.4*px, y + 30 + 1.4*py) for px, py in shape]
-      for a, b in zip(points[:-1], points[1:], strict=True):
-        rl.draw_line_ex(a, b, 7, self._accent)
-      for point in points:
-        rl.draw_circle_v(point, 3.5, self._accent)
+      # Same glyphs as the Amap side HUD. scale 1 fills this 40 px header box;
+      # the side HUD uses 0.80 of its own, larger box.
+      from openpilot.tesla.ui.nav_glyphs import arrow, displayed_maneuver
+      arrow(x + 12, y + 10, 40, displayed_maneuver(instruction.maneuverModifier), self._accent, scale=1)
       gui_label(rl.Rectangle(x+64, y+11, rect.width-72, 40), format_distance(max(0, instruction.maneuverDistance)), 34, rl.WHITE, FontWeight.BOLD,
                 alignment_vertical=TextAlignmentVertical.TOP)
     else:
