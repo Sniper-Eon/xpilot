@@ -492,13 +492,16 @@ class BigScreenHost:
       self._nav_shown = show_navigation or (e is not None and bool(self._faced.get(self._dock)) and self._docked(e))
     else:
       x, y, w, h = tiles.tile_rect(placed[self._dock])  # the tile face draws its own state
-    if self._nav_shown or (show_navigation and self._dock in placed):
+    covered = self._nav_shown or (show_navigation and self._dock in placed)
+    if covered:
       if show_navigation:
         with scaled(k := w / PANEL_WIDTH):
           navigation.render(rl.Rectangle(x / k, y / k, w / k, h / k))
       else:  # a maneuver, not "-" or a status line
         self._blit(e, rl.Rectangle(x, y, w, h))
     self._draw_nav_drag(placed)
+    from openpilot.tesla.ui.nav_glyphs import repaint_guidance_arrow
+    repaint_guidance_arrow(getattr(self, '_zones', None), covered)
     if alert is not None:
       x, y, w, h = tiles.alert_band(view)
       with scaled(k := max(1.0, h / tiles.MICI[1])):

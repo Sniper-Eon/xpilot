@@ -186,8 +186,15 @@ def measure():
     assert send(0, 'undeclared', 'bad kind', raw=True)
     if sys.platform == 'linux':
       assert send(1, 'demo.oversize', 'x' * (16 * 1024 + 1), raw=True)
-    time.sleep(.05)
-    assert reader.fresh('demo.forged') == {} and reader.fresh('undeclared') == {} and reader.fresh('demo.oversize') == {}
+    # record_fault persists asynchronously. A fixed sleep reads the param before the broker's write lands.
+    def rejected():
+      recorded = params.get(plugins.FAULTS_PARAM) or {}
+      ready = ('kind' in (recorded.get('source0') or '') and reader.fresh('demo.forged') == {}
+               and reader.fresh('undeclared') == {} and reader.fresh('demo.oversize') == {})
+      if sys.platform == 'linux':
+        ready = ready and 'payload' in (recorded.get('source1') or '')
+      return ready
+    wait_for(rejected)
     faults = params.get(plugins.FAULTS_PARAM)
     assert 'kind' in faults['source0'], faults
     if sys.platform == 'linux':
