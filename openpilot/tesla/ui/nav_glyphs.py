@@ -62,62 +62,121 @@ DISPLAY_MANEUVERS = frozenset((
 ))
 
 
-def _loop(cx, cy, radius, steps=28):
-  return [
-    (cx + radius * math.cos(2 * math.pi * i / steps),
-     cy + radius * math.sin(2 * math.pi * i / steps))
-    for i in range(steps + 1)
-  ]
+def _samples(p0, p1, n):
+  return [(p0[0] + (p1[0] - p0[0]) * i / n, p0[1] + (p1[1] - p0[1]) * i / n) for i in range(n + 1)]
+
+
+def _cubic(p0, p1, p2, p3, n=28):
+  """Cubic Bezier. Enough segments that a 122 px glyph has no visible facets."""
+  pts = []
+  for i in range(n + 1):
+    t = i / n
+    u = 1 - t
+    pts.append((u**3 * p0[0] + 3 * u * u * t * p1[0] + 3 * u * t * t * p2[0] + t**3 * p3[0],
+                u**3 * p0[1] + 3 * u * u * t * p1[1] + 3 * u * t * t * p2[1] + t**3 * p3[1]))
+  return pts
+
+
+def _arc(cx, cy, radius, a0, a1, n=32):
+  """Screen arc. Angle 0 is east, increasing clockwise because y grows downward."""
+  return [(cx + radius * math.cos(a0 + (a1 - a0) * i / n),
+           cy + radius * math.sin(a0 + (a1 - a0) * i / n)) for i in range(n + 1)]
+
+
+def _chain(*parts):
+  pts = list(parts[0])
+  for part in parts[1:]:
+    if pts and part and abs(pts[-1][0] - part[0][0]) < 1e-6 and abs(pts[-1][1] - part[0][1]) < 1e-6:
+      pts.extend(part[1:])
+    else:
+      pts.extend(part)
+  return pts
 
 
 def _mirror(strokes):
-  return [([(1 - x, y) for x, y in pts], head) for pts, head in strokes]
+  return [([(1 - x, y) for x, y in pts], dim, head) for pts, dim, head in strokes]
 
 
-# (points in 0..1 with y down, arrowhead on the last segment). The head marks the
-# path being followed; a stroke without one is the road that continues or is not taken.
-_LEFT = {
-  'slight_left': [(((0.70, 0.88), (0.26, 0.14)), True)],
-  'turn_left': [(((0.64, 0.92), (0.64, 0.32), (0.12, 0.32)), True)],
-  'sharp_left': [(((0.68, 0.90), (0.68, 0.30), (0.16, 0.74)), True)],
-  'u_turn_left': [(((0.72, 0.86), (0.72, 0.38), (0.50, 0.18), (0.28, 0.38), (0.28, 0.72)), True)],
-  'keep_left': [
-    (((0.50, 0.52), (0.84, 0.30)), False),
-    (((0.50, 0.90), (0.50, 0.52), (0.16, 0.14)), True),
+def _turn(side):
+  """Rounded L. side +1 bends right, matching the reference right turn."""
+  cx, cy, radius = 0.50, 0.50, 0.22
+  stem = _samples((cx - side * radius, 0.88), (cx - side * radius, cy), 8)
+  # Enter the west point heading up and leave the north point heading right (or the mirror).
+  a0, a1 = (math.pi, math.pi * 1.5) if side > 0 else (0.0, -math.pi * 0.5)
+  bend = _arc(cx, cy, radius, a0, a1, 28)
+  tip = (cx + side * 0.36, cy - radius)
+  return [_chain(stem, bend, _samples(bend[-1], tip, 6))]
+
+
+def _u_turn(side):
+  """Rounded hook. side +1 is the reference shape mirrored: arrow returns downward."""
+  cx, cy, radius = 0.50, 0.42, 0.20
+  stem = _samples((cx + side * radius, 0.84), (cx + side * radius, cy), 8)
+  a0, a1 = (0.0, -math.pi) if side > 0 else (math.pi, math.pi * 2)
+  bend = _arc(cx, cy, radius, a0, a1, 32)
+  tip = (cx - side * radius, 0.80)
+  return [_chain(stem, bend, _samples(bend[-1], tip, 6))]
+
+
+# Each stroke is (points in 0..1 with y down, dim, filled head on the last point).
+# dim marks the road not taken. Curves are sampled; nothing is a sharp elbow.
+def _bright(pts, head=True):
+  return (pts, False, head)
+
+
+def _dim(pts, head=False):
+  return (pts, True, head)
+
+
+_RIGHT = {
+  'slight_right': [_bright(_cubic((0.38, 0.90), (0.40, 0.52), (0.58, 0.28), (0.78, 0.14)))],
+  'turn_right': [_bright(path) for path in _turn(1)],
+  'sharp_right': [_bright(_cubic((0.28, 0.88), (0.28, 0.26), (0.58, 0.12), (0.84, 0.62)))],
+  'keep_right': [
+    _dim(_cubic((0.50, 0.62), (0.50, 0.44), (0.34, 0.30), (0.22, 0.20))),
+    _bright(_chain(_samples((0.50, 0.90), (0.50, 0.62), 6),
+                   _cubic((0.50, 0.62), (0.50, 0.40), (0.66, 0.22), (0.82, 0.14)))),
   ],
-  'merge_left': [
-    (((0.32, 0.90), (0.32, 0.12)), False),
-    (((0.86, 0.78), (0.40, 0.22)), True),
+  'merge_right': [
+    _dim(_samples((0.68, 0.90), (0.68, 0.14), 8)),
+    _bright(_cubic((0.16, 0.74), (0.34, 0.58), (0.56, 0.30), (0.68, 0.14))),
   ],
-  'exit_left': [
-    (((0.62, 0.92), (0.62, 0.10)), False),
-    (((0.62, 0.58), (0.14, 0.14)), True),
+  'exit_right': [
+    _dim(_samples((0.40, 0.90), (0.40, 0.12), 8), head=True),
+    _bright(_cubic((0.40, 0.66), (0.40, 0.42), (0.64, 0.30), (0.88, 0.30))),
   ],
-  'ramp_left': [
-    (((0.66, 0.92), (0.66, 0.16)), False),
-    (((0.66, 0.58), (0.44, 0.40), (0.14, 0.14)), True),
+  'ramp_right': [
+    _dim(_samples((0.38, 0.90), (0.38, 0.12), 8), head=True),
+    _bright(_cubic((0.38, 0.72), (0.38, 0.46), (0.60, 0.38), (0.86, 0.58))),
   ],
 }
+
+
+def _ring(cx, cy, radius):
+  return _arc(cx, cy, radius, 0.0, math.tau, 40)
 
 
 GLYPHS = {
-  'straight': [(((0.50, 0.90), (0.50, 0.18)), True)],
+  'straight': [_bright(_samples((0.50, 0.88), (0.50, 0.14), 8))],
   'roundabout': [
-    # Closed ring plus a counterclockwise head. One wire value covers every
-    # SDK/Auto roundabout icon, so the exit clock-position is not drawn.
-    (_loop(0.50, 0.40, 0.22), False),
-    (((0.50, 0.96), (0.50, 0.62)), False),
-    (((0.62, 0.36), (0.74, 0.16), (0.84, 0.36)), False),
+    # Dim ring and the crossing roads; one bright exit. The wire value has no clock position.
+    _dim(_ring(0.46, 0.52, 0.16)),
+    _dim(_samples((0.14, 0.52), (0.30, 0.52), 4)),
+    _dim(_samples((0.62, 0.52), (0.78, 0.52), 4)),
+    _dim(_samples((0.46, 0.20), (0.46, 0.36), 4)),
+    _dim(_samples((0.46, 0.68), (0.46, 0.86), 4)),
+    _bright(_samples((0.62, 0.52), (0.90, 0.52), 6)),
   ],
   'destination': [
-    (_loop(0.50, 0.32, 0.16), False),
-    (((0.36, 0.42), (0.50, 0.88)), False),
-    (((0.64, 0.42), (0.50, 0.88)), False),
+    _bright(_ring(0.50, 0.36, 0.15), head=False),
+    _bright(_samples((0.50, 0.50), (0.50, 0.84), 6)),
   ],
+  'u_turn_left': [_bright(path) for path in _u_turn(1)],
 }
-for _name, _strokes in _LEFT.items():
+GLYPHS['u_turn_right'] = _mirror(GLYPHS['u_turn_left'])
+for _name, _strokes in _RIGHT.items():
   GLYPHS[_name] = _strokes
-  GLYPHS[_name.replace('_left', '_right')] = _mirror(_strokes)
+  GLYPHS[_name.replace('_right', '_left')] = _mirror(_strokes)
 
 
 def resolve_maneuver(direction):
@@ -132,54 +191,91 @@ def resolve_maneuver(direction):
   return 'straight'
 
 
+def _approach(pts, dist=0.07):
+  """A point far enough back that a dense curve still has a stable heading."""
+  tip = pts[-1]
+  prev = pts[0]
+  for point in reversed(pts[:-1]):
+    if math.hypot(tip[0] - point[0], tip[1] - point[1]) >= dist:
+      return point
+  return prev
+
+
 def _head(prev, tip):
+  """Filled triangle and the shaft end that tucks into its base."""
   dx, dy = tip[0] - prev[0], tip[1] - prev[1]
   mag = math.hypot(dx, dy) or 1.0
   ux, uy = dx / mag, dy / mag
   px, py = -uy, ux
-  length = min(0.22, mag * 0.70)
-  wing = length * 0.64
+  length, wing = 0.18, 0.125
   base = (tip[0] - ux * length, tip[1] - uy * length)
-  return (
-    (base[0] + px * wing, base[1] + py * wing),
-    tip,
-    (base[0] - px * wing, base[1] - py * wing),
-  )
+  return (tip, (base[0] + px * wing, base[1] + py * wing), (base[0] - px * wing, base[1] - py * wing)), base
 
 
 HUD_CYAN = (78, 224, 255)  # the overlay's existing cyan; #4DE0FF is 77, 224, 255
 
 
+DIM_ALPHA = 0.40  # the road not taken, same hue as the bright cyan
+
+
 def glyph_polylines(direction, x, y, size, scale=ARROW_SCALE, weight=1.0):
-  """Pixel polylines and stroke width for the glyph centered in the icon box.
+  """Pixel strokes, filled heads, and stroke width. A stroke is ``(points, dim)``.
 
   ``weight`` thickens the stroke. The glass card uses a heavier weight so the
-  maneuver reads like the mockup inside the ring.
+  maneuver reads like the reference inside the ring. Heads are solid triangles.
   """
   kind = resolve_maneuver(direction)
   glyph = float(size) * float(scale)
   ox = x + (size - glyph) / 2
   oy = y + (size - glyph) / 2
+
+  def pix(pt):
+    return (ox + pt[0] * glyph, oy + pt[1] * glyph)
+
   stroke = max(3.0, glyph * 0.065 * weight)
-  lines = []
-  for pts, head in GLYPHS[kind]:
-    lines.append([(ox + px * glyph, oy + py * glyph) for px, py in pts])
+  strokes, heads = [], []
+  for pts, dim, head in GLYPHS[kind]:
     if head and len(pts) >= 2:
-      lines.append([(ox + px * glyph, oy + py * glyph) for px, py in _head(pts[-2], pts[-1])])
-  return lines, stroke
+      tri, base = _head(_approach(pts), pts[-1])
+      strokes.append(([pix(p) for p in pts[:-1]] + [pix(base)], dim))
+      heads.append((tuple(pix(p) for p in tri), dim))
+    else:
+      strokes.append(([pix(p) for p in pts], dim))
+  return strokes, heads, stroke
+
+
+def _color_dim(color, dim):
+  import pyray as rl
+  alpha = getattr(color, 'a', 255)
+  if not dim:
+    return color
+  return rl.Color(color.r, color.g, color.b, max(1, int(alpha * DIM_ALPHA)))
 
 
 def arrow(x, y, size, direction, color, scale=ARROW_SCALE, weight=1.0):
-  """Vector arrow. Unknown directions use resolve_maneuver and never raise."""
+  """Vector arrow. Unknown directions use resolve_maneuver and never raise.
+
+  Round caps are circles at each sample. Curves are pre-sampled finely enough
+  that the circles overlap into a smooth stroke. Dim strokes are the branch
+  not taken and are drawn first.
+  """
   import pyray as rl
-  lines, stroke = glyph_polylines(direction, x, y, size, scale, weight)
+  strokes, heads, stroke = glyph_polylines(direction, x, y, size, scale, weight)
   radius = stroke / 2
-  for pts in lines:
-    vecs = [rl.Vector2(px, py) for px, py in pts]
-    for start, end in zip(vecs, vecs[1:], strict=True):
-      rl.draw_line_ex(start, end, stroke, color)
-    for point in vecs:
-      rl.draw_circle_v(point, radius, color)
+  for dim in (True, False):
+    paint = _color_dim(color, dim)
+    for pts, is_dim in strokes:
+      if is_dim != dim or len(pts) < 2:
+        continue
+      vecs = [rl.Vector2(px, py) for px, py in pts]
+      for start, end in zip(vecs, vecs[1:], strict=True):
+        rl.draw_line_ex(start, end, stroke, paint)
+      for point in vecs:
+        rl.draw_circle_v(point, radius, paint)
+    for tri, is_dim in heads:
+      if is_dim != dim:
+        continue
+      rl.draw_triangle(*(rl.Vector2(px, py) for px, py in tri), paint)
 
 
 def card_layout(box):
