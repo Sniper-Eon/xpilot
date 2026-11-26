@@ -215,6 +215,13 @@ bool safety_rx_hook(const CANPacket_t *msg) {
   }
 
   tesla_long_update();
+
+  // MADS runs above and can set lateral. A stock maneuver must still reject engage.
+  // Clear after the long gate so a maneuver does not hide a more specific refusal.
+  if ((current_safety_mode == SAFETY_TESLA) && tesla_stock_maneuver) {
+    controls_allowed = false;
+    controls_allowed_lateral = false;
+  }
   return valid;
 }
 

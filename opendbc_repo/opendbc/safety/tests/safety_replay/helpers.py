@@ -26,6 +26,11 @@ def package_can_msg(msg):
 
 
 def init_segment(safety, msgs, mode, param):
+  if mode == CarParams.SafetyModel.tesla:
+    # tesla_init assumes a stock maneuver so ignition does not drop Autopark.
+    # Clear it here; if it stays set, the seed 0x488 is rejected before the segment starts.
+    safety.set_tesla_stock_maneuver(False)
+
   sendcan = (msg for msg in msgs if msg.which() == 'sendcan')
   steering_msgs = (can for msg in sendcan for can in msg.sendcan if is_steering_msg(mode, param, can.address))
 
@@ -50,4 +55,13 @@ def init_segment(safety, msgs, mode, param):
     safety.set_angle_meas(angle, angle)
     safety.set_desired_curvature_last(angle)
     safety.set_curvature_meas(angle, angle)
+  seeded_disengaged = False
+  if (mode == CarParams.SafetyModel.tesla) and (torque == 0) and (angle == 0):
+    # A disengaged NONE/zero seed is rejected on purpose. Allow this one
+    # initializer frame, then restore controls so the rest of the replay
+    # still starts disengaged.
+    safety.set_controls_allowed(1)
+    seeded_disengaged = True
   assert safety.safety_tx_hook(msg), "failed to initialize safety for segment"
+  if seeded_disengaged:
+    safety.set_controls_allowed(0)

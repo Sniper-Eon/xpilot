@@ -311,6 +311,11 @@ EVENTS: dict[int, dict[str, Alert | AlertCallbackType]] = {
     ET.NO_ENTRY: NoEntryAlert("Stock LKAS: Lane Departure Detected"),
   },
 
+  EventName.stockAutopark: {
+    ET.USER_DISABLE: EngagementAlert(AudibleAlert.disengage),
+    ET.NO_ENTRY: NoEntryAlert("Stock Autopark or Summon in progress"),
+  },
+
   EventName.fcw: {
     ET.PERMANENT: Alert(
       "BRAKE!",
