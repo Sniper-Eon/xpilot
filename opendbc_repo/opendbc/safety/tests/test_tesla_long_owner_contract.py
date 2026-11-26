@@ -1,6 +1,6 @@
 """G8 failure matrix fixed before firmware code; real libsafety RX/FWD/TX + app ABI.
 
-L0 capable init starts STOCK or incapable init starts SP without a request.
+L0 capable longitudinal init starts SP before engage and handshake, or incapable init starts SP.
 L1 malformed/non-Tesla/not-capable/disengaged/standstill request grants ownership.
 L2 same-frame OEM AEB suppressed or SP accepted during AEB.
 L3 gas/brake/raw Autopark doesn't abort pending/DRAIN.
@@ -136,16 +136,18 @@ class TestTeslaLongOwnerContract(unittest.TestCase):
     self.d = OwnerDrive()
 
   def test_L0_initial_owner(self):
+    # Longitudinal capability now starts STOCK. SP is only the post-handshake owner.
     d = self.d
     for param in (0, 1, 2, 3):
       with self.subTest(param=param):
         d.s.set_safety_hooks(CarParams.SafetyModel.tesla, param)
-        self.assertEqual(d.reply()[1:5], (SP if param & 1 else STOCK, NONE, OK, 0))
+        self.assertEqual(d.reply()[1:5], (STOCK, NONE, OK, 0))
     d = OwnerDrive(stock=False)
-    self.assertEqual(d.rx(long_msg(1))[0], -1)
-    d.set_time(10_000)
-    self.assertTrue(d.tx(2))
-    self.assertEqual(d.reply()[1:4], (SP, NONE, OK))
+    self.assertEqual(d.owner, STOCK)
+    self.assertEqual(d.outputs[-1][1], STOCK)
+    d.takeover()
+    self.assertEqual(d.owner, SP)
+    self.assertEqual(d.rx(long_msg(2))[0], -1)
 
   def test_L1_request_boundaries(self):
     d = self.d
@@ -419,7 +421,8 @@ class TestTeslaLongOwnerContract(unittest.TestCase):
       d.set_time(40_000)
       d.rx(long_msg(1))
       d.s.set_safety_hooks(mode, 1 if mode == CarParams.SafetyModel.tesla else 0)
-      self.assertEqual(d.reply()[1:5], (SP if mode == CarParams.SafetyModel.tesla else STOCK, NONE, OK, 0))
+      # Re-entering Tesla now starts STOCK, including when longitudinal is capable.
+      self.assertEqual(d.reply()[1:5], (STOCK, NONE, OK, 0))
       self.assertFalse(d.tx(2))
 
   def test_L15_health_ABI_and_DBC(self):

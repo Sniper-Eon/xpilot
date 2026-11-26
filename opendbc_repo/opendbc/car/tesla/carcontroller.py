@@ -44,18 +44,23 @@ class CarController(CarControllerBase, CoopSteeringCarController):
     # When enabling in a tight curve, we wait until user reduces steering force to start steering.
     # Canceling is done on rising edge and is handled generically with CC.cruiseControl.cancel
     lat_active = CC.latActive and CS.hands_on_level < 3
+    # While stock Autopark/Summon owns the bus, openpilot sends none of 0x488/0x27D/0x2B9.
+    stock_maneuver = bool(getattr(CS, "stock_maneuver", False))
+    send_lat = lat_active and not stock_maneuver
 
     if self.frame % 2 == 0:
       # Angular rate limit based on speed
       self.apply_angle_last = apply_steer_angle_limits_vm(actuators.steeringAngleDeg, self.apply_angle_last, CS.out.vEgoRaw, CS.out.steeringAngleDeg,
                                                           lat_active, CarControllerParams, self.VM)
 
-      can_sends.append(self.tesla_can.create_steering_control(self.apply_angle_last, lat_active, self.coop_steering.control_type))
+      if send_lat:
+        can_sends.append(self.tesla_can.create_steering_control(self.apply_angle_last, lat_active, self.coop_steering.control_type))
 
-    if self.frame % 10 == 0:
+    if self.frame % 10 == 0 and send_lat:
       can_sends.append(self.tesla_can.create_steering_allowed())
 
-    # Legacy firmware keeps its exact pre-G8 branch and cadence.
+    # G8 sends 0x2B9 for an engaged SP owner or the handshake candidate.
+    # Legacy firmware has no handshake and sends only while longitudinal is engaged.
     g8 = CC_SP.longOwnerAvailable
     owner_sp = CC_SP.longOwner == 'sp'
     candidate = g8 and not owner_sp and CC_SP.longOwnerRequest == 1
@@ -68,9 +73,13 @@ class CarController(CarControllerBase, CoopSteeringCarController):
       oem_time = CS.das_control_mono_time
       new_oem = oem_time != 0 and oem_time != self.long_oem_time
       fallback = now_nanos - oem_time >= 60_000_000 and now_nanos - self.long_send_time >= 40_000_000
-      send_long = (owner_sp or candidate) and (new_oem or candidate or fallback)
+      # 0x2B9 only while longitudinal is engaged. The handshake candidate is the
+      # exception: it has to be sent before owner becomes SP, or the switch never commits.
+      # CC.longActive stays false until owner is SP, so the candidate is included explicitly.
+      send_long = (not stock_maneuver) and (CC.longActive or candidate) and (owner_sp or candidate) and (new_oem or candidate or fallback)
     else:
-      send_long = self.CP.openpilotLongitudinalControl and self.frame % 4 == 0
+      # Legacy firmware has no owner handshake. Send only while longitudinal is engaged.
+      send_long = (not stock_maneuver) and CC.longActive and self.CP.openpilotLongitudinalControl and self.frame % 4 == 0
 
     if send_long:
       state = 13 if CC.cruiseControl.cancel else 4
@@ -91,7 +100,7 @@ class CarController(CarControllerBase, CoopSteeringCarController):
       if g8:
         self.long_oem_time, self.long_send_time, self.long_counter = oem_time, now_nanos, cntr
         applied_accel = accel
-    elif (g8 and not owner_sp and not candidate) or not self.CP.openpilotLongitudinalControl:
+    elif (not stock_maneuver) and ((g8 and not owner_sp and not candidate) or not self.CP.openpilotLongitudinalControl):
       if CC.cruiseControl.cancel:
         cntr = (CS.das_control['DAS_controlCounter'] + 1) % 8
         can_sends.append(self.tesla_can.create_longitudinal_command(13, 0, cntr, CS.out.vEgo, False))

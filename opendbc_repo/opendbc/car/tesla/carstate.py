@@ -20,9 +20,26 @@ class CarState(CarStateBase, CarStateExt):
     self.autopark = False
     self.autopark_prev = False
     self.cruise_enabled_prev = False
+    self.stock_maneuver = False
+    self._maneuver_clear = 0
 
     self.hands_on_level = 0
     self.das_control = None
+
+  # DI summon states plus any non-NONE steering request. Vision Autopark uses
+  # ANGLE_CONTROL while DI_autoparkState stays STANDBY, and that starts before Reverse.
+  SUMMON_STATES = ("STARTED", "ACTIVE", "COMPLETE", "PAUSED", "RESUMED", "SELFPARK_STARTED")
+  MANEUVER_HOLD = 20  # 100 Hz * 200 ms, matching the panda hysteresis
+
+  def update_stock_maneuver(self, autopark_state: str, steer_type: int) -> bool:
+    raw = (autopark_state in self.SUMMON_STATES) or (steer_type != 0)
+    if raw:
+      self.stock_maneuver = True
+      self._maneuver_clear = 0
+    elif self.stock_maneuver:
+      self._maneuver_clear += 1
+      self.stock_maneuver = self._maneuver_clear < self.MANEUVER_HOLD
+    return self.stock_maneuver
 
   def update_autopark_state(self, autopark_state: str, cruise_enabled: bool):
     autopark_now = autopark_state in ("ACTIVE", "COMPLETE", "SELFPARK_STARTED")
@@ -75,6 +92,8 @@ class CarState(CarStateBase, CarStateExt):
     autopark_state = self.can_define.dv["DI_state"]["DI_autoparkState"].get(int(cp_party.vl["DI_state"]["DI_autoparkState"]), None)
     cruise_enabled = cruise_state in ("ENABLED", "STANDSTILL", "OVERRIDE", "PRE_FAULT", "PRE_CANCEL")
     self.update_autopark_state(autopark_state, cruise_enabled)
+    steer_type = int(cp_ap_party.vl["DAS_steeringControl"]["DAS_steeringControlType"])
+    ret.stockManeuver = self.update_stock_maneuver(autopark_state, steer_type)
 
     # Match panda safety cruise engaged logic
     ret.cruiseState.enabled = cruise_enabled and not self.autopark

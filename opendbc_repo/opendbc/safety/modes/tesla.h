@@ -20,16 +20,32 @@ static bool tesla_longitudinal = false;
 static bool tesla_fsd_14 = false;
 static bool tesla_stock_aeb = false;
 
-// Only rising edges while controls are not allowed are considered for these systems:
-// TODO: Only LKAS (non-emergency) is currently supported since we've only seen it
+// Stock lane-keep that began while openpilot was not controlling lateral.
 static bool tesla_stock_lkas = false;
 static bool tesla_stock_lkas_prev = false;
 
-// Only Summon is currently supported due to Autopark not setting Autopark state properly
-static bool tesla_autopark = false;
+// Vision Autopark sets DAS_steeringControlType to any non-NONE value and does not
+// move DI_autoparkState to the summon states. Latched on the rising edge only
+// while openpilot is inactive.
+static bool tesla_stock_steer = false;
+static bool tesla_stock_steer_prev = false;
+static bool tesla_seen_steer = false;
+static bool tesla_steer_none = false;
+
+// Summon states: STARTED, ACTIVE, COMPLETE, PAUSED, RESUMED, SELFPARK_STARTED.
+static bool tesla_summon = false;
+static bool tesla_summon_prev = false;
+static bool tesla_seen_di = false;
+
+// Held through a stock maneuver and for ~200ms after it ends. tesla_init assumes
+// this is true so ignition does not drop stock frames before the first 0x286/0x488.
+static bool tesla_stock_maneuver = false;
+static bool tesla_maneuver_quiet = false;
+static uint32_t tesla_maneuver_quiet_since = 0U;
+#define TESLA_MANEUVER_HOLD_US 200000U
+
 // xpilot stock AP mode (EAP plugin): forward every stock AP frame, openpilot sends no steering/long/EAC frames
 static bool tesla_stock_ap = false;
-static bool tesla_autopark_prev = false;
 
 // Detected VEHICLE bus
 extern bool tesla_has_vehicle_bus;
@@ -96,9 +112,68 @@ static void tesla_long_clear(uint8_t reason) {
   tesla_long_refusal = reason;
 }
 
+static bool tesla_op_lat_active(void) {
+  bool active;
+  // With MADS, longitudinal controls_allowed is not lateral activity.
+  if (GET_FLAG(alternative_experience, ALT_EXP_ENABLE_MADS)) {
+    active = controls_allowed_lateral;
+  } else {
+    active = controls_allowed || controls_allowed_lateral;
+  }
+  return active;
+}
+
+static bool tesla_op_inactive(void) {
+  // Health controls_allowed_longitudinal is the same bit as controls_allowed.
+  const bool controls_allowed_longitudinal = controls_allowed;
+  return !controls_allowed && !controls_allowed_lateral && !controls_allowed_longitudinal;
+}
+
+static bool tesla_summon_state(int autopark_state) {
+  return (autopark_state == 2) ||  // STARTED
+         (autopark_state == 3) ||  // ACTIVE
+         (autopark_state == 4) ||  // COMPLETE
+         (autopark_state == 5) ||  // PAUSED
+         (autopark_state == 7) ||  // RESUMED
+         (autopark_state == 9);    // SELFPARK_STARTED
+}
+
+static void tesla_clear_stock_steer_if_idle(void) {
+  bool di_idle = !tesla_seen_di || !tesla_summon_prev;
+  if (tesla_seen_steer && tesla_steer_none && di_idle) {
+    tesla_stock_steer = false;
+  }
+}
+
+static void tesla_update_maneuver(void) {
+  bool raw = tesla_stock_steer || tesla_summon;
+  bool both_seen = tesla_seen_di && tesla_seen_steer;
+  bool clear = tesla_steer_none && !tesla_summon_prev;
+  if (raw) {
+    tesla_stock_maneuver = true;
+    tesla_maneuver_quiet = false;
+  } else if (both_seen && clear && tesla_stock_maneuver) {
+    uint32_t now = microsecond_timer_get();
+    if (!tesla_maneuver_quiet) {
+      tesla_maneuver_quiet = true;
+      tesla_maneuver_quiet_since = now;
+    } else if (safety_get_ts_elapsed(now, tesla_maneuver_quiet_since) >= TESLA_MANEUVER_HOLD_US) {
+      tesla_stock_maneuver = false;
+      tesla_maneuver_quiet = false;
+    } else {
+    }
+  } else if (both_seen) {
+    tesla_maneuver_quiet = false;
+  } else {
+    // Ignition-on assumption stands until both 0x286 and 0x488 have arrived.
+  }
+}
+
 static void tesla_long_reset(bool longitudinal) {
   tesla_longitudinal = longitudinal;
-  tesla_long_owner = longitudinal ? TESLA_LONG_SP : TESLA_LONG_STOCK;
+  // Stay STOCK until openpilot is engaged and the 0x2B9 handshake commits SP.
+  // Longitudinal capability alone must not intercept stock Autopark/Summon.
+  tesla_long_owner = TESLA_LONG_STOCK;
   tesla_long_clear(TESLA_LONG_OK);
   tesla_long_request_ts = 0U;
   tesla_long_drain_ts = 0U;
@@ -143,7 +218,7 @@ static uint8_t tesla_long_gate(uint8_t target) {
     reason = TESLA_LONG_GAS;
   } else if (brake_pressed) {
     reason = TESLA_LONG_BRAKE;
-  } else if (tesla_autopark_prev || tesla_autopark) {
+  } else if (tesla_summon_prev || tesla_stock_maneuver) {
     reason = TESLA_LONG_AUTOPARK;
   } else {
     for (int i = 0; i < current_safety_config.rx_checks_len; i++) {
@@ -156,6 +231,11 @@ static uint8_t tesla_long_gate(uint8_t target) {
           (!m->ignore_frequency_check && (safety_get_ts_elapsed(now, s->last_timestamp) > max_age))) {
         reason = TESLA_LONG_RX_INVALID;
       }
+    }
+    // A bad RX frame clears controls_allowed before this gate runs. Report the
+    // RX fault first; only then refuse because openpilot is inactive.
+    if ((reason == TESLA_LONG_OK) && tesla_op_inactive()) {
+      reason = TESLA_LONG_DISENGAGED;
     }
     if (reason == TESLA_LONG_OK) {
       if (!tesla_long_oem.valid || (safety_get_ts_elapsed(now, tesla_long_oem.ts) > TESLA_LONG_FRESH_US)) {
@@ -192,7 +272,19 @@ static void tesla_long_update(void) {
 // Called after validated RX, before queue admission, with interrupts masked.
 static int tesla_long_route(const CANPacket_t *msg, bool valid, bool tx_available) {
   int bus_fwd = -1;
-  if (tesla_stock_aeb) {
+  // Disengaged or mid-maneuver: stock 0x2B9 stays on bus 0 and SP cannot take it.
+  if (tesla_op_inactive() || tesla_stock_maneuver) {
+    if (tesla_stock_aeb) {
+      tesla_long_clear(TESLA_LONG_AEB);
+    } else if (tesla_long_pending == TESLA_LONG_SP) {
+      tesla_long_clear(tesla_stock_maneuver ? TESLA_LONG_AUTOPARK : TESLA_LONG_DISENGAGED);
+    } else {
+    }
+    bus_fwd = 0;
+    if (valid && tx_available) {
+      tesla_long_forwarded = tesla_long_oem;
+    }
+  } else if (tesla_stock_aeb) {
     tesla_long_clear(TESLA_LONG_AEB);
     bus_fwd = 0;
   } else if (tesla_long_owner == TESLA_LONG_STOCK) {
@@ -371,20 +463,22 @@ static void tesla_rx_hook(const CANPacket_t *msg) {
 
   // Cruise and Autopark/Summon state
   if (msg_matches(msg, 0x286U, 0U)) {
-    // Autopark state
-    int autopark_state = (msg->data[3] >> 1) & 0x0FU;  // DI_autoparkState
-    bool tesla_autopark_now = (autopark_state == 3) ||  // ACTIVE
-                              (autopark_state == 4) ||  // COMPLETE
-                              (autopark_state == 9);    // SELFPARK_STARTED
+    // DI_autoparkState. Vision Autopark leaves this at STANDBY; summon uses 2/3/4/5/7/9.
+    int autopark_state = (msg->data[3] >> 1) & 0x0FU;
+    bool summon_now = tesla_summon_state(autopark_state);
 
-    // Only consider rising edges while controls are not allowed
-    if (tesla_autopark_now && !tesla_autopark_prev && !cruise_engaged_prev) {
-      tesla_autopark = true;
+    // Rising edge while openpilot lateral is inactive. Stock cruise already
+    // being on is not enough to ignore summon unless openpilot itself is steering.
+    if (summon_now && !tesla_summon_prev && !tesla_op_lat_active()) {
+      tesla_summon = true;
     }
-    if (!tesla_autopark_now) {
-      tesla_autopark = false;
+    if (!summon_now) {
+      tesla_summon = false;
     }
-    tesla_autopark_prev = tesla_autopark_now;
+    tesla_summon_prev = summon_now;
+    tesla_seen_di = true;
+    tesla_clear_stock_steer_if_idle();
+    tesla_update_maneuver();
 
     // Cruise state
     int cruise_state = (msg->data[1] >> 4) & 0x07U;
@@ -393,7 +487,8 @@ static void tesla_rx_hook(const CANPacket_t *msg) {
                           (cruise_state == 4) ||  // OVERRIDE
                           (cruise_state == 6) ||  // PRE_FAULT
                           (cruise_state == 7);    // PRE_CANCEL
-    cruise_engaged = cruise_engaged && !tesla_autopark;
+    // A latched maneuver keeps stock frames in control even if the driver taps engage.
+    cruise_engaged = cruise_engaged && !tesla_stock_maneuver;
 
     pcm_cruise_check(cruise_engaged);
   }
@@ -412,7 +507,15 @@ static void tesla_rx_hook(const CANPacket_t *msg) {
   // DAS_steeringControl
   if (msg_matches(msg, 0x488U, 2U)) {
     int steering_control_type = msg->data[2] >> 5;  // DAS_steeringControlType
+    bool steer_now = steering_control_type != 0;  // any non-NONE, including ANGLE_CONTROL
     bool tesla_stock_lkas_now = steering_control_type == tesla_get_steer_ctrl_type(2);  // "LANE_KEEP_ASSIST"
+
+    if (steer_now && !tesla_stock_steer_prev && tesla_op_inactive()) {
+      tesla_stock_steer = true;
+    }
+    tesla_stock_steer_prev = steer_now;
+    tesla_seen_steer = true;
+    tesla_steer_none = !steer_now;
 
     // Only consider rising edges while controls are not allowed
     if (tesla_stock_lkas_now && !tesla_stock_lkas_prev && !(controls_allowed || controls_allowed_lateral)) {
@@ -422,6 +525,8 @@ static void tesla_rx_hook(const CANPacket_t *msg) {
       tesla_stock_lkas = false;
     }
     tesla_stock_lkas_prev = tesla_stock_lkas_now;
+    tesla_clear_stock_steer_if_idle();
+    tesla_update_maneuver();
   }
 }
 
@@ -449,8 +554,15 @@ static bool tesla_tx_hook(const CANPacket_t *msg) {
   bool violation = false;
   bool cancel = false;
 
-  // Don't send any messages when Autopark is active
-  if (tesla_autopark) {
+  // Stock Autopark/Summon owns these buses. Disengaged openpilot must not send
+  // steering, EAC, or actuating longitudinal frames. Stock ACC cancel stays
+  // allowed while disengaged so the driver can still drop cruise; it is refused
+  // for the whole maneuver.
+  if (tesla_stock_maneuver &&
+      ((msg->addr == 0x488U) || (msg->addr == 0x27DU) || (msg->addr == 0x2b9U))) {
+    violation = true;
+  }
+  if (tesla_op_inactive() && ((msg->addr == 0x488U) || (msg->addr == 0x27DU))) {
     violation = true;
   }
 
@@ -518,6 +630,11 @@ static bool tesla_tx_hook(const CANPacket_t *msg) {
     } else {
       violation |= !cancel;
     }
+    // acc=4 and every other actuating frame stay off the bus while disengaged.
+    // Stock-owner cancel is the one disengaged 0x2B9 that is still allowed.
+    if (tesla_op_inactive() && !(cancel && (tesla_long_owner == TESLA_LONG_STOCK))) {
+      violation = true;
+    }
   }
 
   if ((msg->addr == 0x2b9U) && tesla_longitudinal) {
@@ -526,7 +643,11 @@ static bool tesla_tx_hook(const CANPacket_t *msg) {
         (tesla_get_checksum(msg) != tesla_compute_checksum(msg))) {
       violation = true;
     }
-    if (tesla_long_owner == TESLA_LONG_STOCK) {
+    if (tesla_stock_maneuver || tesla_op_inactive()) {
+      if (tesla_long_pending == TESLA_LONG_SP) {
+        tesla_long_clear(tesla_stock_maneuver ? TESLA_LONG_AUTOPARK : TESLA_LONG_DISENGAGED);
+      }
+    } else if (tesla_long_owner == TESLA_LONG_STOCK) {
       tx = cancel;
       if (cancel && !violation && (tesla_long_pending == TESLA_LONG_SP)) {
         tesla_long_clear(TESLA_LONG_DISENGAGED);
@@ -556,23 +677,22 @@ static bool tesla_tx_hook(const CANPacket_t *msg) {
 
 static bool tesla_fwd_hook(int bus_num, int addr) {
   bool block_msg = false;
+  bool stock_passthrough = tesla_op_inactive() || tesla_stock_maneuver;
 
-  if ((bus_num == 2) && !tesla_stock_ap) {
-    if (!tesla_autopark) {
-      // APS_eacMonitor
-      if (addr == 0x27d) {
-        block_msg = true;
-      }
+  if ((bus_num == 2) && !tesla_stock_ap && !stock_passthrough) {
+    // APS_eacMonitor
+    if (addr == 0x27d) {
+      block_msg = true;
+    }
 
-      // DAS_steeringControl
-      if ((addr == 0x488) && !tesla_stock_lkas) {
-        block_msg = true;
-      }
-
+    // DAS_steeringControl: engaged openpilot keeps the bus unless stock LKAS already started
+    if ((addr == 0x488) && !tesla_stock_lkas) {
+      block_msg = true;
     }
   }
 
-  if ((bus_num == 2) && (addr == 0x2b9) && (tesla_long_owner == TESLA_LONG_SP) && !tesla_stock_aeb && !tesla_stock_ap) {
+  if ((bus_num == 2) && (addr == 0x2b9) && (tesla_long_owner == TESLA_LONG_SP) &&
+      !tesla_stock_aeb && !tesla_stock_ap && !stock_passthrough) {
     block_msg = true;
   }
   return block_msg;
@@ -619,10 +739,18 @@ static safety_config tesla_init(uint16_t param) {
   tesla_stock_aeb = false;
   tesla_stock_lkas = false;
   tesla_stock_lkas_prev = false;
-  // we need to assume Autopark/Summon on startup since DI_state is a low freq msg.
-  // this is so that we don't fault if starting while these systems are active
-  tesla_autopark = true;
-  tesla_autopark_prev = false;
+  tesla_stock_steer = false;
+  tesla_stock_steer_prev = false;
+  tesla_seen_steer = false;
+  tesla_steer_none = false;
+  tesla_summon = false;
+  tesla_summon_prev = false;
+  tesla_seen_di = false;
+  tesla_maneuver_quiet = false;
+  tesla_maneuver_quiet_since = 0U;
+  // Assume a maneuver until the first DI_state and DAS_steeringControl arrive so
+  // ignition does not drop stock Autopark frames. Replay and unit tests clear this.
+  tesla_stock_maneuver = true;
 
   static RxCheck tesla_model3_y_rx_checks[] = {
     TESLA_COMMON_RX_CHECKS

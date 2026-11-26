@@ -20,7 +20,10 @@ def sp_longitudinal(CP, CC_SP):
 
 class LongOwner:
   def __init__(self, CP):
-    self.owner = 'sp' if CP.openpilotLongitudinalControl else 'stock'
+    self.CP = CP
+    # Panda starts STOCK and becomes SP only after engage plus the 0x2B9 handshake.
+    # update() restores SP for legacy firmware that never exposes the owner ABI.
+    self.owner = 'stock'
     self.available = False
     self.seen_abi = False
     self.locked = False
@@ -75,6 +78,9 @@ class LongOwner:
     elif self.seen_abi:
       # Losing/resetting the owner ABI must never re-enable the legacy SP path.
       self.owner, self.locked, self.reason = 'stock', enabled, 'ownerUnavailable'
+    elif self.CP.openpilotLongitudinalControl:
+      # No owner health ABI: there is no handshake. Keep the pre-G8 longitudinal path.
+      self.owner = 'sp'
 
     try:
       desired = desired_owner(ctx, CS)

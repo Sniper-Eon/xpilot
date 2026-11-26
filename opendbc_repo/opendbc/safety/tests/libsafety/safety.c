@@ -295,8 +295,19 @@ void init_tests(void){
   valid_steer_req_count = 0;
   invalid_steer_req_count = 0;
 
-  // assumes autopark on safety mode init to avoid a fault. get rid of that for testing
-  tesla_autopark = false;
+  // tesla_init assumes a stock maneuver so ignition does not drop Autopark frames.
+  // Unit tests start from a known idle bus; safety_replay clears the same flag.
+  tesla_stock_maneuver = false;
+  tesla_stock_steer = false;
+  tesla_stock_steer_prev = false;
+  tesla_summon = false;
+  tesla_summon_prev = false;
+  tesla_seen_di = false;
+  tesla_seen_steer = false;
+  tesla_steer_none = false;
+  tesla_maneuver_quiet = false;
+  tesla_stock_lkas = false;
+  tesla_stock_lkas_prev = false;
 
   ignition_can = false;
   ignition_can_cnt = 0U;
@@ -306,6 +317,17 @@ void init_tests(void){
   mads_button_press = MADS_BUTTON_UNAVAILABLE;
   heartbeat_engaged_mads = false;
   heartbeat_engaged_mads_mismatches = 0U;
+}
+
+void set_tesla_stock_maneuver(bool c) {
+  tesla_stock_maneuver = c;
+  if (!c) {
+    tesla_stock_steer = false;
+    tesla_summon = false;
+    tesla_maneuver_quiet = false;
+    tesla_seen_di = false;
+    tesla_seen_steer = false;
+  }
 }
 
 #include "xpilot_rules.c"
@@ -328,3 +350,4 @@ bool test_long_mode_owned(uint32_t addr, unsigned int bus, unsigned int length) 
   return xpilot_mode_owned(addr);
 }
 void test_long_fixture_stock(void) { tesla_long_owner = TESLA_LONG_STOCK; }
+void test_long_fixture_sp(void) { tesla_long_owner = TESLA_LONG_SP; }
