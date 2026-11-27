@@ -46,7 +46,12 @@ class CarController(CarControllerBase, CoopSteeringCarController):
     lat_active = CC.latActive and CS.hands_on_level < 3
     # While stock Autopark/Summon owns the bus, openpilot sends none of 0x488/0x27D/0x2B9.
     stock_maneuver = bool(getattr(CS, "stock_maneuver", False))
-    send_lat = lat_active and not stock_maneuver
+    # Once engaged (full or MADS lateral), keep 0x488 (NONE when not actuating) and 0x27D on
+    # the bus, as before the Autopark change. Sending only while lat_active left EPAS with no
+    # DAS_steeringControl during override/steer-fault/disengage gaps, which latched
+    # EAC_INHIBITED / EAC_ERROR_TMP_FAULT. The panda also forwards stock frames when this stops.
+    engaged = CC.enabled or CC_SP.mads.enabled
+    send_lat = engaged and not stock_maneuver
 
     if self.frame % 2 == 0:
       # Angular rate limit based on speed
