@@ -1,6 +1,11 @@
 """CarState failure cases:
 CS1 stock Autosteer enabled no longer raises invalidLkasSetting (except MISSING_DAS_SETTINGS).
 CS2 the SP extension changes the source invalidLkasSetting or another CarState field.
+CS3 stock Autosteer engage (ANGLE_CONTROL then DI_cruiseState ENABLED) sets stockManeuver, so
+    openpilot raises NO_ENTRY instead of engaging with stock AP.
+CS4 a second vision Autopark after a cancelled one does not set stockManeuver again.
+CC1 MADS/engaged openpilot that is not actuating stops sending 0x488/0x27D, leaving EPAS without
+    DAS_steeringControl.
 """
 import re
 import unittest
@@ -84,6 +89,86 @@ class TestTeslaCarState(unittest.TestCase):
               with patch.object(CarStateExt, "update", check_update):
                 ret, _ = cs.update(parsers)
               self.assertEqual(ret.invalidLkasSetting, bool(autosteer and not flags), "CS1: stock Autosteer signal")
+
+
+class TestTeslaStockManeuver(unittest.TestCase):
+  def _cs(self):
+    return CarState(CarParams(carFingerprint=CAR.TESLA_MODEL_Y.value), CarParamsSP())
+
+  def _run(self, cs, frames, autopark="STANDBY", steer=0, cruise=False):
+    out = None
+    for _ in range(frames):
+      out = cs.update_stock_maneuver(autopark, steer, cruise)
+    return out
+
+  def test_autosteer_engage_is_not_maneuver(self):
+    # CS3: car log 2026-11-27 12:18:43.95 (ANGLE_CONTROL) / 12:18:44.01 (cruise ENABLED).
+    cs = self._cs()
+    self._run(cs, 10)
+    self.assertTrue(self._run(cs, 6, steer=1))
+    self.assertFalse(self._run(cs, 1, steer=1, cruise=True))
+    self.assertFalse(self._run(cs, 500, steer=1, cruise=True))
+    # Autosteer drops back to NONE and re-applies while cruise stays on: still not a maneuver.
+    self.assertFalse(self._run(cs, 5, steer=0, cruise=True))
+    self.assertFalse(self._run(cs, 100, steer=1, cruise=True))
+
+  def test_autopark_latches_and_reenters(self):
+    # CS4: vision Autopark keeps cruise off; a late engage tap does not end it.
+    cs = self._cs()
+    for attempt in range(3):
+      with self.subTest(attempt=attempt):
+        self.assertTrue(self._run(cs, 100, steer=1))
+        self.assertTrue(self._run(cs, 5, steer=1, cruise=True))
+        self.assertTrue(self._run(cs, 1, steer=1))
+        # cancel: NONE, then the 200ms hold
+        self.assertTrue(self._run(cs, 10, steer=0))
+        self.assertFalse(self._run(cs, 15, steer=0))
+
+  def test_summon_states(self):
+    cs = self._cs()
+    for state in CarState.SUMMON_STATES:
+      with self.subTest(state=state):
+        self.assertTrue(self._run(cs, 1, autopark=state, cruise=True))
+        self.assertFalse(self._run(cs, 25))
+
+
+class TestTeslaCarControllerLateralFrames(unittest.TestCase):
+  def _send(self, enabled, mads, lat_active, maneuver=False, frames=20):
+    from opendbc.car import structs
+    from opendbc.car.tesla.carcontroller import CarController
+    CP = CarInterface.get_non_essential_params(CAR.TESLA_MODEL_Y.value)
+    CP_SP = CarParamsSP()
+    cc = CarController(DBC[CP.carFingerprint], CP, CP_SP)
+
+    class CS:
+      hands_on_level = 0
+      stock_maneuver = maneuver
+      das_control = {'DAS_controlCounter': 0}
+      das_control_mono_time = 0
+      out = structs.CarState()
+
+    CC = structs.CarControl(enabled=enabled, latActive=lat_active).as_reader()
+    CC_SP = structs.CarControlSP()
+    CC_SP.mads.enabled = mads
+    addrs = []
+    for i in range(frames):
+      _, sends = cc.update(CC, CC_SP, CS, i * 10_000_000)
+      addrs += [m[0] for m in sends]
+    return addrs
+
+  def test_engaged_keeps_lateral_frames(self):
+    # CC1: car log 2026-11-27 12:18:51.87 -> 54.19, no 0x488/0x27D for 2.3s, EPAS EAC_ERROR_TMP_FAULT.
+    for enabled, mads in ((True, False), (False, True)):
+      with self.subTest(enabled=enabled, mads=mads):
+        addrs = self._send(enabled, mads, lat_active=False)
+        self.assertEqual(addrs.count(0x488), 10)
+        self.assertEqual(addrs.count(0x27D), 2)
+
+  def test_disengaged_or_maneuver_sends_no_lateral_frames(self):
+    self.assertNotIn(0x488, self._send(False, False, lat_active=False))
+    addrs = self._send(True, True, lat_active=True, maneuver=True)
+    self.assertNotIn(0x488, addrs)
+    self.assertNotIn(0x27D, addrs)
 
 
 class TestTeslaFingerprint(unittest.TestCase):

@@ -308,6 +308,10 @@ void init_tests(void){
   tesla_maneuver_quiet = false;
   tesla_stock_lkas = false;
   tesla_stock_lkas_prev = false;
+  tesla_stock_steer_rise_ts = 0U;
+  tesla_di_cruise_engaged = false;
+  tesla_op_steer_seen = false;
+  tesla_op_steer_ts = 0U;
 
   ignition_can = false;
   ignition_can_cnt = 0U;

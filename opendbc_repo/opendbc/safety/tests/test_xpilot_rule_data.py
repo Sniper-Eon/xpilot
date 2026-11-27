@@ -58,6 +58,9 @@ class XpilotRuleSafetyBase(common.SafetyTestBase):
     self.assertEqual(0, upload(self.safety, table(rules))[3])
     self.safety.set_current_safety_param_sp(param_sp & 0x1FFF)
     self.assertEqual(0, self.safety.set_safety_hooks(mode, param))
+    if mode == CarParams.SafetyModel.tesla:
+      # tesla_init assumes a stock maneuver until 0x286/0x488 arrive; these rule tests start idle.
+      self.safety.set_tesla_stock_maneuver(False)
 
   def _set_tesla(self, param_sp):
     self._set_mode(CarParams.SafetyModel.tesla, param_sp=param_sp)
