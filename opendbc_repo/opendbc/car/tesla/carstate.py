@@ -24,42 +24,30 @@ class CarState(CarStateBase, CarStateExt):
     self._maneuver_clear = 0
     self._stock_steer = False
     self._steer_prev = False
-    self._steer_rise_age = 0
-    self._cruise_prev = False
 
     self.hands_on_level = 0
     self.das_control = None
 
-  # DI summon states plus a non-NONE steering request that starts while stock cruise is off.
-  # Vision Autopark uses ANGLE_CONTROL while DI_autoparkState stays STANDBY and DI_cruiseState
-  # stays OFF/STANDBY. Stock Autosteer also starts with ANGLE_CONTROL, ~60ms before
-  # DI_cruiseState goes ENABLED, so a cruise rise shortly after the steer rise drops the latch.
-  # Mirrors tesla.h (TESLA_AUTOSTEER_CONFIRM_US, TESLA_MANEUVER_HOLD_US).
+  # DI summon states plus a non-NONE steering request that rises from NONE.
+  # DI_cruiseState cannot separate vision Autopark from stock Autosteer: Autopark on
+  # this car goes STANDSTILL then ENABLED about 70ms after the 0x488 rise. Cruise is
+  # ignored. The latch holds until the request is NONE for ~200ms. Mirrors tesla.h.
   SUMMON_STATES = ("STARTED", "ACTIVE", "COMPLETE", "PAUSED", "RESUMED", "SELFPARK_STARTED")
   MANEUVER_HOLD = 20  # 100 Hz * 200 ms, matching the panda hysteresis
-  AUTOSTEER_CONFIRM = 50  # 100 Hz * 500 ms
 
   def update_stock_maneuver(self, autopark_state: str, steer_type: int, cruise_enabled: bool = False) -> bool:
+    # cruise_enabled is accepted so callers can show that STANDSTILL/ENABLED do not
+    # change the latch. It is not a discriminator.
+    del cruise_enabled
     summon = autopark_state in self.SUMMON_STATES
     steer_now = steer_type != 0
-    if steer_now and not self._steer_prev and not cruise_enabled:
+    if steer_now and not self._steer_prev:
       self._stock_steer = True
-      self._steer_rise_age = 0
-    elif self._stock_steer:
-      self._steer_rise_age += 1
     if not steer_now:
       self._stock_steer = False
-
-    autosteer = cruise_enabled and not self._cruise_prev and self._stock_steer and not summon and \
-                self._steer_rise_age < self.AUTOSTEER_CONFIRM
     self._steer_prev = steer_now
-    self._cruise_prev = cruise_enabled
 
-    if autosteer:
-      self._stock_steer = False
-      self.stock_maneuver = False
-      self._maneuver_clear = 0
-    elif summon or self._stock_steer:
+    if summon or self._stock_steer:
       self.stock_maneuver = True
       self._maneuver_clear = 0
     elif self.stock_maneuver:
@@ -121,8 +109,9 @@ class CarState(CarStateBase, CarStateExt):
     steer_type = int(cp_ap_party.vl["DAS_steeringControl"]["DAS_steeringControlType"])
     ret.stockManeuver = self.update_stock_maneuver(autopark_state, steer_type, cruise_enabled)
 
-    # Match panda safety cruise engaged logic
-    ret.cruiseState.enabled = cruise_enabled and not self.autopark
+    # Match panda: a latched stock maneuver masks cruise, so pcmEnable/MADS do not
+    # take over Autopark. STANDSTILL and ENABLED are both cruise_enabled.
+    ret.cruiseState.enabled = cruise_enabled and not self.autopark and not self.stock_maneuver
     if speed_units == "KPH":
       ret.cruiseState.speed = max(cp_party.vl["DI_state"]["DI_digitalSpeed"] * CV.KPH_TO_MS, 1e-3)
     elif speed_units == "MPH":
