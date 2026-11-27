@@ -15,8 +15,17 @@ M3 longitudinal mode starts in SP, or a disengaged 0x2B9 is not forwarded.
 M4 DI_autoparkState STANDBY plus ANGLE_CONTROL does not enter a maneuver, or engage is accepted before type returns to NONE.
 M5 a summon state in {2, 5, 7} does not block openpilot, or summon is ignored only because stock cruise is already on while openpilot lateral is inactive.
 M6 mid-maneuver engage or a switch to SP is accepted.
-M7 stock Autosteer engage (ANGLE_CONTROL, then DI_cruiseState ENABLED within 500ms) is
-   treated as Autopark, so openpilot cannot engage with stock AP (car log 2026-11-27 12:18:44).
+M7 DI_cruiseState STANDSTILL then ENABLED about 70ms after a disengaged stock 0x488
+   ANGLE rise (gear D or R, speed 0) clears the maneuver latch. openpilot then engages
+   and its 0x488 overrides stock Autopark. Cruise cannot tell Autopark from Autosteer.
+M7b the latch releases before stock 0x488 has been NONE for the 200ms hold, or it stays
+   set after that hold so openpilot cannot engage once the maneuver is over.
+M7c a steer rise while openpilot is disengaged is ignored because stock cruise is already on.
+M11 DAS_status 0x39B bit 26 (DAS_autoparkWaitingForBrake) set on bus 2 does not latch,
+   so engaged openpilot keeps sending 0x488/0x27D/0x2B9.
+M11b bit 26 returning to 0 with 0x488 NONE drops the latch before the 200ms hold, or the
+   hold never ends.
+M11c DAS_autoparkReady (bit 24) alone latches, or a bad 0x39B checksum is trusted.
 M8 engaged openpilot that is not transmitting 0x488 still blocks stock 0x488/0x27D, starving
    EPAS (car log 2026-11-27 12:18:51.87-54.19, EAC_INHIBITED / EAC_ERROR_TMP_FAULT latched).
 M9 a second Autopark after a cancelled one does not latch again, or any latch is left over
@@ -137,12 +146,30 @@ class TestTeslaSafetyBase(common.CarSafetyTest, common.AngleSteeringSafetyTest, 
     values = {"DI_accelPedalPos": gas}
     return self.packer.make_can_msg_safety("DI_systemStatus", 0, values)
 
-  def _pcm_status_msg(self, enable, autopark_state=0):
+  def _pcm_status_msg(self, enable, autopark_state=0, cruise_state=None):
+    if cruise_state is None:
+      cruise_state = 2 if enable else 0
     values = {
-      "DI_cruiseState": 2 if enable else 0,
+      "DI_cruiseState": cruise_state,
       "DI_autoparkState": autopark_state,
     }
     return self.packer.make_can_msg_safety("DI_state", 0, values)
+
+  def _gear_msg(self, gear):
+    values = {"DI_gear": gear, "DI_accelPedalPos": 0}
+    return self.packer.make_can_msg_safety("DI_systemStatus", 0, values)
+
+  def _eac_msg(self, allow=1):
+    values = {"APS_eacAllow": allow}
+    return self.packer.make_can_msg_safety("APS_eacMonitor", 0, values)
+
+  def _das_status_msg(self, waiting_for_brake=0, ready=0, bus=2):
+    # 0x39B. waiting_for_brake is Intel bit 26. ready is bit 24.
+    values = {
+      "DAS_autoparkWaitingForBrake": waiting_for_brake,
+      "DAS_autoparkReady": ready,
+    }
+    return self.packer.make_can_msg_safety("DAS_status", bus, values)
 
   def _long_control_msg(self, set_speed, acc_state=0, jerk_limits=(0, 0), accel_limits=(0, 0), aeb_event=0, bus=0):
     values = {
@@ -263,8 +290,7 @@ class TestTeslaSafetyBase(common.CarSafetyTest, common.AngleSteeringSafetyTest, 
     self.__class__.cnt_angle_cmd = max(self.cnt_angle_cmd, self._maneuver_t // step)
 
   def _confirm_autopark(self):
-    # Let the steer rise age past TESLA_AUTOSTEER_CONFIRM_US (500ms) so a later cruise
-    # engage is not mistaken for stock Autosteer.
+    # Move the safety timer forward so a later 200ms hold is not counted from t=0.
     step = int(1e6 / self.LATERAL_FREQUENCY)
     self.__class__.cnt_angle_cmd += 30
     t = self.cnt_angle_cmd * step
@@ -342,29 +368,148 @@ class TestTeslaSafetyBase(common.CarSafetyTest, common.AngleSteeringSafetyTest, 
     self._start_vision_autopark()
     self._assert_maneuver_owns_bus()
 
-  def test_stock_autosteer_engage_is_not_autopark(self):
-    # M7: DAS rises to ANGLE_CONTROL ~60ms before DI_cruiseState ENABLED. That is stock
-    # Autosteer, so openpilot engages with it and takes 0x488 once it transmits.
-    self._rx(self._pcm_status_msg(False, self.autopark_states["STANDBY"]))
-    self._rx(self._angle_cmd_msg(0, state=self.steer_control_types["ANGLE_CONTROL"], bus=2))
-    self._advance(60000)
-    self._rx(self._angle_cmd_msg(0, state=self.steer_control_types["ANGLE_CONTROL"], bus=2, increment_timer=False))
-    self._rx(self._pcm_status_msg(True, self.autopark_states["STANDBY"]))
-    self.assertTrue(self.safety.get_controls_allowed())
-    self.assertTrue(self._tx(self._angle_cmd_msg(0, True)))
-    self.assertEqual(-1, self.safety.safety_fwd_hook(2, MSG_DAS_steeringControl))
-    self.assertEqual(-1, self.safety.safety_fwd_hook(2, MSG_APS_eacMonitor))
+  def test_autopark_cruise_rise_stays_latched(self):
+    # M7/M7b: gear D and R, speed 0, openpilot disengaged. Stock 0x488 rises to
+    # ANGLE_CONTROL, then 70ms later DI_cruiseState goes STANDSTILL (3) then ENABLED (2).
+    # That is Autopark on this car. The latch stays, engage is refused, openpilot
+    # 0x488/0x27D stay off the bus even if controls_allowed is forced, and stock frames
+    # are forwarded. After steer returns to NONE for the 200ms hold, engage works.
+    gears = {d: v for v, d in self.define.dv["DI_systemStatus"]["DI_gear"].items()}
+    angle = self.steer_control_types["ANGLE_CONTROL"]
+    standby = self.autopark_states["STANDBY"]
+    for gear_name in ("DI_GEAR_D", "DI_GEAR_R"):
+      with self.subTest(gear=gear_name):
+        self.setUp()
+        self.__class__.cnt_angle_cmd = 0
+        self.assertEqual(1, self._rx(self._speed_msg(0)))
+        self.assertEqual(1, self._rx(self._speed_msg_2(0)))
+        self.assertEqual(1, self._rx(self._vehicle_moving_msg(0)))
+        self.assertEqual(1, self._rx(self._gear_msg(gears[gear_name])))
+        self.assertEqual(1, self._rx(self._pcm_status_msg(False, standby)))
+        self.assertFalse(self.safety.get_controls_allowed())
 
-  def test_steer_rise_while_stock_cruise_on_is_not_autopark(self):
-    # M7: Autosteer resuming steering while stock cruise is already engaged never latches.
-    self._rx(self._pcm_status_msg(True, self.autopark_states["STANDBY"]))
+        self.assertEqual(1, self._rx(self._angle_cmd_msg(0, state=angle, bus=2)))
+        self._advance(70000)
+        self.assertEqual(1, self._rx(self._angle_cmd_msg(0, state=angle, bus=2, increment_timer=False)))
+        self.assertEqual(1, self._rx(self._pcm_status_msg(False, standby, cruise_state=3)))
+        self.assertFalse(self.safety.get_controls_allowed())
+        self.assertFalse(self.safety.get_controls_allowed_lateral())
+        self.assertEqual(1, self._rx(self._pcm_status_msg(False, standby, cruise_state=2)))
+        self.assertFalse(self.safety.get_controls_allowed())
+
+        self.safety.set_controls_allowed(True)
+        self.safety.set_controls_allowed_lateral(True)
+        self.assertFalse(self._tx(self._angle_cmd_msg(0, False, increment_timer=False)))
+        self.assertFalse(self._tx(self._angle_cmd_msg(0, True, increment_timer=False)))
+        self.assertFalse(self._tx(self._angle_cmd_msg(20, True, increment_timer=False)))
+        self.assertFalse(self._tx(self._eac_msg()))
+        self.assertEqual(0, self.safety.safety_fwd_hook(2, MSG_DAS_steeringControl))
+        self.assertEqual(0, self.safety.safety_fwd_hook(2, MSG_APS_eacMonitor))
+
+        self.assertEqual(1, self._rx(self._pcm_status_msg(False, standby, cruise_state=2)))
+        self.assertFalse(self.safety.get_controls_allowed())
+        self.assertFalse(self.safety.get_controls_allowed_lateral())
+
+        # NONE starts the hold. 100ms later the latch is still set.
+        self._advance(20000)
+        self.assertEqual(1, self._rx(self._angle_cmd_msg(0, False, bus=2, increment_timer=False)))
+        self.assertEqual(1, self._rx(self._pcm_status_msg(False, standby, cruise_state=2)))
+        self.assertFalse(self.safety.get_controls_allowed())
+        self._advance(100000)
+        self.assertEqual(1, self._rx(self._angle_cmd_msg(0, False, bus=2, increment_timer=False)))
+        self.assertEqual(1, self._rx(self._pcm_status_msg(False, standby, cruise_state=2)))
+        self.assertFalse(self.safety.get_controls_allowed())
+        self.assertFalse(self._tx(self._angle_cmd_msg(0, True, increment_timer=False)))
+
+        # Past 200ms of NONE, ENABLED engages and openpilot owns lateral again.
+        self._advance(120000)
+        self.assertEqual(1, self._rx(self._angle_cmd_msg(0, False, bus=2, increment_timer=False)))
+        self.assertEqual(1, self._rx(self._pcm_status_msg(False, standby, cruise_state=2)))
+        self.assertTrue(self.safety.get_controls_allowed())
+        self.assertTrue(self._tx(self._angle_cmd_msg(0, True)))
+        self.assertTrue(self._tx(self._eac_msg()))
+        self.assertEqual(-1, self.safety.safety_fwd_hook(2, MSG_DAS_steeringControl))
+        self.assertEqual(-1, self.safety.safety_fwd_hook(2, MSG_APS_eacMonitor))
+
+  def test_disengaged_steer_rise_latches_with_cruise_already_on(self):
+    # M7c: stock cruise already ENABLED does not make a disengaged steer rise into Autosteer.
+    standby = self.autopark_states["STANDBY"]
+    self._rx(self._pcm_status_msg(True, standby))
+    self.assertTrue(self.safety.get_controls_allowed())
     self.safety.set_controls_allowed(False)
     self._rx(self._angle_cmd_msg(0, state=self.steer_control_types["ANGLE_CONTROL"], bus=2))
-    self._confirm_autopark()
-    self._rx(self._pcm_status_msg(False, self.autopark_states["STANDBY"]))
-    self._rx(self._pcm_status_msg(True, self.autopark_states["STANDBY"]))
+    self._rx(self._pcm_status_msg(False, standby))
+    self._rx(self._pcm_status_msg(True, standby))
+    self.assertFalse(self.safety.get_controls_allowed())
+    self.assertFalse(self._tx(self._angle_cmd_msg(0, True, increment_timer=False)))
+    self.assertEqual(0, self.safety.safety_fwd_hook(2, MSG_DAS_steeringControl))
+    self.assertEqual(0, self.safety.safety_fwd_hook(2, MSG_APS_eacMonitor))
+
+  def test_das_autopark_bit_blocks_engaged_openpilot(self):
+    # M11: bit 26 alone, no 0x488 rise, openpilot already engaged.
+    standby = self.autopark_states["STANDBY"]
+    self.safety.set_controls_allowed(True)
+    self.safety.set_controls_allowed_lateral(True)
+    self.assertTrue(self._tx(self._angle_cmd_msg(0, True)))
+    self.assertEqual(1, self._rx(self._das_status_msg(waiting_for_brake=1)))
+    self.assertFalse(self.safety.get_controls_allowed())
+    self.assertFalse(self.safety.get_controls_allowed_lateral())
+    self.safety.set_controls_allowed(True)
+    self.safety.set_controls_allowed_lateral(True)
+    self.assertFalse(self._tx(self._angle_cmd_msg(0, False, increment_timer=False)))
+    self.assertFalse(self._tx(self._angle_cmd_msg(0, True, increment_timer=False)))
+    self.assertFalse(self._tx(self._eac_msg()))
+    self.assertFalse(self._tx(self._long_control_msg(0, acc_state=self.acc_states["ACC_ON"])))
+    self.assertEqual(0, self.safety.safety_fwd_hook(2, MSG_DAS_steeringControl))
+    self.assertEqual(0, self.safety.safety_fwd_hook(2, MSG_APS_eacMonitor))
+    self.assertEqual(0, self.safety.safety_fwd_hook(2, MSG_DAS_Control))
+    # The next status frame keeps the latch and clears a forced engage.
+    self.assertEqual(1, self._rx(self._das_status_msg(waiting_for_brake=1)))
+    self.assertFalse(self.safety.get_controls_allowed())
+    self._rx(self._pcm_status_msg(True, standby))
+    self.assertFalse(self.safety.get_controls_allowed())
+
+  def test_das_autopark_bit_releases_with_steer_none(self):
+    # M11b: bit 26 back to 0 and stock 0x488 NONE, then the 200ms hold.
+    standby = self.autopark_states["STANDBY"]
+    self.assertEqual(1, self._rx(self._das_status_msg(waiting_for_brake=1)))
+    self.assertFalse(self.safety.get_controls_allowed())
+    self._rx(self._das_status_msg(waiting_for_brake=0))
+    self._rx(self._angle_cmd_msg(0, False, bus=2))
+    self._rx(self._pcm_status_msg(False, standby))
+    self._rx(self._pcm_status_msg(True, standby))
+    self.assertFalse(self.safety.get_controls_allowed())
+    self._advance(100000)
+    self._rx(self._das_status_msg(waiting_for_brake=0))
+    self._rx(self._angle_cmd_msg(0, False, bus=2, increment_timer=False))
+    self._rx(self._pcm_status_msg(True, standby))
+    self.assertFalse(self.safety.get_controls_allowed())
+    self._advance(120000)
+    self._rx(self._das_status_msg(waiting_for_brake=0))
+    self._rx(self._angle_cmd_msg(0, False, bus=2, increment_timer=False))
+    self._rx(self._pcm_status_msg(True, standby))
     self.assertTrue(self.safety.get_controls_allowed())
     self.assertTrue(self._tx(self._angle_cmd_msg(0, True)))
+    self.assertTrue(self._tx(self._eac_msg()))
+
+  def test_das_autopark_ready_and_bad_checksum_do_not_latch(self):
+    # M11c: bit 24 alone is ignored. A bad checksum is not a latch.
+    standby = self.autopark_states["STANDBY"]
+    self.safety.set_controls_allowed(True)
+    self.assertEqual(1, self._rx(self._das_status_msg(waiting_for_brake=0, ready=1)))
+    self.assertTrue(self.safety.get_controls_allowed())
+    self.assertTrue(self._tx(self._angle_cmd_msg(0, True)))
+    # Same bit on the wrong bus is not the stock AP frame.
+    self.safety.set_controls_allowed(True)
+    self._rx(self._das_status_msg(waiting_for_brake=1, bus=0))
+    self.assertTrue(self.safety.get_controls_allowed())
+    bad = self._das_status_msg(waiting_for_brake=1)
+    bad[0].data[7] ^= 0xFF
+    self.assertFalse(self._rx(bad))
+    self._rx(self._das_status_msg(waiting_for_brake=0))
+    self._rx(self._angle_cmd_msg(0, False, bus=2))
+    self._rx(self._pcm_status_msg(True, standby))
+    self.assertTrue(self.safety.get_controls_allowed())
 
   def test_engaged_without_openpilot_steer_tx_forwards_stock(self):
     # M8: engaged but openpilot has not sent 0x488 yet (or stopped): stock frames keep EPAS fed.
@@ -519,7 +664,7 @@ class TestTeslaSafetyBase(common.CarSafetyTest, common.AngleSteeringSafetyTest, 
     self.assertFalse(self._tx(self._angle_cmd_msg(0, False)))
     self.assertFalse(self._tx(self._long_control_msg(0, acc_state=self.acc_states["ACC_ON"])))
 
-    # Tapping engage during the maneuver does not stick (past the Autosteer confirm window).
+    # Tapping engage during the maneuver does not stick.
     self._confirm_autopark()
     self._rx(self._pcm_status_msg(True, self.autopark_states["STANDBY"]))
     self.assertFalse(self.safety.get_controls_allowed())

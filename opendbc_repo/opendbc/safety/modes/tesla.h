@@ -12,6 +12,9 @@
   {.msg = {{0x145, 0, 8, 50U, .max_counter = 15U}, { 0 }, { 0 }}},                                /* ESP_status (brakes) */                          \
   {.msg = {{0x286, 0, 8, 10U, .max_counter = 15U, .ignore_quality_flag = true}, { 0 }, { 0 }}},   /* DI_state (acc state) */                         \
   {.msg = {{0x311, 0, 7, 10U, .max_counter = 15U, .ignore_quality_flag = true}, { 0 }, { 0 }}},   /* UI_warning (blinkers, buckle switch & doors) */ \
+  /* DAS_status. Checksum (byte 7) and counter (bits 52-55) are checked. The       */ \
+  /* DBC has no cycle time, so a guessed period is not a reason to drop openpilot. */ \
+  {.msg = {{0x39B, 2, 8, 10U, .max_counter = 15U, .ignore_quality_flag = true, .ignore_frequency_check = true}, { 0 }, { 0 }}}, \
 
 #define TESLA_VEHICLE_BUS_ADDR_CHECK \
   {.msg = {{0x3DF, 1, 8, 2U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true, .ignore_frequency_check = true}, { 0 }, { 0 }}},    /* UI_status2 */ \
@@ -26,20 +29,22 @@ static bool tesla_stock_lkas_prev = false;
 
 // Vision Autopark sets DAS_steeringControlType to any non-NONE value and does not
 // move DI_autoparkState to the summon states. Latched on the rising edge only
-// while openpilot is inactive.
+// while openpilot is inactive, and held until the request returns to NONE.
+// DI_cruiseState cannot tell this apart from stock Autosteer: on this car Autopark
+// goes OFF -> STANDSTILL -> ENABLED about 70ms after the 0x488 rise. Cruise is ignored.
+// Cost: openpilot and stock Autosteer cannot be engaged together.
 static bool tesla_stock_steer = false;
 static bool tesla_stock_steer_prev = false;
 static bool tesla_seen_steer = false;
 static bool tesla_steer_none = false;
-static uint32_t tesla_stock_steer_rise_ts = 0U;
 
-// Stock Autosteer engage also starts with ANGLE_CONTROL on 0x488, about 60ms before
-// DI_cruiseState goes ENABLED (car log 2026-11-27 12:18:43.95/44.01). If cruise engages
-// within this window after the rise, the frames are Autosteer, not vision Autopark
-// (Autopark keeps DI_cruiseState at OFF/STANDBY), so the steer latch is dropped and
-// openpilot may engage with stock AP as before.
-static bool tesla_di_cruise_engaged = false;
-#define TESLA_AUTOSTEER_CONFIRM_US 500000U
+// DAS_status 0x39B on bus 2, Intel bit 26 (byte 3 bit 2). Party DBC names it
+// DAS_autoparkWaitingForBrake; the HW4 DBC names the same bit DAS_autoparkActive.
+// It rises about 50-60ms after the 0x488 ANGLE edge, so the steer latch is the
+// fast stop and this bit is a second hard stop. Bit 24 (DAS_autoparkReady) is
+// not used: it flickers in D at low speed. Held while the bit is 1, then the
+// same NONE + 200ms release as the steer latch.
+static bool tesla_autopark_request = false;
 
 // Last time openpilot 0x488 was accepted by tx_hook. While openpilot is engaged but
 // not transmitting 0x488 (host disengaged ahead of the panda, NO_ENTRY, steer fault),
@@ -168,9 +173,9 @@ static void tesla_clear_stock_steer_if_idle(void) {
 }
 
 static void tesla_update_maneuver(void) {
-  bool raw = tesla_stock_steer || tesla_summon;
+  bool raw = tesla_stock_steer || tesla_summon || tesla_autopark_request;
   bool both_seen = tesla_seen_di && tesla_seen_steer;
-  bool clear = tesla_steer_none && !tesla_summon_prev;
+  bool clear = tesla_steer_none && !tesla_summon_prev && !tesla_autopark_request;
   if (raw) {
     tesla_stock_maneuver = true;
     tesla_maneuver_quiet = false;
@@ -367,13 +372,17 @@ static uint8_t tesla_get_counter(const CANPacket_t *msg) {
     // Signal: EPAS3S_sysStatusCounter
     cnt = msg->data[6] & 0x0FU;
   }
+  if (msg->addr == 0x39BU) {
+    // Signal: DAS_statusCounter, start bit 52, length 4
+    cnt = msg->data[6] >> 4;
+  }
   return cnt;
 }
 
 static int _tesla_get_checksum_byte(const int addr) {
   int checksum_byte = -1;
-  if ((addr == 0x370) || (addr == 0x2b9) || (addr == 0x155)) {
-    // Signal: EPAS3S_sysStatusChecksum, DAS_controlChecksum, ESP_wheelRotationChecksum
+  if ((addr == 0x370) || (addr == 0x2b9) || (addr == 0x155) || (addr == 0x39B)) {
+    // Signal: EPAS3S_sysStatusChecksum, DAS_controlChecksum, ESP_wheelRotationChecksum, DAS_statusChecksum
     checksum_byte = 7;
   }
   if (addr == 0x488) {
@@ -502,22 +511,15 @@ static void tesla_rx_hook(const CANPacket_t *msg) {
     tesla_clear_stock_steer_if_idle();
     tesla_update_maneuver();
 
-    // Cruise state
+    // Cruise state. STANDSTILL and ENABLED are used by both Autopark and Autosteer,
+    // so they never set or clear the stock-maneuver latch.
     int cruise_state = (msg->data[1] >> 4) & 0x07U;
     bool cruise_engaged = (cruise_state == 2) ||  // ENABLED
                           (cruise_state == 3) ||  // STANDSTILL
                           (cruise_state == 4) ||  // OVERRIDE
                           (cruise_state == 6) ||  // PRE_FAULT
                           (cruise_state == 7);    // PRE_CANCEL
-    // Stock Autosteer engage: cruise rose right after the steer rise. Not Autopark.
-    if (cruise_engaged && !tesla_di_cruise_engaged && tesla_stock_steer && !tesla_summon &&
-        (safety_get_ts_elapsed(microsecond_timer_get(), tesla_stock_steer_rise_ts) < TESLA_AUTOSTEER_CONFIRM_US)) {
-      tesla_stock_steer = false;
-      tesla_stock_maneuver = false;
-      tesla_maneuver_quiet = false;
-    }
-    tesla_di_cruise_engaged = cruise_engaged;
-    // A latched maneuver keeps stock frames in control even if the driver taps engage.
+    // A latched maneuver keeps stock frames in control even if cruise rises.
     cruise_engaged = cruise_engaged && !tesla_stock_maneuver;
 
     pcm_cruise_check(cruise_engaged);
@@ -540,10 +542,10 @@ static void tesla_rx_hook(const CANPacket_t *msg) {
     bool steer_now = steering_control_type != 0;  // any non-NONE, including ANGLE_CONTROL
     bool tesla_stock_lkas_now = steering_control_type == tesla_get_steer_ctrl_type(2);  // "LANE_KEEP_ASSIST"
 
-    // A steer rise while stock cruise is already engaged is Autosteer, not Autopark.
-    if (steer_now && !tesla_stock_steer_prev && tesla_op_inactive() && !tesla_di_cruise_engaged) {
+    // Any rise from NONE while openpilot is not engaged is a stock maneuver.
+    // Cruise state is not consulted: Autopark and Autosteer look the same there.
+    if (steer_now && !tesla_stock_steer_prev && tesla_op_inactive()) {
       tesla_stock_steer = true;
-      tesla_stock_steer_rise_ts = microsecond_timer_get();
     }
     tesla_stock_steer_prev = steer_now;
     tesla_seen_steer = true;
@@ -558,6 +560,12 @@ static void tesla_rx_hook(const CANPacket_t *msg) {
     }
     tesla_stock_lkas_prev = tesla_stock_lkas_now;
     tesla_clear_stock_steer_if_idle();
+    tesla_update_maneuver();
+  }
+
+  // Direct Autopark request. Cruise state is not consulted.
+  if (msg_matches(msg, 0x39BU, 2U)) {
+    tesla_autopark_request = ((msg->data[3] >> 2) & 0x01U) == 1U;
     tesla_update_maneuver();
   }
 }
@@ -586,10 +594,9 @@ static bool tesla_tx_hook(const CANPacket_t *msg) {
   bool violation = false;
   bool cancel = false;
 
-  // Stock Autopark/Summon owns these buses. Disengaged openpilot must not send
-  // steering, EAC, or actuating longitudinal frames. Stock ACC cancel stays
-  // allowed while disengaged so the driver can still drop cruise; it is refused
-  // for the whole maneuver.
+  // Stock Autopark/Summon owns these buses for the whole latch, including when
+  // controls_allowed was forced true. Cruise cannot be trusted to mean Autosteer.
+  // Stock ACC cancel stays allowed while disengaged and not in a maneuver.
   if (tesla_stock_maneuver &&
       ((msg->addr == 0x488U) || (msg->addr == 0x27DU) || (msg->addr == 0x2b9U))) {
     violation = true;
@@ -783,13 +790,12 @@ static safety_config tesla_init(uint16_t param) {
   tesla_stock_steer_prev = false;
   tesla_seen_steer = false;
   tesla_steer_none = false;
+  tesla_autopark_request = false;
   tesla_summon = false;
   tesla_summon_prev = false;
   tesla_seen_di = false;
   tesla_maneuver_quiet = false;
   tesla_maneuver_quiet_since = 0U;
-  tesla_stock_steer_rise_ts = 0U;
-  tesla_di_cruise_engaged = false;
   tesla_op_steer_seen = false;
   tesla_op_steer_ts = 0U;
   // Assume a maneuver until the first DI_state and DAS_steeringControl arrive so

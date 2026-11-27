@@ -1,8 +1,11 @@
 """CarState failure cases:
 CS1 stock Autosteer enabled no longer raises invalidLkasSetting (except MISSING_DAS_SETTINGS).
 CS2 the SP extension changes the source invalidLkasSetting or another CarState field.
-CS3 stock Autosteer engage (ANGLE_CONTROL then DI_cruiseState ENABLED) sets stockManeuver, so
-    openpilot raises NO_ENTRY instead of engaging with stock AP.
+CS3 a stock ANGLE_CONTROL rise followed by DI_cruiseState STANDSTILL/ENABLED (or cruise
+    already on) clears stockManeuver, so the host takes over during Autopark.
+CS3b stockManeuver drops before 200ms of NONE, or stays set after that hold.
+CS5 DAS_status bit 26 (DAS_autoparkWaitingForBrake) does not keep stockManeuver set, or
+    bit 24 (DAS_autoparkReady) alone sets it.
 CS4 a second vision Autopark after a cancelled one does not set stockManeuver again.
 CC1 MADS/engaged openpilot that is not actuating stops sending 0x488/0x27D, leaving EPAS without
     DAS_steeringControl.
@@ -101,16 +104,19 @@ class TestTeslaStockManeuver(unittest.TestCase):
       out = cs.update_stock_maneuver(autopark, steer, cruise)
     return out
 
-  def test_autosteer_engage_is_not_maneuver(self):
-    # CS3: car log 2026-11-27 12:18:43.95 (ANGLE_CONTROL) / 12:18:44.01 (cruise ENABLED).
+  def test_autopark_cruise_rise_stays_latched(self):
+    # CS3/CS3b: ANGLE_CONTROL, then cruise (STANDSTILL or ENABLED). Cruise must not clear it.
+    # A rise while cruise is already on latches too. NONE holds ~200ms, then releases.
     cs = self._cs()
-    self._run(cs, 10)
-    self.assertTrue(self._run(cs, 6, steer=1))
-    self.assertFalse(self._run(cs, 1, steer=1, cruise=True))
-    self.assertFalse(self._run(cs, 500, steer=1, cruise=True))
-    # Autosteer drops back to NONE and re-applies while cruise stays on: still not a maneuver.
-    self.assertFalse(self._run(cs, 5, steer=0, cruise=True))
-    self.assertFalse(self._run(cs, 100, steer=1, cruise=True))
+    self.assertFalse(self._run(cs, 10))
+    self.assertTrue(self._run(cs, 1, steer=1))
+    self.assertTrue(self._run(cs, 1, steer=1, cruise=True))
+    self.assertTrue(self._run(cs, 50, steer=1, cruise=True))
+    self.assertTrue(self._run(cs, 19, steer=0, cruise=True))
+    self.assertFalse(self._run(cs, 1, steer=0, cruise=True))
+    # Cruise already on, steer rises again: still a stock maneuver.
+    self.assertTrue(self._run(cs, 1, steer=1, cruise=True))
+    self.assertTrue(self._run(cs, 5, steer=1, cruise=True))
 
   def test_autopark_latches_and_reenters(self):
     # CS4: vision Autopark keeps cruise off; a late engage tap does not end it.
@@ -123,6 +129,92 @@ class TestTeslaStockManeuver(unittest.TestCase):
         # cancel: NONE, then the 200ms hold
         self.assertTrue(self._run(cs, 10, steer=0))
         self.assertFalse(self._run(cs, 15, steer=0))
+
+  def test_cruise_enabled_stays_off_while_latched(self):
+    # Host must not report cruise enabled while it sees the stock maneuver, so
+    # pcmEnable is not emitted. Gear D and R, speed 0, STANDSTILL then ENABLED.
+    gears = {"D": 4, "R": 2}
+    for gear_name, gear in gears.items():
+      with self.subTest(gear=gear_name):
+        cs = self._cs()
+        parsers = cs.get_can_parsers(cs.CP, cs.CP_SP)
+        packer = CANPacker(DBC[cs.CP.carFingerprint][Bus.party])
+
+        def push(cruise, steer, hold_gear=gear):
+          parsers[Bus.party].update([(0, [
+            packer.make_can_msg("DI_state", CANBUS.party, {"DI_cruiseState": cruise, "DI_autoparkState": 1}),
+            packer.make_can_msg("DI_systemStatus", CANBUS.party, {"DI_gear": hold_gear, "DI_accelPedalPos": 0}),
+            packer.make_can_msg("DI_speed", CANBUS.party, {"DI_vehicleSpeed": 0}),
+            packer.make_can_msg("ESP_B", CANBUS.party, {"ESP_vehicleSpeed": 0, "ESP_vehicleStandstillSts": 1}),
+          ])])
+          parsers[Bus.ap_party].update([(0, [
+            packer.make_can_msg("DAS_steeringControl", CANBUS.autopilot_party, {"DAS_steeringControlType": steer}),
+          ])])
+          return cs.update(parsers)[0]
+
+        idle = push(0, 0)
+        self.assertFalse(idle.stockManeuver)
+        self.assertFalse(idle.cruiseState.enabled)
+        latched = push(0, 1)
+        self.assertTrue(latched.stockManeuver)
+        standstill = push(3, 1)
+        self.assertTrue(standstill.stockManeuver)
+        self.assertFalse(standstill.cruiseState.enabled)
+        enabled = push(2, 1)
+        self.assertTrue(enabled.stockManeuver)
+        self.assertFalse(enabled.cruiseState.enabled)
+        for _ in range(19):
+          held = push(2, 0)
+          self.assertTrue(held.stockManeuver)
+          self.assertFalse(held.cruiseState.enabled)
+        released = push(2, 0)
+        self.assertFalse(released.stockManeuver)
+        self.assertTrue(released.cruiseState.enabled)
+
+  def test_das_autopark_bit_latches_and_releases(self):
+    # CS5: bit 26 alone latches. Cruise does not clear it. Bit off and steer NONE
+    # use the same 200ms hold. A false request does not latch by itself.
+    cs = self._cs()
+    self.assertFalse(cs.update_stock_maneuver("STANDBY", 0, True, False))
+    self.assertTrue(cs.update_stock_maneuver("STANDBY", 0, True, True))
+    self.assertTrue(cs.update_stock_maneuver("STANDBY", 0, True, True))
+    for _ in range(19):
+      self.assertTrue(cs.update_stock_maneuver("STANDBY", 0, True, False))
+    self.assertFalse(cs.update_stock_maneuver("STANDBY", 0, True, False))
+
+  def test_das_status_signal_from_dbc(self):
+    # The party DBC bit, not a raw guess: bit 26 sets stockManeuver, bit 24 does not.
+    cs = self._cs()
+    parsers = cs.get_can_parsers(cs.CP, cs.CP_SP)
+    packer = CANPacker(DBC[cs.CP.carFingerprint][Bus.party])
+
+    def push(waiting, ready, steer=0, cruise=2):
+      parsers[Bus.party].update([(0, [
+        packer.make_can_msg("DI_state", CANBUS.party, {"DI_cruiseState": cruise, "DI_autoparkState": 1}),
+      ])])
+      parsers[Bus.ap_party].update([(0, [
+        packer.make_can_msg("DAS_steeringControl", CANBUS.autopilot_party, {"DAS_steeringControlType": steer}),
+        packer.make_can_msg("DAS_status", CANBUS.autopilot_party, {
+          "DAS_autoparkWaitingForBrake": waiting,
+          "DAS_autoparkReady": ready,
+        }),
+      ])])
+      return cs.update(parsers)[0]
+
+    # The first update only registers DBC messages. Frames before that are not parsed.
+    cs.update(parsers)
+    ready = push(0, 1, steer=0, cruise=2)
+    self.assertFalse(ready.stockManeuver)
+    self.assertTrue(ready.cruiseState.enabled)
+    latched = push(1, 0, steer=0, cruise=2)
+    self.assertTrue(latched.stockManeuver)
+    self.assertFalse(latched.cruiseState.enabled)
+    self.assertEqual(1, int(parsers[Bus.ap_party].vl["DAS_status"]["DAS_autoparkWaitingForBrake"]))
+    for _ in range(19):
+      self.assertTrue(push(0, 0, steer=0, cruise=2).stockManeuver)
+    released = push(0, 0, steer=0, cruise=2)
+    self.assertFalse(released.stockManeuver)
+    self.assertTrue(released.cruiseState.enabled)
 
   def test_summon_states(self):
     cs = self._cs()

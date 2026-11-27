@@ -305,11 +305,10 @@ void init_tests(void){
   tesla_seen_di = false;
   tesla_seen_steer = false;
   tesla_steer_none = false;
+  tesla_autopark_request = false;
   tesla_maneuver_quiet = false;
   tesla_stock_lkas = false;
   tesla_stock_lkas_prev = false;
-  tesla_stock_steer_rise_ts = 0U;
-  tesla_di_cruise_engaged = false;
   tesla_op_steer_seen = false;
   tesla_op_steer_ts = 0U;
 
@@ -328,6 +327,7 @@ void set_tesla_stock_maneuver(bool c) {
   if (!c) {
     tesla_stock_steer = false;
     tesla_summon = false;
+    tesla_autopark_request = false;
     tesla_maneuver_quiet = false;
     tesla_seen_di = false;
     tesla_seen_steer = false;
