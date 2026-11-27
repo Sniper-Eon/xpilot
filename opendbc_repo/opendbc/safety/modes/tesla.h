@@ -12,6 +12,9 @@
   {.msg = {{0x145, 0, 8, 50U, .max_counter = 15U}, { 0 }, { 0 }}},                                /* ESP_status (brakes) */                          \
   {.msg = {{0x286, 0, 8, 10U, .max_counter = 15U, .ignore_quality_flag = true}, { 0 }, { 0 }}},   /* DI_state (acc state) */                         \
   {.msg = {{0x311, 0, 7, 10U, .max_counter = 15U, .ignore_quality_flag = true}, { 0 }, { 0 }}},   /* UI_warning (blinkers, buckle switch & doors) */ \
+  /* DAS_status. Checksum (byte 7) and counter (bits 52-55) are checked. The       */ \
+  /* DBC has no cycle time, so a guessed period is not a reason to drop openpilot. */ \
+  {.msg = {{0x39B, 2, 8, 10U, .max_counter = 15U, .ignore_quality_flag = true, .ignore_frequency_check = true}, { 0 }, { 0 }}}, \
 
 #define TESLA_VEHICLE_BUS_ADDR_CHECK \
   {.msg = {{0x3DF, 1, 8, 2U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true, .ignore_frequency_check = true}, { 0 }, { 0 }}},    /* UI_status2 */ \
@@ -34,6 +37,14 @@ static bool tesla_stock_steer = false;
 static bool tesla_stock_steer_prev = false;
 static bool tesla_seen_steer = false;
 static bool tesla_steer_none = false;
+
+// DAS_status 0x39B on bus 2, Intel bit 26 (byte 3 bit 2). Party DBC names it
+// DAS_autoparkWaitingForBrake; the HW4 DBC names the same bit DAS_autoparkActive.
+// It rises about 50-60ms after the 0x488 ANGLE edge, so the steer latch is the
+// fast stop and this bit is a second hard stop. Bit 24 (DAS_autoparkReady) is
+// not used: it flickers in D at low speed. Held while the bit is 1, then the
+// same NONE + 200ms release as the steer latch.
+static bool tesla_autopark_request = false;
 
 // Last time openpilot 0x488 was accepted by tx_hook. While openpilot is engaged but
 // not transmitting 0x488 (host disengaged ahead of the panda, NO_ENTRY, steer fault),
@@ -162,9 +173,9 @@ static void tesla_clear_stock_steer_if_idle(void) {
 }
 
 static void tesla_update_maneuver(void) {
-  bool raw = tesla_stock_steer || tesla_summon;
+  bool raw = tesla_stock_steer || tesla_summon || tesla_autopark_request;
   bool both_seen = tesla_seen_di && tesla_seen_steer;
-  bool clear = tesla_steer_none && !tesla_summon_prev;
+  bool clear = tesla_steer_none && !tesla_summon_prev && !tesla_autopark_request;
   if (raw) {
     tesla_stock_maneuver = true;
     tesla_maneuver_quiet = false;
@@ -361,13 +372,17 @@ static uint8_t tesla_get_counter(const CANPacket_t *msg) {
     // Signal: EPAS3S_sysStatusCounter
     cnt = msg->data[6] & 0x0FU;
   }
+  if (msg->addr == 0x39BU) {
+    // Signal: DAS_statusCounter, start bit 52, length 4
+    cnt = msg->data[6] >> 4;
+  }
   return cnt;
 }
 
 static int _tesla_get_checksum_byte(const int addr) {
   int checksum_byte = -1;
-  if ((addr == 0x370) || (addr == 0x2b9) || (addr == 0x155)) {
-    // Signal: EPAS3S_sysStatusChecksum, DAS_controlChecksum, ESP_wheelRotationChecksum
+  if ((addr == 0x370) || (addr == 0x2b9) || (addr == 0x155) || (addr == 0x39B)) {
+    // Signal: EPAS3S_sysStatusChecksum, DAS_controlChecksum, ESP_wheelRotationChecksum, DAS_statusChecksum
     checksum_byte = 7;
   }
   if (addr == 0x488) {
@@ -545,6 +560,12 @@ static void tesla_rx_hook(const CANPacket_t *msg) {
     }
     tesla_stock_lkas_prev = tesla_stock_lkas_now;
     tesla_clear_stock_steer_if_idle();
+    tesla_update_maneuver();
+  }
+
+  // Direct Autopark request. Cruise state is not consulted.
+  if (msg_matches(msg, 0x39BU, 2U)) {
+    tesla_autopark_request = ((msg->data[3] >> 2) & 0x01U) == 1U;
     tesla_update_maneuver();
   }
 }
@@ -769,6 +790,7 @@ static safety_config tesla_init(uint16_t param) {
   tesla_stock_steer_prev = false;
   tesla_seen_steer = false;
   tesla_steer_none = false;
+  tesla_autopark_request = false;
   tesla_summon = false;
   tesla_summon_prev = false;
   tesla_seen_di = false;

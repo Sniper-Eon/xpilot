@@ -86,7 +86,8 @@ class OwnerDrive:
     return fwd, bool(valid[0])
 
   def peer(self, name, values):
-    return self.rx(self.packer.make_can_msg_safety(name, 2 if name == 'DAS_steeringControl' else 0, values))
+    bus = 2 if name in ('DAS_steeringControl', 'DAS_status') else 0
+    return self.rx(self.packer.make_can_msg_safety(name, bus, values))
 
   def peers(self):
     for name, values in (
@@ -95,6 +96,7 @@ class OwnerDrive:
       ('EPAS3S_sysStatus', {}), ('DI_systemStatus', {}),
       ('ESP_status', {'ESP_driverBrakeApply': 1}),
       ('DI_state', {'DI_cruiseState': 2}), ('UI_warning', {}), ('DAS_steeringControl', {}),
+      ('DAS_status', {'DAS_autoparkWaitingForBrake': 0, 'DAS_autoparkReady': 0}),
     ):
       self.peer(name, values)
 

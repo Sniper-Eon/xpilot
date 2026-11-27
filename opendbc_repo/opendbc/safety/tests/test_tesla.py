@@ -21,6 +21,11 @@ M7 DI_cruiseState STANDSTILL then ENABLED about 70ms after a disengaged stock 0x
 M7b the latch releases before stock 0x488 has been NONE for the 200ms hold, or it stays
    set after that hold so openpilot cannot engage once the maneuver is over.
 M7c a steer rise while openpilot is disengaged is ignored because stock cruise is already on.
+M11 DAS_status 0x39B bit 26 (DAS_autoparkWaitingForBrake) set on bus 2 does not latch,
+   so engaged openpilot keeps sending 0x488/0x27D/0x2B9.
+M11b bit 26 returning to 0 with 0x488 NONE drops the latch before the 200ms hold, or the
+   hold never ends.
+M11c DAS_autoparkReady (bit 24) alone latches, or a bad 0x39B checksum is trusted.
 M8 engaged openpilot that is not transmitting 0x488 still blocks stock 0x488/0x27D, starving
    EPAS (car log 2026-11-27 12:18:51.87-54.19, EAC_INHIBITED / EAC_ERROR_TMP_FAULT latched).
 M9 a second Autopark after a cancelled one does not latch again, or any latch is left over
@@ -157,6 +162,14 @@ class TestTeslaSafetyBase(common.CarSafetyTest, common.AngleSteeringSafetyTest, 
   def _eac_msg(self, allow=1):
     values = {"APS_eacAllow": allow}
     return self.packer.make_can_msg_safety("APS_eacMonitor", 0, values)
+
+  def _das_status_msg(self, waiting_for_brake=0, ready=0, bus=2):
+    # 0x39B. waiting_for_brake is Intel bit 26. ready is bit 24.
+    values = {
+      "DAS_autoparkWaitingForBrake": waiting_for_brake,
+      "DAS_autoparkReady": ready,
+    }
+    return self.packer.make_can_msg_safety("DAS_status", bus, values)
 
   def _long_control_msg(self, set_speed, acc_state=0, jerk_limits=(0, 0), accel_limits=(0, 0), aeb_event=0, bus=0):
     values = {
@@ -431,6 +444,72 @@ class TestTeslaSafetyBase(common.CarSafetyTest, common.AngleSteeringSafetyTest, 
     self.assertFalse(self._tx(self._angle_cmd_msg(0, True, increment_timer=False)))
     self.assertEqual(0, self.safety.safety_fwd_hook(2, MSG_DAS_steeringControl))
     self.assertEqual(0, self.safety.safety_fwd_hook(2, MSG_APS_eacMonitor))
+
+  def test_das_autopark_bit_blocks_engaged_openpilot(self):
+    # M11: bit 26 alone, no 0x488 rise, openpilot already engaged.
+    standby = self.autopark_states["STANDBY"]
+    self.safety.set_controls_allowed(True)
+    self.safety.set_controls_allowed_lateral(True)
+    self.assertTrue(self._tx(self._angle_cmd_msg(0, True)))
+    self.assertEqual(1, self._rx(self._das_status_msg(waiting_for_brake=1)))
+    self.assertFalse(self.safety.get_controls_allowed())
+    self.assertFalse(self.safety.get_controls_allowed_lateral())
+    self.safety.set_controls_allowed(True)
+    self.safety.set_controls_allowed_lateral(True)
+    self.assertFalse(self._tx(self._angle_cmd_msg(0, False, increment_timer=False)))
+    self.assertFalse(self._tx(self._angle_cmd_msg(0, True, increment_timer=False)))
+    self.assertFalse(self._tx(self._eac_msg()))
+    self.assertFalse(self._tx(self._long_control_msg(0, acc_state=self.acc_states["ACC_ON"])))
+    self.assertEqual(0, self.safety.safety_fwd_hook(2, MSG_DAS_steeringControl))
+    self.assertEqual(0, self.safety.safety_fwd_hook(2, MSG_APS_eacMonitor))
+    self.assertEqual(0, self.safety.safety_fwd_hook(2, MSG_DAS_Control))
+    # The next status frame keeps the latch and clears a forced engage.
+    self.assertEqual(1, self._rx(self._das_status_msg(waiting_for_brake=1)))
+    self.assertFalse(self.safety.get_controls_allowed())
+    self._rx(self._pcm_status_msg(True, standby))
+    self.assertFalse(self.safety.get_controls_allowed())
+
+  def test_das_autopark_bit_releases_with_steer_none(self):
+    # M11b: bit 26 back to 0 and stock 0x488 NONE, then the 200ms hold.
+    standby = self.autopark_states["STANDBY"]
+    self.assertEqual(1, self._rx(self._das_status_msg(waiting_for_brake=1)))
+    self.assertFalse(self.safety.get_controls_allowed())
+    self._rx(self._das_status_msg(waiting_for_brake=0))
+    self._rx(self._angle_cmd_msg(0, False, bus=2))
+    self._rx(self._pcm_status_msg(False, standby))
+    self._rx(self._pcm_status_msg(True, standby))
+    self.assertFalse(self.safety.get_controls_allowed())
+    self._advance(100000)
+    self._rx(self._das_status_msg(waiting_for_brake=0))
+    self._rx(self._angle_cmd_msg(0, False, bus=2, increment_timer=False))
+    self._rx(self._pcm_status_msg(True, standby))
+    self.assertFalse(self.safety.get_controls_allowed())
+    self._advance(120000)
+    self._rx(self._das_status_msg(waiting_for_brake=0))
+    self._rx(self._angle_cmd_msg(0, False, bus=2, increment_timer=False))
+    self._rx(self._pcm_status_msg(True, standby))
+    self.assertTrue(self.safety.get_controls_allowed())
+    self.assertTrue(self._tx(self._angle_cmd_msg(0, True)))
+    self.assertTrue(self._tx(self._eac_msg()))
+
+  def test_das_autopark_ready_and_bad_checksum_do_not_latch(self):
+    # M11c: bit 24 alone is ignored. A bad checksum is not a latch.
+    standby = self.autopark_states["STANDBY"]
+    self.safety.set_controls_allowed(True)
+    self.assertEqual(1, self._rx(self._das_status_msg(waiting_for_brake=0, ready=1)))
+    self.assertTrue(self.safety.get_controls_allowed())
+    self.assertTrue(self._tx(self._angle_cmd_msg(0, True)))
+    # Same bit on the wrong bus is not the stock AP frame.
+    self.safety.set_controls_allowed(True)
+    self._rx(self._das_status_msg(waiting_for_brake=1, bus=0))
+    self.assertTrue(self.safety.get_controls_allowed())
+    bad = self._das_status_msg(waiting_for_brake=1)
+    bad[0].data[7] ^= 0xFF
+    self.assertFalse(self._rx(bad))
+    self._rx(self._das_status_msg(waiting_for_brake=0))
+    self._rx(self._angle_cmd_msg(0, False, bus=2))
+    self._rx(self._pcm_status_msg(True, standby))
+    self.assertTrue(self.safety.get_controls_allowed())
 
   def test_engaged_without_openpilot_steer_tx_forwards_stock(self):
     # M8: engaged but openpilot has not sent 0x488 yet (or stopped): stock frames keep EPAS fed.
